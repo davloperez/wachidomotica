@@ -1,0 +1,146 @@
+# Shared base configuration for persiana (blind) controllers
+# This file contains all common logic and components
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+
+# Enable logging
+logger:
+  level: DEBUG
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+web_server:
+  port: 80
+
+ota:
+  - platform: esphome
+    password: ""
+
+captive_portal:
+
+light:
+  - platform: binary
+    id: led
+    name: "LED GPIO23"
+    output: led_gpio23
+    internal: true
+
+output:
+  - platform: gpio
+    pin: 23
+    id: led_gpio23
+
+interval:
+  - interval: 1s
+    then:
+      - light.toggle: led
+
+# ====== GLOBALS ======
+globals:
+  - id: arranque_gpio22
+    type: bool
+    restore_value: no
+    initial_value: "false"
+
+# ====== RELÉS ======
+switch:
+  - platform: gpio
+    pin: GPIO16
+    id: relay_up
+    interlock: [relay_down]
+    restore_mode: ALWAYS_OFF
+
+  - platform: gpio
+    pin: GPIO17
+    id: relay_down
+    interlock: [relay_up]
+    restore_mode: ALWAYS_OFF
+
+# ====== BOTONES ======
+binary_sensor:
+  - platform: gpio
+    pin:
+      number: GPIO32
+      mode: INPUT_PULLDOWN
+    id: button_up
+    name: "Subir"
+    filters:
+      - delayed_on: 50ms
+    on_press:
+      if:
+        condition:
+          - lambda: "return id(arranque_gpio22);"
+        then:
+          - logger.log: "Arrancó con GPIO22 a GND"
+        else:
+          - logger.log: "Arrancó con GPIO22 flotante"
+          - lambda: |-
+              // Obtener estado actual de la persiana
+              auto op = id(persiana).current_operation;
+              // Si está en movimiento (subiendo o bajando) => parar
+              if (op == CoverOperation::COVER_OPERATION_OPENING || op == CoverOperation::COVER_OPERATION_CLOSING) {
+                auto call = id(persiana).make_call();
+                call.set_command_stop();
+                call.perform();
+              } else {
+                // Si está idle (parada) => abrir
+                auto call = id(persiana).make_call();
+                call.set_command_open();
+                call.perform();
+              }
+
+  - platform: gpio
+    pin:
+      number: GPIO33
+      mode: INPUT_PULLDOWN
+    id: button_down
+    name: "Bajar"
+    filters:
+      - delayed_on: 50ms
+    on_press:
+      - lambda: |-
+          // Obtener estado actual de la persiana
+          auto op = id(persiana).current_operation;
+          // Si está en movimiento (subiendo o bajando) => parar
+          if (op == CoverOperation::COVER_OPERATION_OPENING || op == CoverOperation::COVER_OPERATION_CLOSING) {
+            auto call = id(persiana).make_call();
+            call.set_command_stop();
+            call.perform();
+          } else {
+            // Si está idle (parada) => abrir
+            auto call = id(persiana).make_call();
+            call.set_command_close();
+            call.perform();
+          }
+
+  - platform: gpio
+    id: gpio22_state
+    pin:
+      number: GPIO22
+      mode: INPUT_PULLUP # si está a GND = LOW
+    internal: true
+
+# ====== COVER (para Home Assistant) ======
+cover:
+  - platform: time_based
+    name: "Persiana"
+    id: persiana
+
+    open_action:
+      - switch.turn_on: relay_up
+    open_duration: 10s
+
+    close_action:
+      - switch.turn_on: relay_down
+    close_duration: 7s
+
+    stop_action:
+      - switch.turn_off: relay_up
+      - switch.turn_off: relay_down
+    # manual_control: true
