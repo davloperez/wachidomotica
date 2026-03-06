@@ -17,6 +17,9 @@ api:
 
 web_server:
   port: 80
+  js_include: "./v2/www.js"
+  js_url: ""
+  version: 2
 
 ota:
   - platform: esphome
@@ -31,12 +34,14 @@ switch:
     id: relay_up
     interlock: [relay_down]
     restore_mode: ALWAYS_OFF
+    name: "Relé Subir"
 
   - platform: gpio
     pin: GPIO17
     id: relay_down
     interlock: [relay_up]
     restore_mode: ALWAYS_OFF
+    name: "Relé Bajar"
 
 # ====== BOTONES ======
 binary_sensor:
@@ -45,27 +50,28 @@ binary_sensor:
       number: GPIO32
       mode: INPUT_PULLDOWN
     id: button_up
-    name: "Subir"
     filters:
       - delayed_on: 50ms
     on_press:
-      - logger.log: "Botón Subir presionado"
-      - switch.turn_on: relay_up
-    on_release:
-      - logger.log: "Botón Subir soltado"
-      - switch.turn_off: relay_up
+      - switch.toggle: relay_up
 
   - platform: gpio
     pin:
       number: GPIO33
       mode: INPUT_PULLDOWN
     id: button_down
-    name: "Bajar"
     filters:
       - delayed_on: 50ms
     on_press:
-      - logger.log: "Botón Bajar presionado"
-      - switch.turn_on: relay_down
-    on_release:
-      - logger.log: "Botón Bajar soltado"
-      - switch.turn_off: relay_down
+      - switch.toggle: relay_down
+
+button:
+  - platform: template
+    name: "Botón Subir"
+    on_press:
+      - switch.toggle: relay_up
+
+  - platform: template
+    name: "Botón Bajar"
+    on_press:
+      - switch.toggle: relay_down
