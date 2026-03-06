@@ -1,8 +1,8 @@
-# Persiana Oficina 1 Configuration
+# Persiana Salon 2 Configuration
 # Imports shared logic from persiana-base.yaml
 
 esphome:
-  name: persiana-oficina-1
+  name: persiana-salon-2
 
 <<: !include persiana-base.yaml
 
@@ -15,10 +15,10 @@ wifi:
   # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
     password: "platano+1234"
-    ssid: "AP-Persiana-Oficina-1"
+    ssid: "AP-Persiana-Salon-2"
 
   manual_ip:
-    static_ip: 192.168.2.100
+    static_ip: 192.168.2.106
     gateway: 192.168.2.1
     subnet: 255.255.255.0
     dns1: 192.168.2.1

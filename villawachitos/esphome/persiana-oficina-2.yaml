@@ -3,13 +3,6 @@
 
 esphome:
   name: persiana-oficina-2
-  on_boot:
-    priority: -10
-    then:
-      - lambda: |-
-          bool conectado = !id(gpio22_state).state;  // LOW = true
-          id(arranque_gpio22) = conectado;
-          ESP_LOGD("boot", "GPIO22 al arrancar: %s", conectado ? "GND" : "flotante");
 
 <<: !include persiana-base.yaml
 
