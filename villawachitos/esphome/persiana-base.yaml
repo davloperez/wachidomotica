@@ -64,14 +64,3 @@ binary_sensor:
       - delayed_on: 50ms
     on_press:
       - switch.toggle: relay_down
-
-button:
-  - platform: template
-    name: "Botón Subir"
-    on_press:
-      - switch.toggle: relay_up
-
-  - platform: template
-    name: "Botón Bajar"
-    on_press:
-      - switch.toggle: relay_down
