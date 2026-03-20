@@ -184,6 +184,32 @@ The following are intentionally not tracked:
 
 ---
 
+
+## 🛠️ Batch Compile & Upload Scripts
+
+You can compile or upload all persiana device configurations at once using the provided scripts:
+
+### Compile all persiana configs
+
+This will attempt to compile every `persiana-*.yaml` (except `persiana-base.yaml`).
+
+```bash
+./compile_all.sh
+```
+
+The script prints a summary and lists any configs that failed to compile.
+
+### Upload all persiana configs (OTA)
+
+This will attempt to upload every `persiana-*.yaml` to its device via OTA:
+
+```bash
+./upload_all.sh
+```
+
+The script prints a summary and lists any configs that failed to upload.
+
+---
 ## 🧠 Typical workflow
 
 ```bash
