@@ -92,6 +92,23 @@ esphome version
 
 ---
 
+## ⬆️ Update ESPHome to Latest Stable Version
+
+To update ESPHome to the latest stable version, activate your virtual environment and run:
+
+```bash
+source venv/bin/activate
+pip install --upgrade esphome
+```
+
+You can verify the update with:
+
+```bash
+esphome version
+```
+
+---
+
 ## ▶️ Using ESPHome
 
 Activate the environment:
