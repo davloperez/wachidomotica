@@ -3,6 +3,11 @@
 
 esphome:
   name: persiana-oficina-1
+  on_boot:
+    then:
+      - output.turn_on: led_up
+      - output.turn_on: led_down
+      - output.turn_on: led_light
 
 packages:
   base: !include persiana-base.yaml
@@ -25,6 +30,20 @@ wifi:
     dns1: 192.168.2.1
     dns2: 8.8.8.8
 
+# ====== LEDs INDICADORES ======
+output:
+  - platform: gpio
+    pin: GPIO4
+    id: led_up
+
+  - platform: gpio
+    pin: GPIO5
+    id: led_down
+
+  - platform: gpio
+    pin: GPIO13
+    id: led_light
+
 # ====== LUZ TECHO ======
 switch:
   - platform: gpio
@@ -32,6 +51,23 @@ switch:
     id: relay_light
     restore_mode: ALWAYS_OFF
     name: "Relé Luz Techo"
+    on_turn_on:
+      - output.turn_off: led_light
+    on_turn_off:
+      - output.turn_on: led_light
+
+  # Extender relés del base para vincular LEDs
+  - id: relay_up
+    on_turn_on:
+      - output.turn_off: led_up
+    on_turn_off:
+      - output.turn_on: led_up
+
+  - id: relay_down
+    on_turn_on:
+      - output.turn_off: led_down
+    on_turn_off:
+      - output.turn_on: led_down
 
 binary_sensor:
   - platform: gpio
