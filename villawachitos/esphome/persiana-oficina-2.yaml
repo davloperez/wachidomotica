@@ -1,11 +1,11 @@
 # Persiana Oficina 2 Configuration
-# Imports shared logic from persiana-base.yaml
 
 esphome:
   name: persiana-oficina-2
 
 packages:
   base: !include persiana-base.yaml
+  oficina_base: !include persiana-oficina-base.yaml
 
 wifi:
   ssid: !secret wifi_ssid

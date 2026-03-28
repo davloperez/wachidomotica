@@ -1,0 +1,91 @@
+# Shared base configuration for oficina persiana controllers
+# Adds LED indicators and ceiling light on top of persiana-base.yaml
+# Note: persiana-base.yaml must also be included in the device file
+
+esphome:
+  on_boot:
+    then:
+      - output.turn_on: led_up
+      - output.turn_on: led_down
+      - output.turn_on: led_light
+
+# ====== LEDs INDICADORES ======
+output:
+  - platform: gpio
+    pin: GPIO4
+    id: led_up
+    name: "Led Botón Subir"
+
+  - platform: gpio
+    pin: GPIO5
+    id: led_down
+    name: "Led Botón Bajar"
+
+  - platform: gpio
+    pin: GPIO13
+    id: led_light
+    name: "Led Luz Techo"
+
+# ====== LUZ TECHO ======
+switch:
+  - platform: gpio
+    pin: GPIO18
+    id: relay_light
+    restore_mode: ALWAYS_OFF
+    inverted: True
+    name: "Relé Luz Techo"
+    on_turn_on:
+      - output.turn_off: led_light
+    on_turn_off:
+      - output.turn_on: led_light
+
+  # Extender relés del base para vincular LEDs
+  - id: !extend relay_up
+    on_turn_on:
+      - script.execute: blink_led_up
+    on_turn_off:
+      - script.stop: blink_led_up
+      - output.turn_on: led_up
+
+  - id: !extend relay_down
+    on_turn_on:
+      - script.execute: blink_led_down
+    on_turn_off:
+      - script.stop: blink_led_down
+      - output.turn_on: led_down
+
+script:
+  - id: blink_led_up
+    mode: restart
+    then:
+      - while:
+          condition:
+            lambda: "return true;"
+          then:
+            - output.turn_on: led_up
+            - delay: 350ms
+            - output.turn_off: led_up
+            - delay: 350ms
+
+  - id: blink_led_down
+    mode: restart
+    then:
+      - while:
+          condition:
+            lambda: "return true;"
+          then:
+            - output.turn_on: led_down
+            - delay: 350ms
+            - output.turn_off: led_down
+            - delay: 350ms
+
+binary_sensor:
+  - platform: gpio
+    pin:
+      number: GPIO25
+      mode: INPUT_PULLDOWN
+    id: button_light
+    filters:
+      - delayed_on: 50ms
+    on_press:
+      - switch.toggle: relay_light
