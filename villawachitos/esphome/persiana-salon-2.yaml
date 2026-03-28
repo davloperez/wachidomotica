@@ -4,7 +4,8 @@
 esphome:
   name: persiana-salon-2
 
-<<: !include persiana-base.yaml
+packages:
+  base: !include persiana-base.yaml
 
 wifi:
   ssid: !secret wifi_ssid

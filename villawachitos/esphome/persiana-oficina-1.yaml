@@ -4,7 +4,8 @@
 esphome:
   name: persiana-oficina-1
 
-<<: !include persiana-base.yaml
+packages:
+  base: !include persiana-base.yaml
 
 wifi:
   ssid: !secret wifi_ssid
@@ -23,3 +24,22 @@ wifi:
     subnet: 255.255.255.0
     dns1: 192.168.2.1
     dns2: 8.8.8.8
+
+# ====== LUZ TECHO ======
+switch:
+  - platform: gpio
+    pin: GPIO18
+    id: relay_light
+    restore_mode: ALWAYS_OFF
+    name: "Relé Luz Techo"
+
+binary_sensor:
+  - platform: gpio
+    pin:
+      number: GPIO25
+      mode: INPUT_PULLDOWN
+    id: button_light
+    filters:
+      - delayed_on: 50ms
+    on_press:
+      - switch.toggle: relay_light
