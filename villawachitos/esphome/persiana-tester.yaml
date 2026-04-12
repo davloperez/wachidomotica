@@ -32,6 +32,8 @@ sn74hc595:
 
 # ====== RGB LED ======
 # R=GPIO21, G=GPIO19, B=GPIO5
+# ====== BUZZER ======
+# Buffer on GPIO13
 output:
   - platform: ledc
     pin: GPIO21
@@ -42,6 +44,9 @@ output:
   - platform: ledc
     pin: GPIO5
     id: output_blue
+  - platform: ledc
+    pin: GPIO13
+    id: buzzer
 
 light:
   - platform: rgb
@@ -62,6 +67,49 @@ switch:
   - !include { file: led-switch.yaml, vars: { n: 8, sr_number: 7 } }
 
 script:
+  # ====== BUZZER BEEP SCRIPTS ======
+  - id: beep_single
+    mode: restart
+    then:
+      - output.ledc.set_frequency:
+          id: buzzer
+          frequency: 2000Hz
+      - output.set_level:
+          id: buzzer
+          level: 50%
+      - delay: 80ms
+      - output.turn_off: buzzer
+
+  - id: beep_double
+    mode: restart
+    then:
+      - output.ledc.set_frequency:
+          id: buzzer
+          frequency: 2000Hz
+      - output.set_level:
+          id: buzzer
+          level: 50%
+      - delay: 80ms
+      - output.turn_off: buzzer
+      - delay: 80ms
+      - output.set_level:
+          id: buzzer
+          level: 50%
+      - delay: 80ms
+      - output.turn_off: buzzer
+
+  - id: beep_long
+    mode: restart
+    then:
+      - output.ledc.set_frequency:
+          id: buzzer
+          frequency: 2000Hz
+      - output.set_level:
+          id: buzzer
+          level: 50%
+      - delay: 1s
+      - output.turn_off: buzzer
+
   # Blink scripts for all LED-buttons (0.5 s period)
   - !include { file: blink-script.yaml, vars: { n: 1 } }
   - !include { file: blink-script.yaml, vars: { n: 2 } }
@@ -106,6 +154,7 @@ script:
       - globals.set:
           id: cleaning_mode
           value: "true"
+      - script.execute: beep_long
       - script.execute: cleaning_timeout_script
       - while:
           condition:

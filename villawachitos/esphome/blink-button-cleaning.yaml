@@ -16,6 +16,7 @@ on_multi_click:
           condition:
             lambda: return !id(cleaning_mode);
           then:
+            - script.execute: beep_single
             - if:
                 condition:
                   lambda: return id(led_blink_${n});
@@ -38,6 +39,7 @@ on_multi_click:
           condition:
             lambda: return !id(cleaning_mode);
           then:
+            - script.execute: beep_double
             - globals.set:
                 id: led_blink_${n}
                 value: "true"
