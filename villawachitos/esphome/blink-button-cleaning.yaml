@@ -42,3 +42,21 @@ on_multi_click:
                 id: led_blink_${n}
                 value: "true"
             - script.execute: blink_led_${n}
+  # Long hold (3 s): enter or exit cleaning mode if partner button is also held
+  - timing:
+      - ON for at least 3000ms
+    then:
+      - if:
+          condition:
+            lambda: return id(btn_${cleaning_partner}).state;
+          then:
+            - if:
+                condition:
+                  lambda: return id(cleaning_mode);
+                then:
+                  - globals.set:
+                      id: cleaning_mode
+                      value: "false"
+                  - script.stop: cleaning_timeout_script
+                else:
+                  - script.execute: cleaning_mode_script

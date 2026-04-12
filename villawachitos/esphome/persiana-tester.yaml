@@ -7,8 +7,11 @@ esphome:
 packages:
   common: !include common.yaml
 
-# ====== GLOBALS: blink state for all LED-buttons ======
+# ====== GLOBALS: blink state for all LED-buttons + cleaning mode flag ======
 globals:
+  - id: cleaning_mode
+    type: bool
+    initial_value: "false"
   - !include { file: led-blink-global.yaml, vars: { n: 1 } }
   - !include { file: led-blink-global.yaml, vars: { n: 2 } }
   - !include { file: led-blink-global.yaml, vars: { n: 3 } }
@@ -19,13 +22,34 @@ globals:
   - !include { file: led-blink-global.yaml, vars: { n: 8 } }
 
 # ====== SN74HC595N (8 LEDs secuenciales) ======
-# DS=GPIO18, SH_CP=GPIO19, ST_CP=GPIO21
+# DS=GPIO4, SH_CP=GPIO22, ST_CP=GPIO23
 sn74hc595:
   - id: sn74hc595_hub
-    data_pin: GPIO18
-    clock_pin: GPIO19
-    latch_pin: GPIO21
+    data_pin: GPIO4
+    clock_pin: GPIO22
+    latch_pin: GPIO23
     sr_count: 1
+
+# ====== RGB LED ======
+# R=GPIO21, G=GPIO19, B=GPIO5
+output:
+  - platform: ledc
+    pin: GPIO21
+    id: output_red
+  - platform: ledc
+    pin: GPIO19
+    id: output_green
+  - platform: ledc
+    pin: GPIO5
+    id: output_blue
+
+light:
+  - platform: rgb
+    name: "RGB LED"
+    id: rgb_led
+    red: output_red
+    green: output_green
+    blue: output_blue
 
 switch:
   - !include { file: led-switch.yaml, vars: { n: 1, sr_number: 0 } }
@@ -48,9 +72,79 @@ script:
   - !include { file: blink-script.yaml, vars: { n: 7 } }
   - !include { file: blink-script.yaml, vars: { n: 8 } }
 
+  # ====== CLEANING MODE ======
+  # Expires after 60 s; can be stopped early by setting cleaning_mode = false
+  - id: cleaning_timeout_script
+    mode: restart
+    then:
+      - delay: 60s
+      - globals.set:
+          id: cleaning_mode
+          value: "false"
+
+  # Entry point for cleaning mode: stops all blink activity, then fast-blinks
+  # all LEDs together until cleaning_mode is cleared (timeout or manual exit)
+  - id: cleaning_mode_script
+    mode: restart
+    then:
+      - globals.set: { id: led_blink_1, value: "false" }
+      - script.stop: blink_led_1
+      - globals.set: { id: led_blink_2, value: "false" }
+      - script.stop: blink_led_2
+      - globals.set: { id: led_blink_3, value: "false" }
+      - script.stop: blink_led_3
+      - globals.set: { id: led_blink_4, value: "false" }
+      - script.stop: blink_led_4
+      - globals.set: { id: led_blink_5, value: "false" }
+      - script.stop: blink_led_5
+      - globals.set: { id: led_blink_6, value: "false" }
+      - script.stop: blink_led_6
+      - globals.set: { id: led_blink_7, value: "false" }
+      - script.stop: blink_led_7
+      - globals.set: { id: led_blink_8, value: "false" }
+      - script.stop: blink_led_8
+      - globals.set:
+          id: cleaning_mode
+          value: "true"
+      - script.execute: cleaning_timeout_script
+      - while:
+          condition:
+            lambda: return id(cleaning_mode);
+          then:
+            - switch.turn_on: led_1
+            - switch.turn_on: led_2
+            - switch.turn_on: led_3
+            - switch.turn_on: led_4
+            - switch.turn_on: led_5
+            - switch.turn_on: led_6
+            - switch.turn_on: led_7
+            - switch.turn_on: led_8
+            - delay: 150ms
+            - switch.turn_off: led_1
+            - switch.turn_off: led_2
+            - switch.turn_off: led_3
+            - switch.turn_off: led_4
+            - switch.turn_off: led_5
+            - switch.turn_off: led_6
+            - switch.turn_off: led_7
+            - switch.turn_off: led_8
+            - delay: 150ms
+      - script.stop: cleaning_timeout_script
+      - switch.turn_off: led_1
+      - switch.turn_off: led_2
+      - switch.turn_off: led_3
+      - switch.turn_off: led_4
+      - switch.turn_off: led_5
+      - switch.turn_off: led_6
+      - switch.turn_off: led_7
+      - switch.turn_off: led_8
+
 # ====== BUTTONS (active LOW, external pull-up resistors) ======
 binary_sensor:
-  - !include { file: blink-button.yaml, vars: { n: 1, gpio: GPIO34 } }
+  - !include {
+      file: blink-button-cleaning.yaml,
+      vars: { n: 1, gpio: GPIO34, cleaning_partner: 8 },
+    }
   - !include { file: blink-button.yaml, vars: { n: 2, gpio: GPIO32 } }
   - !include { file: blink-button.yaml, vars: { n: 3, gpio: GPIO25 } }
   - !include { file: blink-button.yaml, vars: { n: 4, gpio: GPIO27 } }
