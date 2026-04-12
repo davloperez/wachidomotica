@@ -1,0 +1,3 @@
+id: led_blink_${n}
+type: bool
+initial_value: "false"

@@ -1,0 +1,36 @@
+platform: gpio
+id: btn_${n}
+name: "Button ${n}"
+pin:
+  number: ${gpio}
+  inverted: true
+  mode:
+    input: true
+on_multi_click:
+  # Single click: press+release, then no second press within 350ms
+  - timing:
+      - ON for 50ms to 350ms
+      - OFF for at least 350ms
+    then:
+      - if:
+          condition:
+            lambda: return id(led_blink_${n});
+          then:
+            - globals.set:
+                id: led_blink_${n}
+                value: "false"
+            - script.stop: blink_led_${n}
+            - switch.turn_off: led_${n}
+          else:
+            - switch.toggle: led_${n}
+  # Double click: two press+release within 350ms each
+  - timing:
+      - ON for 50ms to 350ms
+      - OFF for 50ms to 350ms
+      - ON for 50ms to 350ms
+      - OFF for at least 50ms
+    then:
+      - globals.set:
+          id: led_blink_${n}
+          value: "true"
+      - script.execute: blink_led_${n}

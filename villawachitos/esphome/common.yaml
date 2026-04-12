@@ -1,0 +1,23 @@
+# Common configuration shared across all devices
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+
+logger:
+  level: DEBUG
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+web_server:
+  port: 8080
+  js_include: "./v2/www.js"
+  js_url: ""
+  version: 2
+
+ota:
+  - platform: esphome
+    password: ""

@@ -1,0 +1,11 @@
+id: blink_led_${n}
+mode: restart
+then:
+  - while:
+      condition:
+        lambda: return id(led_blink_${n});
+      then:
+        - switch.turn_on: led_${n}
+        - delay: 500ms
+        - switch.turn_off: led_${n}
+        - delay: 500ms

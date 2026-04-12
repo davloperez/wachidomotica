@@ -1,0 +1,7 @@
+platform: gpio
+id: led_${n}
+name: "LED ${n}"
+pin:
+  sn74hc595: sn74hc595_hub
+  number: ${sr_number}
+  inverted: false

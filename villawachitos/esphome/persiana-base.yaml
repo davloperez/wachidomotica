@@ -1,29 +1,7 @@
-# Shared base configuration for persiana (blind) controllers
-# This file contains all common logic and components
+# Persiana (blind) controller: relays and physical buttons
 
-esp32:
-  board: esp32dev
-  framework:
-    type: esp-idf
-
-# Enable logging
-logger:
-  level: DEBUG
-
-# Enable Home Assistant API
-api:
-  encryption:
-    key: !secret api_encryption_key
-
-web_server:
-  port: 8080
-  js_include: "./v2/www.js"
-  js_url: ""
-  version: 2
-
-ota:
-  - platform: esphome
-    password: ""
+packages:
+  common: !include common.yaml
 
 # ====== RELÉS ======
 switch:

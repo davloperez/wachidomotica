@@ -1,15 +1,22 @@
-# Persiana Salon 2 Configuration
+# Persiana Tester Configuration
 # Imports shared logic from persiana-base.yaml
 
 esphome:
   name: persiana-tester
-  on_boot:
-    priority: -100
-    then:
-      - script.execute: led_sequence
 
 packages:
-  base: !include persiana-base.yaml
+  common: !include common.yaml
+
+# ====== GLOBALS: blink state for all LED-buttons ======
+globals:
+  - !include { file: led-blink-global.yaml, vars: { n: 1 } }
+  - !include { file: led-blink-global.yaml, vars: { n: 2 } }
+  - !include { file: led-blink-global.yaml, vars: { n: 3 } }
+  - !include { file: led-blink-global.yaml, vars: { n: 4 } }
+  - !include { file: led-blink-global.yaml, vars: { n: 5 } }
+  - !include { file: led-blink-global.yaml, vars: { n: 6 } }
+  - !include { file: led-blink-global.yaml, vars: { n: 7 } }
+  - !include { file: led-blink-global.yaml, vars: { n: 8 } }
 
 # ====== SN74HC595N (8 LEDs secuenciales) ======
 # DS=GPIO18, SH_CP=GPIO19, ST_CP=GPIO21
@@ -21,95 +28,36 @@ sn74hc595:
     sr_count: 1
 
 switch:
-  - platform: gpio
-    id: led_1
-    name: "LED 1"
-    pin:
-      sn74hc595: sn74hc595_hub
-      number: 0
-      inverted: false
-  - platform: gpio
-    id: led_2
-    name: "LED 2"
-    pin:
-      sn74hc595: sn74hc595_hub
-      number: 1
-      inverted: false
-  - platform: gpio
-    id: led_3
-    name: "LED 3"
-    pin:
-      sn74hc595: sn74hc595_hub
-      number: 2
-      inverted: false
-  - platform: gpio
-    id: led_4
-    name: "LED 4"
-    pin:
-      sn74hc595: sn74hc595_hub
-      number: 3
-      inverted: false
-  - platform: gpio
-    id: led_5
-    name: "LED 5"
-    pin:
-      sn74hc595: sn74hc595_hub
-      number: 4
-      inverted: false
-  - platform: gpio
-    id: led_6
-    name: "LED 6"
-    pin:
-      sn74hc595: sn74hc595_hub
-      number: 5
-      inverted: false
-  - platform: gpio
-    id: led_7
-    name: "LED 7"
-    pin:
-      sn74hc595: sn74hc595_hub
-      number: 6
-      inverted: false
-  - platform: gpio
-    id: led_8
-    name: "LED 8"
-    pin:
-      sn74hc595: sn74hc595_hub
-      number: 7
-      inverted: false
+  - !include { file: led-switch.yaml, vars: { n: 1, sr_number: 0 } }
+  - !include { file: led-switch.yaml, vars: { n: 2, sr_number: 1 } }
+  - !include { file: led-switch.yaml, vars: { n: 3, sr_number: 2 } }
+  - !include { file: led-switch.yaml, vars: { n: 4, sr_number: 3 } }
+  - !include { file: led-switch.yaml, vars: { n: 5, sr_number: 4 } }
+  - !include { file: led-switch.yaml, vars: { n: 6, sr_number: 5 } }
+  - !include { file: led-switch.yaml, vars: { n: 7, sr_number: 6 } }
+  - !include { file: led-switch.yaml, vars: { n: 8, sr_number: 7 } }
 
 script:
-  - id: led_sequence
-    then:
-      - while:
-          condition:
-            lambda: return true;
-          then:
-            - switch.turn_on: led_1
-            - delay: 1s
-            - switch.turn_off: led_1
-            - switch.turn_on: led_2
-            - delay: 1s
-            - switch.turn_off: led_2
-            - switch.turn_on: led_3
-            - delay: 1s
-            - switch.turn_off: led_3
-            - switch.turn_on: led_4
-            - delay: 1s
-            - switch.turn_off: led_4
-            - switch.turn_on: led_5
-            - delay: 1s
-            - switch.turn_off: led_5
-            - switch.turn_on: led_6
-            - delay: 1s
-            - switch.turn_off: led_6
-            - switch.turn_on: led_7
-            - delay: 1s
-            - switch.turn_off: led_7
-            - switch.turn_on: led_8
-            - delay: 1s
-            - switch.turn_off: led_8
-            - delay: 3s
+  # Blink scripts for all LED-buttons (0.5 s period)
+  - !include { file: blink-script.yaml, vars: { n: 1 } }
+  - !include { file: blink-script.yaml, vars: { n: 2 } }
+  - !include { file: blink-script.yaml, vars: { n: 3 } }
+  - !include { file: blink-script.yaml, vars: { n: 4 } }
+  - !include { file: blink-script.yaml, vars: { n: 5 } }
+  - !include { file: blink-script.yaml, vars: { n: 6 } }
+  - !include { file: blink-script.yaml, vars: { n: 7 } }
+  - !include { file: blink-script.yaml, vars: { n: 8 } }
+
+# ====== BUTTONS (active LOW, external pull-up resistors) ======
+binary_sensor:
+  - !include { file: blink-button.yaml, vars: { n: 1, gpio: GPIO34 } }
+  - !include { file: blink-button.yaml, vars: { n: 2, gpio: GPIO32 } }
+  - !include { file: blink-button.yaml, vars: { n: 3, gpio: GPIO25 } }
+  - !include { file: blink-button.yaml, vars: { n: 4, gpio: GPIO27 } }
+  - !include { file: blink-button.yaml, vars: { n: 5, gpio: GPIO35 } }
+  - !include { file: blink-button.yaml, vars: { n: 6, gpio: GPIO33 } }
+  - !include { file: blink-button.yaml, vars: { n: 7, gpio: GPIO26 } }
+  - !include { file: blink-button.yaml, vars: { n: 8, gpio: GPIO14 } }
 
 wifi:
   ssid: "WACHITOS_2G"
