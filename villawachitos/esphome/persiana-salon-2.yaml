@@ -1,6 +1,9 @@
 # Persiana Salon 2 Configuration
 # Imports shared logic from persiana-base.yaml
 
+substitutions:
+  device_id: "6"
+
 esphome:
   name: persiana-salon-2
 

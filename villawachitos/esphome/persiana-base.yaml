@@ -3,6 +3,44 @@
 packages:
   common: !include common.yaml
 
+# ====== ESP-NOW (receptor via raw ESP-IDF API) ======
+# device_id debe definirse como substitution en cada persiana YAML:
+#   substitutions:
+#     device_id: "N"   (ver orden en controller.yaml)
+
+globals:
+  - id: espnow_pending
+    type: int
+    restore_value: no
+    initial_value: "0"
+
+esphome:
+  includes:
+    - espnow_recv.h
+  on_boot:
+    priority: -200 # muy tarde, después de que WiFi esté listo
+    then:
+      - lambda: |-
+          if (esp_now_init() != ESP_OK) {
+            ESP_LOGE("espnow", "esp_now_init() failed");
+            return;
+          }
+          esp_now_register_recv_cb(espnow_recv_cb);
+          ESP_LOGI("espnow", "Receiver ready (device_id=${device_id})");
+
+interval:
+  - interval: 100ms
+    then:
+      - lambda: |-
+          int pkt = id(espnow_pending);
+          if (pkt == 0) return;
+          id(espnow_pending) = 0;
+          int target = (pkt >> 8) & 0xFF;
+          int action = pkt & 0xFF;
+          if (target != ${device_id}) return;
+          if (action == 'U') id(relay_up).toggle();
+          else if (action == 'D') id(relay_down).toggle();
+
 # ====== RELÉS ======
 switch:
   - platform: gpio

@@ -1,0 +1,261 @@
+# Mando Controller - ESP32 remote control for all persiana devices
+# =================================================================
+#
+# Hardware connections:
+#   Botón SELECT  → GPIO26   (INPUT_PULLDOWN — activo en HIGH / 3.3V)
+#   Botón UP      → GPIO32   (INPUT_PULLDOWN — activo en HIGH / 3.3V)
+#   Botón DOWN    → GPIO25   (INPUT_PULLDOWN — activo en HIGH / 3.3V)
+#   OLED SDA      → GPIO21   (I2C SDA por defecto del ESP32)
+#   OLED SCL      → GPIO22   (I2C SCL por defecto del ESP32)
+#   OLED VCC      → 3.3V
+#   OLED GND      → GND
+#
+# NOTA sobre GPIO34: GPIO34 en ESP32 es input-only y NO tiene resistencia
+# pull-down interna. Se usa GPIO26 en su lugar. Si prefieres usar GPIO34,
+# añade una resistencia pull-down externa de 10 kΩ entre GPIO34 y GND,
+# y cambia el número de pin en la sección binary_sensor.
+#
+# Orden y dispositivos controlados (device_id en persiana-base.yaml):
+#   0 → Oficina 1
+#   1 → Oficina 2
+#   2 → Dormitorio 1
+#   3 → Dormitorio 2
+#   4 → Dormitorio 3
+#   5 → Salón 1
+#   6 → Salón 2
+#   7 → Salón 3
+
+esphome:
+  name: controller-persiana
+  includes:
+    - espnow_includes.h
+  on_boot:
+    priority: -200 # muy tarde, después de que WiFi esté listo
+    then:
+      - lambda: |-
+          if (esp_now_init() != ESP_OK) {
+            ESP_LOGE("espnow", "esp_now_init() failed");
+            return;
+          }
+          static esp_now_peer_info_t peer;
+          memset(&peer, 0, sizeof(peer));
+          memset(peer.peer_addr, 0xFF, 6);  // broadcast
+          peer.channel = 0;
+          peer.encrypt = false;
+          esp_now_add_peer(&peer);
+          ESP_LOGI("espnow", "Sender ready");
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+
+logger:
+  level: DEBUG
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+  - platform: esphome
+    password: ""
+
+wifi:
+  ssid: "WACHITOS_2G"
+  password: !secret wifi_password
+  power_save_mode: none
+  output_power: 20.0dB
+
+  ap:
+    ssid: "AP-Controller-Persiana"
+    password: "platano+1234"
+
+  on_connect:
+    - globals.set:
+        id: wifi_connected
+        value: "true"
+  on_disconnect:
+    - globals.set:
+        id: wifi_connected
+        value: "false"
+
+# ====== GLOBALS ======
+globals:
+  - id: device_index
+    type: int
+    restore_value: no
+    initial_value: "0"
+
+  - id: wifi_connected
+    type: bool
+    restore_value: no
+    initial_value: "false"
+
+  - id: feedback_action # 0=inactivo, 1=subir, 2=bajar
+    type: int
+    restore_value: no
+    initial_value: "0"
+
+  - id: feedback_result # 0=enviando, 1=ok, 2=error
+    type: int
+    restore_value: no
+    initial_value: "0"
+
+# ====== I2C (OLED) ======
+i2c:
+  sda: GPIO21
+  scl: GPIO22
+  scan: true
+
+# ====== FONTS ======
+font:
+  - file: "gfonts://Roboto"
+    id: font_small
+    size: 9
+
+  - file: "gfonts://Roboto"
+    id: font_room
+    size: 14
+
+  - file: "gfonts://Roboto"
+    id: font_num
+    size: 26
+
+# ====== DISPLAY (OLED SSD1306 0.96" — vertical/portrait) ======
+# Con rotation: 90° el canvas de coordenadas pasa a ser 64px ancho × 128px alto.
+# Si el texto aparece boca abajo, cambia rotation a 270°.
+display:
+  - platform: ssd1306_i2c
+    model: "SSD1306 128x64"
+    address: 0x3C
+    rotation: 90°
+    id: oled_display
+    update_interval: 500ms
+    lambda: |-
+      // Nombres abreviados del cuarto (línea 1) y número (línea 2)
+      const char* room_name[] = {
+        "Oficina", "Oficina",              // 0, 1
+        "Dormit.", "Dormit.", "Dormit.",  // 2, 3, 4
+        "Salon",   "Salon",   "Salon"     // 5, 6, 7
+      };
+      const char* room_num[] = {
+        "1", "2", "1", "2", "3", "1", "2", "3"
+      };
+
+      int cx = it.get_width() / 2;   // centro horizontal = 32
+      int cy = it.get_height() / 2;  // centro vertical   = 64
+
+      if (!id(wifi_connected)) {
+        // Pantalla de espera mientras se conecta al WiFi
+        it.print(cx, cy - 8, id(font_small), TextAlign::CENTER, "Conectando");
+        it.print(cx, cy + 8, id(font_small), TextAlign::CENTER, "al WiFi...");
+      } else {
+        // Indicador WiFi pequeño en esquina superior derecha
+        it.print(it.get_width() - 2, 3, id(font_small), TextAlign::TOP_RIGHT, "[W]");
+
+        // Nombre del cuarto (centro superior)
+        it.print(cx, cy - 12, id(font_room), TextAlign::CENTER,
+                 room_name[id(device_index)]);
+
+        // Número de persiana (centro inferior, grande)
+        it.print(cx, cy + 22, id(font_num), TextAlign::CENTER,
+                 room_num[id(device_index)]);
+
+        // Feedback de botón (parte inferior de la pantalla)
+        if (id(feedback_action) != 0) {
+          char fb[10];
+          snprintf(fb, sizeof(fb), "[%s]",
+                   id(feedback_action) == 1 ? "Subir" : "Bajar");
+          it.print(cx, it.get_height() - 2, id(font_small), TextAlign::BOTTOM_CENTER, fb);
+        }
+      }
+
+# ====== SCRIPTS ESP-NOW ======
+script:
+  # Limpia el feedback 2s después de mostrarlo
+  - id: clear_feedback
+    mode: restart
+    then:
+      - delay: 2s
+      - lambda: |-
+          id(feedback_action) = 0;
+          id(feedback_result) = 0;
+
+  # Envía broadcast ESP-NOW con acción SUBIR
+  - id: toggle_up
+    then:
+      - lambda: |-
+          id(feedback_action) = 1;
+          id(feedback_result) = 0;
+      - lambda: |-
+          static const uint8_t bcast[6] = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
+          uint8_t pkt[2] = {(uint8_t)id(device_index), (uint8_t)'U'};
+          esp_now_send(bcast, pkt, 2);
+          id(feedback_result) = 1;
+      - script.execute: clear_feedback
+
+  # Envía broadcast ESP-NOW con acción BAJAR
+  - id: toggle_down
+    then:
+      - lambda: |-
+          id(feedback_action) = 2;
+          id(feedback_result) = 0;
+      - lambda: |-
+          static const uint8_t bcast[6] = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
+          uint8_t pkt[2] = {(uint8_t)id(device_index), (uint8_t)'D'};
+          esp_now_send(bcast, pkt, 2);
+          id(feedback_result) = 1;
+      - script.execute: clear_feedback
+
+# ====== BUTTONS ======
+binary_sensor:
+  # SELECT: Avanza al siguiente dispositivo de forma cíclica
+  # (GPIO26 en lugar de GPIO34 — ver nota al inicio del fichero)
+  - platform: gpio
+    pin:
+      number: GPIO26
+      mode:
+        input: true
+        pulldown: true
+    id: button_select
+    filters:
+      - delayed_on: 50ms
+    on_press:
+      - logger.log: "[BTN] SELECT pressed"
+      - lambda: |-
+          id(device_index) = (id(device_index) + 1) % 8;
+    on_release:
+      - logger.log: "[BTN] SELECT released"
+
+  # UP: Activa/para el relé de subir de la persiana seleccionada
+  - platform: gpio
+    pin:
+      number: GPIO32
+      mode:
+        input: true
+        pulldown: true
+    id: button_up
+    filters:
+      - delayed_on: 50ms
+    on_press:
+      - logger.log: "[BTN] UP pressed"
+      - script.execute: toggle_up
+    on_release:
+      - logger.log: "[BTN] UP released"
+
+  # DOWN: Activa/para el relé de bajar de la persiana seleccionada
+  - platform: gpio
+    pin:
+      number: GPIO25
+      mode:
+        input: true
+        pulldown: true
+    id: button_down
+    filters:
+      - delayed_on: 50ms
+    on_press:
+      - logger.log: "[BTN] DOWN pressed"
+      - script.execute: toggle_down
+    on_release:
+      - logger.log: "[BTN] DOWN released"

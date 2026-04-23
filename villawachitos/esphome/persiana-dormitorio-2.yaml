@@ -1,6 +1,9 @@
 # Persiana Dormitorio 2 Configuration
 # Imports shared logic from persiana-base.yaml
 
+substitutions:
+  device_id: "3"
+
 esphome:
   name: persiana-dormitorio-2
 

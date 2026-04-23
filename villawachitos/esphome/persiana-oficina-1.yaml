@@ -1,5 +1,8 @@
 # Persiana Oficina 1 Configuration
 
+substitutions:
+  device_id: "0"
+
 esphome:
   name: persiana-oficina-1
 
