@@ -25,8 +25,8 @@ echo "ESPHome Compile All Persiana Configs"
 echo "=========================================="
 echo ""
 
-# Find all persiana-*.yaml files (excluding persiana-base.yaml which is not a real device)
-persiana_files=$(find . -maxdepth 1 -name "persiana-*.yaml" -type f ! -name "persiana-base.yaml" | sort)
+# Find all YAML files tagged with @esphome-device
+persiana_files=$(grep -l '@esphome-device' ./*.yaml 2>/dev/null | sort)
 
 if [ -z "$persiana_files" ]; then
     echo -e "${YELLOW}No persiana-*.yaml files found${NC}"
