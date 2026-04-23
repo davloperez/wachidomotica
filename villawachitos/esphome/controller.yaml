@@ -25,6 +25,9 @@
 #   6 → Salón 2
 #   7 → Salón 3
 
+packages:
+  ips: !include ips.yaml
+
 esphome:
   name: controller-persiana
   includes:
@@ -62,13 +65,13 @@ ota:
     password: ""
 
 wifi:
-  ssid: "WACHITOS_2G"
+  ssid: !secret wifi_ssid
   password: !secret wifi_password
   power_save_mode: none
   output_power: 20.0dB
 
   ap:
-    ssid: "AP-Controller-Persiana"
+    ssid: "AP-Controller"
     password: "platano+1234"
 
   on_connect:
@@ -79,6 +82,12 @@ wifi:
     - globals.set:
         id: wifi_connected
         value: "false"
+  manual_ip:
+    static_ip: ${ip_controller}
+    gateway: 192.168.2.1
+    subnet: 255.255.255.0
+    dns1: 192.168.2.1
+    dns2: 8.8.8.8
 
 # ====== GLOBALS ======
 globals:
@@ -151,8 +160,11 @@ display:
         it.print(cx, cy - 8, id(font_small), TextAlign::CENTER, "Conectando");
         it.print(cx, cy + 8, id(font_small), TextAlign::CENTER, "al WiFi...");
       } else {
-        // Indicador WiFi pequeño en esquina superior derecha
-        it.print(it.get_width() - 2, 3, id(font_small), TextAlign::TOP_RIGHT, "[W]");
+        // IP del dispositivo en esquina superior derecha
+        {
+          auto ip = wifi::global_wifi_component->get_ip_address().str();
+          it.printf(it.get_width() - 2, 3, id(font_small), TextAlign::TOP_RIGHT, "%s", ip.c_str());
+        }
 
         // Nombre del cuarto (centro superior)
         it.print(cx, cy - 12, id(font_room), TextAlign::CENTER,

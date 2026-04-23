@@ -8,6 +8,7 @@ esphome:
   name: persiana-salon-3
 
 packages:
+  ips: !include ips.yaml
   base: !include persiana-base.yaml
 
 wifi:
@@ -22,7 +23,7 @@ wifi:
     ssid: "AP-Persiana-Salon-3"
 
   manual_ip:
-    static_ip: 192.168.2.107
+    static_ip: ${ip_persiana_salon_3}
     gateway: 192.168.2.1
     subnet: 255.255.255.0
     dns1: 192.168.2.1

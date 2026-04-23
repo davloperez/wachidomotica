@@ -1,0 +1,11 @@
+# Static IP addresses for all devices — safe to commit to the repository
+substitutions:
+  ip_controller: "192.168.2.108"
+  ip_persiana_oficina_1: "192.168.2.100"
+  ip_persiana_oficina_2: "192.168.2.101"
+  ip_persiana_dormitorio_1: "192.168.2.102"
+  ip_persiana_dormitorio_2: "192.168.2.103"
+  ip_persiana_dormitorio_3: "192.168.2.104"
+  ip_persiana_salon_1: "192.168.2.105"
+  ip_persiana_salon_2: "192.168.2.106"
+  ip_persiana_salon_3: "192.168.2.107"
