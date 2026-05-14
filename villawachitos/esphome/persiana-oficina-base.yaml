@@ -49,7 +49,7 @@ switch:
     id: relay_light
     restore_mode: ALWAYS_OFF
     inverted: True
-    name: "Relé Luz Techo"
+    name: "Luz Techo"
     on_turn_on:
       - light.turn_off: light_led_light
     on_turn_off:

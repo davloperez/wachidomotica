@@ -27,7 +27,7 @@ wifi:
 
   manual_ip:
     static_ip: ${ip_persiana_dormitorio_1}
-    gateway: 192.168.2.1
+    gateway: 192.168.1.20
     subnet: 255.255.255.0
-    dns1: 192.168.2.1
+    dns1: 192.168.1.20
     dns2: 8.8.8.8
