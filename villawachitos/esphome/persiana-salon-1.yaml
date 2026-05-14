@@ -4,8 +4,8 @@
 
 substitutions:
   device_id: "5"
-  open_duration: "29" # Tiempo para subir (segundos)
-  close_duration: "28" # Tiempo para bajar (segundos)
+  open_duration: "27" # Tiempo para subir (segundos)
+  close_duration: "26" # Tiempo para bajar (segundos)
 
 esphome:
   name: persiana-salon-1
