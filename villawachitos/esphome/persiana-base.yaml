@@ -1,7 +1,13 @@
-# Persiana (blind) controller: relays and physical buttons
+# Persiana (blind) controller: time-based cover with relays and physical buttons
 
 packages:
   common: !include common.yaml
+
+# ====== SUSTITUCIONES CONFIGURABLES ======
+substitutions:
+  # Tiempos de viaje en segundos (pueden ser sobrescritos en cada dispositivo)
+  open_duration: "29" # Tiempo para subir la persiana (segundos)
+  close_duration: "28" # Tiempo para bajar la persiana (segundos)
 
 # ====== ESP-NOW (receptor via raw ESP-IDF API) ======
 # device_id debe definirse como substitution en cada persiana YAML:
@@ -12,6 +18,10 @@ globals:
   - id: espnow_pending
     type: int
     restore_value: no
+    initial_value: "0"
+  - id: persiana_position_storage
+    type: float
+    restore_value: yes
     initial_value: "0"
 
 esphome:
@@ -27,6 +37,18 @@ esphome:
           }
           esp_now_register_recv_cb(espnow_recv_cb);
           ESP_LOGI("espnow", "Receiver ready (device_id=${device_id})");
+          ESP_LOGI("persiana", "boot restored stored_pos=%.2f cover_pos=%.2f op=%d",
+            id(persiana_position_storage), id(persiana_cover).position,
+            id(persiana_cover).current_operation);
+      - delay: 5s
+      - lambda: |-
+          ESP_LOGI("persiana", "restore from stored_pos=%.2f", id(persiana_position_storage));
+          auto call = id(persiana_cover).make_call();
+          call.set_position(id(persiana_position_storage));
+          call.perform();
+          ESP_LOGI("persiana", "restored cover_pos=%.2f op=%d",
+            id(persiana_cover).position,
+            id(persiana_cover).current_operation);
 
 interval:
   - interval: 100ms
@@ -38,26 +60,79 @@ interval:
           int target = (pkt >> 8) & 0xFF;
           int action = pkt & 0xFF;
           if (target != ${device_id}) return;
-          if (action == 'U') id(relay_up).toggle();
-          else if (action == 'D') id(relay_down).toggle();
+          auto call = id(persiana_cover).make_call();
+          if (action == 'U') {
+            call.set_command_open();
+          }
+          else if (action == 'D') {
+            call.set_command_close();
+          }
+          call.perform();
 
-# ====== RELÉS ======
+  # Guardar posición de la persiana cada 5 segundos
+  - interval: 5s
+    then:
+      - lambda: |-
+          if (id(persiana_cover).current_operation == esphome::cover::COVER_OPERATION_IDLE) {
+            id(persiana_position_storage) = id(persiana_cover).position;
+            ESP_LOGI("persiana", "store pos=%.2f op=%d",
+              id(persiana_cover).position, id(persiana_cover).current_operation);
+          }
+
+# ====== RELÉS (internos, controlados por el cover) ======
 switch:
   - platform: gpio
     pin: GPIO16
     id: relay_up
     interlock: [relay_down]
     restore_mode: ALWAYS_OFF
-    name: "Relé Subir"
+    internal: true
 
   - platform: gpio
     pin: GPIO17
     id: relay_down
     interlock: [relay_up]
     restore_mode: ALWAYS_OFF
-    name: "Relé Bajar"
+    internal: true
 
-# ====== BOTONES ======
+# ====== COVER TIME-BASED ======
+cover:
+  - platform: time_based
+    name: "Persiana"
+    id: persiana_cover
+    assumed_state: true
+    open_action:
+      - switch.turn_on: relay_up
+    close_action:
+      - switch.turn_on: relay_down
+    stop_action:
+      - switch.turn_off: relay_up
+      - switch.turn_off: relay_down
+    open_duration: ${open_duration}s
+    close_duration: ${close_duration}s
+    on_opened:
+      - lambda: |-
+          ESP_LOGI("persiana", "opened pos=%.2f op=%d",
+            id(persiana_cover).position,
+            id(persiana_cover).current_operation);
+          id(persiana_position_storage) = id(persiana_cover).position;
+          ESP_LOGI("persiana", "store opened pos=%.2f", id(persiana_position_storage));
+    on_closed:
+      - lambda: |-
+          ESP_LOGI("persiana", "closed pos=%.2f op=%d",
+            id(persiana_cover).position,
+            id(persiana_cover).current_operation);
+          id(persiana_position_storage) = id(persiana_cover).position;
+          ESP_LOGI("persiana", "store closed pos=%.2f", id(persiana_position_storage));
+    on_idle:
+      - lambda: |-
+          ESP_LOGI("persiana", "idle pos=%.2f op=%d",
+            id(persiana_cover).position,
+            id(persiana_cover).current_operation);
+          id(persiana_position_storage) = id(persiana_cover).position;
+          ESP_LOGI("persiana", "store idle pos=%.2f", id(persiana_position_storage));
+
+# ====== BOTONES TOGGLEABLES ======
 binary_sensor:
   - platform: gpio
     pin:
@@ -67,7 +142,7 @@ binary_sensor:
     filters:
       - delayed_on: 50ms
     on_press:
-      - switch.toggle: relay_up
+      - script.execute: toggle_button_up
 
   - platform: gpio
     pin:
@@ -77,4 +152,25 @@ binary_sensor:
     filters:
       - delayed_on: 50ms
     on_press:
-      - switch.toggle: relay_down
+      - script.execute: toggle_button_down
+
+script:
+  - id: toggle_button_up
+    then:
+      - if:
+          condition:
+            lambda: "return id(persiana_cover).current_operation != esphome::cover::COVER_OPERATION_IDLE;"
+          then:
+            - cover.stop: persiana_cover
+          else:
+            - cover.open: persiana_cover
+
+  - id: toggle_button_down
+    then:
+      - if:
+          condition:
+            lambda: "return id(persiana_cover).current_operation != esphome::cover::COVER_OPERATION_IDLE;"
+          then:
+            - cover.stop: persiana_cover
+          else:
+            - cover.close: persiana_cover

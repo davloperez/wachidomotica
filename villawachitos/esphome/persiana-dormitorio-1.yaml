@@ -4,6 +4,8 @@
 
 substitutions:
   device_id: "2"
+  open_duration: "29" # Tiempo para subir (segundos)
+  close_duration: "28" # Tiempo para bajar (segundos)
 
 esphome:
   name: persiana-dormitorio-1

@@ -55,20 +55,30 @@ switch:
     on_turn_off:
       - light.turn_on: light_led_light
 
-  # Extender relés del base para vincular LEDs
-  - id: !extend relay_up
-    on_turn_on:
+# ====== EXTENDER COVER PARA VINCULAR LEDs ======
+cover:
+  - id: !extend persiana_cover
+    on_opening:
       - script.execute: blink_led_up
-    on_turn_off:
+    on_closing:
+      - script.execute: blink_led_down
+    on_opened:
       - script.stop: blink_led_up
       - light.turn_on: light_led_up
-
-  - id: !extend relay_down
-    on_turn_on:
-      - script.execute: blink_led_down
-    on_turn_off:
+    on_closed:
       - script.stop: blink_led_down
       - light.turn_on: light_led_down
+    on_idle:
+      - script.stop: blink_led_up
+      - script.stop: blink_led_down
+      - light.turn_on: light_led_up
+      - light.turn_on: light_led_down
+      - lambda: |-
+          ESP_LOGI("persiana", "idle pos=%.2f op=%d",
+            id(persiana_cover).position,
+            id(persiana_cover).current_operation);
+          id(persiana_position_storage) = id(persiana_cover).position;
+          ESP_LOGI("persiana", "store idle pos=%.2f", id(persiana_position_storage));
 
 script:
   - id: blink_led_up
@@ -76,24 +86,26 @@ script:
     then:
       - while:
           condition:
-            lambda: "return true;"
+            lambda: "return id(relay_up).state;"
           then:
             - light.turn_on: light_led_up
             - delay: 350ms
             - light.turn_off: light_led_up
             - delay: 350ms
+      - light.turn_on: light_led_up
 
   - id: blink_led_down
     mode: restart
     then:
       - while:
           condition:
-            lambda: "return true;"
+            lambda: "return id(relay_down).state;"
           then:
             - light.turn_on: light_led_down
             - delay: 350ms
             - light.turn_off: light_led_down
             - delay: 350ms
+      - light.turn_on: light_led_down
 
 binary_sensor:
   - platform: gpio
@@ -105,3 +117,6 @@ binary_sensor:
       - delayed_on: 50ms
     on_press:
       - switch.toggle: relay_light
+
+# Estos scripts se definen en persiana-base.yaml (toggle_button_up, toggle_button_down)
+# Se heredan aquí mediante el paquete base

@@ -3,6 +3,8 @@
 
 substitutions:
   device_id: "1"
+  open_duration: "29" # Tiempo para subir (segundos)
+  close_duration: "28" # Tiempo para bajar (segundos)
 
 esphome:
   name: persiana-oficina-2
@@ -25,7 +27,7 @@ wifi:
 
   manual_ip:
     static_ip: ${ip_persiana_oficina_2}
-    gateway: 192.168.2.1
+    gateway: 192.168.1.20
     subnet: 255.255.255.0
-    dns1: 192.168.2.1
+    dns1: 192.168.1.20
     dns2: 8.8.8.8
