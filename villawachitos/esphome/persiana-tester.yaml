@@ -1,5 +1,5 @@
 # Persiana Tester Configuration
-# Imports shared logic from persiana-base.yaml
+# Imports shared logic from persiana-base-old.yaml
 
 esphome:
   name: persiana-tester

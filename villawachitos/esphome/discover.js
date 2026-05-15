@@ -23,7 +23,7 @@ function loadProjectDevices() {
       (f) =>
         f.startsWith("persiana-") &&
         f.endsWith(".yaml") &&
-        f !== "persiana-base.yaml",
+        f !== "persiana-base-old.yaml",
     )
     .sort();
 

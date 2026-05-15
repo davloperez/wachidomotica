@@ -29,7 +29,7 @@ def load_project_devices():
     """Return dict  name → static_ip  from all persiana-*.yaml files."""
     devices = {}
     for yaml_file in sorted(SCRIPT_DIR.glob("persiana-*.yaml")):
-        if yaml_file.name == "persiana-base.yaml":
+        if yaml_file.name == "persiana-base-old.yaml":
             continue
         text = yaml_file.read_text()
         name_match = re.search(r"^\s*name:\s*([^\s#]+)", text, re.MULTILINE)

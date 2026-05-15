@@ -1,6 +1,6 @@
 # @esphome-device
 # Persiana Dormitorio 2 Configuration
-# Imports shared logic from persiana-base.yaml
+# Imports shared logic from persiana-base-old.yaml
 
 substitutions:
   device_id: "3"
@@ -12,7 +12,7 @@ esphome:
 
 packages:
   ips: !include ips.yaml
-  base: !include persiana-base.yaml
+  base: !include persiana-base-old.yaml
 
 wifi:
   ssid: !secret wifi_ssid

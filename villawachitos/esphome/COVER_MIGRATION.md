@@ -6,7 +6,7 @@ Los ficheros de control de persianas han sido migrados del sistema simple de rel
 
 ## Cambios Realizados
 
-### 1. `persiana-base.yaml`
+### 1. `persiana-base-old.yaml`
 
 - **Cambio principal**: Introducción del componente `cover` tipo `time_based`
 - **Ventajas**:

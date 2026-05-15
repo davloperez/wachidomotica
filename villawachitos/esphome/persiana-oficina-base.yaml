@@ -1,6 +1,6 @@
 # Shared base configuration for oficina persiana controllers
-# Adds LED indicators and ceiling light on top of persiana-base.yaml
-# Note: persiana-base.yaml must also be included in the device file
+# Adds LED indicators and ceiling light on top of persiana-base-old.yaml
+# Note: persiana-base-old.yaml must also be included in the device file
 
 esphome:
   on_boot:
@@ -118,5 +118,5 @@ binary_sensor:
     on_press:
       - switch.toggle: relay_light
 
-# Estos scripts se definen en persiana-base.yaml (toggle_button_up, toggle_button_down)
+# Estos scripts se definen en persiana-base-old.yaml (toggle_button_up, toggle_button_down)
 # Se heredan aquí mediante el paquete base

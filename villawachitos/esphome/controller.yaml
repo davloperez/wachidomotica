@@ -15,7 +15,7 @@
 # añade una resistencia pull-down externa de 10 kΩ entre GPIO34 y GND,
 # y cambia el número de pin en la sección binary_sensor.
 #
-# Orden y dispositivos controlados (device_id en persiana-base.yaml):
+# Orden y dispositivos controlados (device_id en persiana-base-old.yaml):
 #   0 → Oficina 1
 #   1 → Oficina 2
 #   2 → Dormitorio 1

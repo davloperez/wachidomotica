@@ -11,7 +11,7 @@ esphome:
 
 packages:
   ips: !include ips.yaml
-  base: !include persiana-base.yaml
+  base: !include persiana-base-old.yaml
   oficina_base: !include persiana-oficina-base.yaml
 
 wifi:
