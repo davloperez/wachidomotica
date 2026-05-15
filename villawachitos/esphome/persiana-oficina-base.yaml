@@ -1,49 +1,113 @@
+# Resumen de pines usados en este archivo:
+# - SN74HC595: DATA=GPIO4, CLOCK=GPIO22, LATCH=GPIO23
+# - Relés persiana (en persiana-base.yaml): relay_up=GPIO16, relay_down=GPIO17
+# - Relé luz techo: GPIO18
+# - Botones físicos (1..8): GPIO34, GPIO32, GPIO25, GPIO27, GPIO35, GPIO33, GPIO26, GPIO14
+# - Botón luz techo (físico): Button 2 -> GPIO32 (inverso en led_2)
+#
+# Nota: este listado refleja los pines usados por `persiana-oficina-base.yaml`.
+# Otros paquetes/device files (p. ej. `controller.yaml`) pueden usar pines
+# adicionales (por ejemplo I2C/OLED suele usar GPIO21/GPIO22). Verifiqua antes
+# de reasignar pines para evitar conflictos.
+#
+# Pines no usados en este archivo: todos los demás GPIOs del SoC (ej.: GPIO0, GPIO1,
+# GPIO2, GPIO12, GPIO13, GPIO36, etc.) pero la disponibilidad real depende de
+# otras configuraciones en el proyecto y de la placa concreta.
+#
+# Mantener este archivo actualizado si cambias asignaciones de pines.
+#
 # Shared base configuration for oficina persiana controllers
-# Adds LED indicators and ceiling light on top of persiana-base-old.yaml
-# Note: persiana-base-old.yaml must also be included in the device file
+# Adds: 8 status LEDs (SN74HC595) and ceiling light
+# Note: persiana-base.yaml must also be included in the device file
 
 esphome:
   on_boot:
     then:
-      - light.turn_on: light_led_up
-      - light.turn_on: light_led_down
-      - light.turn_on: light_led_light
+      - delay: 1s
+      - if:
+          condition:
+            lambda: "return id(relay_light).state;"
+          then:
+            - switch.turn_off: led_2
+          else:
+            - switch.turn_on: led_2
 
-# ====== LEDs INDICADORES ======
-output:
-  - platform: gpio
-    pin: GPIO4
-    id: led_up
+# ====== SN74HC595N (8 LEDs sequenciales) ======
+# DS=GPIO4, SH_CP=GPIO22, ST_CP=GPIO23
+sn74hc595:
+  - id: sn74hc595_hub
+    data_pin: GPIO4
+    clock_pin: GPIO22
+    latch_pin: GPIO23
+    sr_count: 1
 
-  - platform: gpio
-    pin: GPIO5
-    id: led_down
-
-  - platform: gpio
-    pin: GPIO13
-    id: led_light
-
-light:
-  - platform: binary
-    name: "Led Botón Subir"
-    id: light_led_up
-    internal: true
-    output: led_up
-
-  - platform: binary
-    name: "Led Botón Bajar"
-    id: light_led_down
-    internal: true
-    output: led_down
-
-  - platform: binary
-    name: "Led Luz Techo"
-    id: light_led_light
-    internal: true
-    output: led_light
-
-# ====== LUZ TECHO ======
+# ====== 8 STATUS LEDS (via SN74HC595) ======
 switch:
+  - platform: gpio
+    pin:
+      sn74hc595: sn74hc595_hub
+      number: 0
+      inverted: false
+    id: led_1
+    name: "LED 1"
+
+  - platform: gpio
+    pin:
+      sn74hc595: sn74hc595_hub
+      number: 1
+      inverted: false
+    id: led_2
+    name: "LED 2"
+
+  - platform: gpio
+    pin:
+      sn74hc595: sn74hc595_hub
+      number: 2
+      inverted: false
+    id: led_3
+    name: "LED 3"
+
+  - platform: gpio
+    pin:
+      sn74hc595: sn74hc595_hub
+      number: 3
+      inverted: false
+    id: led_4
+    name: "LED 4"
+
+  - platform: gpio
+    pin:
+      sn74hc595: sn74hc595_hub
+      number: 4
+      inverted: false
+    id: led_5
+    name: "LED 5"
+
+  - platform: gpio
+    pin:
+      sn74hc595: sn74hc595_hub
+      number: 5
+      inverted: false
+    id: led_6
+    name: "LED 6"
+
+  - platform: gpio
+    pin:
+      sn74hc595: sn74hc595_hub
+      number: 6
+      inverted: false
+    id: led_7
+    name: "LED 7"
+
+  - platform: gpio
+    pin:
+      sn74hc595: sn74hc595_hub
+      number: 7
+      inverted: false
+    id: led_8
+    name: "LED 8"
+
+  # ====== CEILING LIGHT (existing relay) ======
   - platform: gpio
     pin: GPIO18
     id: relay_light
@@ -51,28 +115,20 @@ switch:
     inverted: True
     name: "Luz Techo"
     on_turn_on:
-      - light.turn_off: light_led_light
+      - switch.turn_off: led_2
     on_turn_off:
-      - light.turn_on: light_led_light
+      - switch.turn_on: led_2
 
-# ====== EXTENDER COVER PARA VINCULAR LEDs ======
+# ====== EXTENDER COVER CON LÓGICA DE PERSIANAS ======
 cover:
   - id: !extend persiana_cover
-    on_opening:
-      - script.execute: blink_led_up
-    on_closing:
-      - script.execute: blink_led_down
     on_opened:
-      - script.stop: blink_led_up
-      - light.turn_on: light_led_up
+      - switch.turn_off: led_1
     on_closed:
-      - script.stop: blink_led_down
-      - light.turn_on: light_led_down
+      - switch.turn_off: led_3
     on_idle:
-      - script.stop: blink_led_up
-      - script.stop: blink_led_down
-      - light.turn_on: light_led_up
-      - light.turn_on: light_led_down
+      - switch.turn_off: led_1
+      - switch.turn_off: led_3
       - lambda: |-
           ESP_LOGI("persiana", "idle pos=%.2f op=%d",
             id(persiana_cover).position,
@@ -80,43 +136,117 @@ cover:
           id(persiana_position_storage) = id(persiana_cover).position;
           ESP_LOGI("persiana", "store idle pos=%.2f", id(persiana_position_storage));
 
-script:
-  - id: blink_led_up
-    mode: restart
-    then:
-      - while:
-          condition:
-            lambda: "return id(relay_up).state;"
-          then:
-            - light.turn_on: light_led_up
-            - delay: 350ms
-            - light.turn_off: light_led_up
-            - delay: 350ms
-      - light.turn_on: light_led_up
-
-  - id: blink_led_down
-    mode: restart
-    then:
-      - while:
-          condition:
-            lambda: "return id(relay_down).state;"
-          then:
-            - light.turn_on: light_led_down
-            - delay: 350ms
-            - light.turn_off: light_led_down
-            - delay: 350ms
-      - light.turn_on: light_led_down
+# No blink scripts: LEDs reflect physical button state (on while pressed)
 
 binary_sensor:
   - platform: gpio
     pin:
-      number: GPIO25
-      mode: INPUT_PULLDOWN
-    id: button_light
-    filters:
-      - delayed_on: 50ms
+      number: GPIO34
+      inverted: true
+      mode:
+        input: true
+    id: button_1
+    name: "Button 1"
+    on_press:
+      - switch.turn_on: led_1
+      - script.execute: toggle_button_up
+    on_release:
+      - switch.turn_off: led_1
+
+  - platform: gpio
+    pin:
+      number: GPIO32
+      inverted: true
+      mode:
+        input: true
+    id: button_2
+    name: "Button 2"
     on_press:
       - switch.toggle: relay_light
 
-# Estos scripts se definen en persiana-base-old.yaml (toggle_button_up, toggle_button_down)
-# Se heredan aquí mediante el paquete base
+  - platform: gpio
+    pin:
+      number: GPIO25
+      inverted: true
+      mode:
+        input: true
+    id: button_3
+    name: "Button 3"
+    on_press:
+      - switch.turn_on: led_3
+      - script.execute: toggle_button_down
+    on_release:
+      - switch.turn_off: led_3
+
+  - platform: gpio
+    pin:
+      number: GPIO27
+      inverted: true
+      mode:
+        input: true
+    id: button_4
+    name: "Button 4"
+    on_press:
+      - switch.turn_on: led_4
+    on_release:
+      - switch.turn_off: led_4
+
+  - platform: gpio
+    pin:
+      number: GPIO35
+      inverted: true
+      mode:
+        input: true
+    id: button_5
+    name: "Button 5"
+    on_press:
+      - switch.turn_on: led_5
+    on_release:
+      - switch.turn_off: led_5
+
+  - platform: gpio
+    pin:
+      number: GPIO33
+      inverted: true
+      mode:
+        input: true
+    id: button_6
+    name: "Button 6"
+    on_press:
+      - switch.turn_on: led_6
+    on_release:
+      - switch.turn_off: led_6
+
+  - platform: gpio
+    pin:
+      number: GPIO26
+      inverted: true
+      mode:
+        input: true
+    id: button_7
+    name: "Button 7"
+    on_press:
+      - switch.turn_on: led_7
+    on_release:
+      - switch.turn_off: led_7
+
+  - platform: gpio
+    pin:
+      number: GPIO14
+      inverted: true
+      mode:
+        input: true
+    id: button_8
+    name: "Button 8"
+    on_press:
+      - switch.turn_on: led_8
+    on_release:
+      - switch.turn_off: led_8
+
+  # Ceiling light is controlled by Button 2 (GPIO32). Led_2 is inverted with relay_light.
+
+# Notas:
+# - Los pins físicos 34,32,25,27,35,33,26,14 quedan reservados para botones 1..8
+# - Los LEDs de estado se controlan por el SN74HC595 (led_1..led_8)
+# - No hay lógica de "blink": los LEDs se encienden mientras su botón esté presionado
+# - Botón 1 ejecuta `toggle_button_up`, botón 3 ejecuta `toggle_button_down`
