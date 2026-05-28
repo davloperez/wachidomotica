@@ -4,15 +4,15 @@
 
 substitutions:
   device_id: "6"
-  open_duration: "27" # Tiempo para subir (segundos)
-  close_duration: "26" # Tiempo para bajar (segundos)
+  open_duration: "23" # Tiempo para subir (segundos)
+  close_duration: "22" # Tiempo para bajar (segundos)
 
 esphome:
   name: persiana-salon-2
 
 packages:
   ips: !include ips.yaml
-  base: !include persiana-base-old.yaml
+  base: !include persiana-base.yaml
 
 wifi:
   ssid: !secret wifi_ssid
@@ -31,3 +31,56 @@ wifi:
     subnet: 255.255.255.0
     dns1: 192.168.1.20
     dns2: 8.8.8.8
+
+cover:
+  - id: !extend persiana_cover
+    on_idle:
+      - lambda: |-
+          ESP_LOGI("persiana", "idle pos=%.2f op=%d",
+            id(persiana_cover).position,
+            id(persiana_cover).current_operation);
+          id(persiana_position_storage) = id(persiana_cover).position;
+          ESP_LOGI("persiana", "store idle pos=%.2f", id(persiana_position_storage));
+
+# No blink scripts: LEDs reflect physical button state (on while pressed)
+
+binary_sensor:
+  - platform: gpio
+    pin:
+      number: GPIO33
+      mode:
+        input: true
+        pulldown: true
+    id: button_1
+    name: "Button 1"
+    on_press:
+      - script.execute: toggle_button_up
+
+  - platform: gpio
+    pin:
+      number: GPIO26
+      mode:
+        input: true
+        pulldown: true
+    id: button_2
+    name: "Button 2"
+
+  - platform: gpio
+    pin:
+      number: GPIO14
+      mode:
+        input: true
+        pulldown: true
+    id: button_3
+    name: "Button 3"
+    on_press:
+      - script.execute: toggle_button_down
+
+  - platform: gpio
+    pin:
+      number: GPIO13
+      mode:
+        input: true
+        pulldown: true
+    id: button_4
+    name: "Button 4"

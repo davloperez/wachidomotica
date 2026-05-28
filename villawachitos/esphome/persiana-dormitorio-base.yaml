@@ -5,7 +5,7 @@
 # - Botones físicos (1..8): GPIO34, GPIO32, GPIO25, GPIO27, GPIO35, GPIO33, GPIO26, GPIO14
 # - Botón luz techo (físico): Button 2 -> GPIO32 (inverso en led_2)
 #
-# Nota: este listado refleja los pines usados por `persiana-oficina-base.yaml`.
+# Nota: este listado refleja los pines usados por `persiana-dormitorio-base.yaml`.
 # Otros paquetes/device files (p. ej. `controller.yaml`) pueden usar pines
 # adicionales (por ejemplo I2C/OLED suele usar GPIO21/GPIO22). Verifiqua antes
 # de reasignar pines para evitar conflictos.
@@ -16,7 +16,7 @@
 #
 # Mantener este archivo actualizado si cambias asignaciones de pines.
 #
-# Shared base configuration for oficina persiana controllers
+# Shared base configuration for dormitorio persiana controllers
 # Adds: 8 status LEDs (SN74HC595) and ceiling light
 # Note: persiana-base.yaml must also be included in the device file
 
@@ -25,10 +25,16 @@ switch:
   # ====== CEILING LIGHT (existing relay) ======
   - platform: gpio
     pin: GPIO18
-    id: relay_light
+    id: relay_light_techo
     restore_mode: ALWAYS_OFF
     inverted: True
     name: "Luz Techo"
+  - platform: gpio
+    pin: GPIO19
+    id: relay_light_mesita
+    restore_mode: ALWAYS_OFF
+    inverted: True
+    name: "Luz Mesita"
 
 # ====== EXTENDER COVER CON LÓGICA DE PERSIANAS ======
 cover:
@@ -64,7 +70,7 @@ binary_sensor:
     id: button_2
     name: "Button 2"
     on_press:
-      - switch.toggle: relay_light
+      - switch.toggle: relay_light_techo
 
   - platform: gpio
     pin:
@@ -85,6 +91,8 @@ binary_sensor:
         pulldown: true
     id: button_4
     name: "Button 4"
+    on_press:
+      - switch.toggle: relay_light_mesita
 
   # - platform: gpio
   #   pin:

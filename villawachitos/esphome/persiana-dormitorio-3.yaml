@@ -12,7 +12,8 @@ esphome:
 
 packages:
   ips: !include ips.yaml
-  base: !include persiana-base-old.yaml
+  base: !include persiana-base.yaml
+  dormitorio_base: !include persiana-dormitorio-base.yaml
 
 wifi:
   ssid: !secret wifi_ssid

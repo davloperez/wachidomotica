@@ -73,7 +73,7 @@ interval:
   - interval: 5s
     then:
       - lambda: |-
-          if (id(persiana_cover).current_operation == esphome::cover::COVER_OPERATION_IDLE) {
+          if (id(persiana_cover).current_operation == esphome::cover::COVER_OPERATION_IDLE && id(persiana_cover).position != id(persiana_position_storage)) {
             id(persiana_position_storage) = id(persiana_cover).position;
             ESP_LOGI("persiana", "store pos=%.2f op=%d",
               id(persiana_cover).position, id(persiana_cover).current_operation);
