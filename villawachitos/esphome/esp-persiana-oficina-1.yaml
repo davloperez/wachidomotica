@@ -10,7 +10,6 @@ esphome:
   name: persiana-oficina-1
 
 packages:
-  ips: !include ips.yaml
   base: !include persiana-base.yaml
   oficina_base: !include persiana-oficina-base.yaml
 
@@ -24,10 +23,3 @@ wifi:
   ap:
     password: "platano+1234"
     ssid: "AP-Persiana-Oficina-1"
-
-  manual_ip:
-    static_ip: ${ip_persiana_oficina_1}
-    gateway: 192.168.1.20
-    subnet: 255.255.255.0
-    dns1: 192.168.1.20
-    dns2: 8.8.8.8

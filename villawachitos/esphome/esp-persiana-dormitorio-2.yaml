@@ -1,17 +1,16 @@
 # @esphome-device
-# Persiana Dormitorio 3 Configuration
-# Imports shared logic from persiana-base-old.yaml
+# Persiana Dormitorio 2 Configuration
+# Imports shared logic from persiana-base.yaml
 
 substitutions:
-  device_id: "4"
+  device_id: "3"
   open_duration: "29" # Tiempo para subir (segundos)
   close_duration: "28" # Tiempo para bajar (segundos)
 
 esphome:
-  name: persiana-dormitorio-3
+  name: persiana-dormitorio-2
 
 packages:
-  ips: !include ips.yaml
   base: !include persiana-base.yaml
   dormitorio_base: !include persiana-dormitorio-base.yaml
 
@@ -24,11 +23,4 @@ wifi:
   # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
     password: "platano+1234"
-    ssid: "AP-Persiana-Dormitorio-3"
-
-  manual_ip:
-    static_ip: ${ip_persiana_dormitorio_3}
-    gateway: 192.168.1.20
-    subnet: 255.255.255.0
-    dns1: 192.168.1.20
-    dns2: 8.8.8.8
+    ssid: "AP-Persiana-Dormitorio-2"

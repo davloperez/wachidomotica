@@ -1,0 +1,43 @@
+# @esphome-device
+# ESP Entrada Configuration
+
+substitutions:
+  device_id: "0"
+  open_duration: "29" # Tiempo para subir (segundos)
+  close_duration: "28" # Tiempo para bajar (segundos)
+
+esphome:
+  name: esp-entrada
+
+packages:
+  common: !include common.yaml
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  power_save_mode: none
+  output_power: 20.0dB
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    password: "platano+1234"
+    ssid: "AP-Esp-Entrada"
+
+switch:
+  - platform: gpio
+    pin: GPIO16
+    id: relay_luz_techo_entrada
+    restore_mode: ALWAYS_OFF
+    name: "Luz Techo Entrada"
+
+binary_sensor:
+  - platform: gpio
+    pin:
+      number: GPIO33
+      mode:
+        input: true
+        pulldown: true
+    id: button_2
+    name: "Button 2"
+    on_press:
+      - switch.toggle: relay_luz_techo_entrada

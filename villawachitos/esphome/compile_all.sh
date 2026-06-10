@@ -21,7 +21,7 @@ failed=0
 failed_files=()
 
 echo "=========================================="
-echo "ESPHome Compile All Persiana Configs"
+echo "ESPHome Compile All ESP tagged Configs"
 echo "=========================================="
 echo ""
 
@@ -29,13 +29,13 @@ echo ""
 persiana_files=$(grep -l '@esphome-device' ./*.yaml 2>/dev/null | sort)
 
 if [ -z "$persiana_files" ]; then
-    echo -e "${YELLOW}No persiana-*.yaml files found${NC}"
+    echo -e "${YELLOW}No @esphome-device tagged files found${NC}"
     exit 1
 fi
 
 # Count total files
 total=$(echo "$persiana_files" | wc -l)
-echo -e "Found ${YELLOW}$total${NC} persiana configuration file(s) to compile"
+echo -e "Found ${YELLOW}$total${NC} @esphome-device tagged configuration file(s) to compile"
 echo ""
 
 # Compile each file

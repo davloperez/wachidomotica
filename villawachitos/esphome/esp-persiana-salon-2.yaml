@@ -1,17 +1,16 @@
 # @esphome-device
-# Persiana Salon 3 Configuration
+# Persiana Salon 2 Configuration
 # Imports shared logic from persiana-base-old.yaml
 
 substitutions:
-  device_id: "7"
+  device_id: "6"
   open_duration: "23" # Tiempo para subir (segundos)
   close_duration: "22" # Tiempo para bajar (segundos)
 
 esphome:
-  name: persiana-salon-3
+  name: persiana-salon-2
 
 packages:
-  ips: !include ips.yaml
   base: !include persiana-base.yaml
 
 wifi:
@@ -23,14 +22,7 @@ wifi:
   # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
     password: "platano+1234"
-    ssid: "AP-Persiana-Salon-3"
-
-  manual_ip:
-    static_ip: ${ip_persiana_salon_3}
-    gateway: 192.168.1.20
-    subnet: 255.255.255.0
-    dns1: 192.168.1.20
-    dns2: 8.8.8.8
+    ssid: "AP-Persiana-Salon-2"
 
 cover:
   - id: !extend persiana_cover
