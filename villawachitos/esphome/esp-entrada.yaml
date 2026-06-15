@@ -30,14 +30,65 @@ switch:
     restore_mode: ALWAYS_OFF
     name: "Luz Techo Entrada"
 
+  - platform: gpio
+    pin: GPIO17
+    id: relay_luz_techo_lavadero
+    restore_mode: ALWAYS_OFF
+    name: "Luz Techo Lavadero"
+
+  - platform: gpio
+    pin: GPIO18
+    id: relay_luz_exterior_lavadero
+    restore_mode: ALWAYS_OFF
+    inverted: True
+    name: "Luz Exterior Lavadero"
+
+  - platform: gpio
+    pin: GPIO19
+    id: relay_luz_exterior_vivienda
+    restore_mode: ALWAYS_OFF
+    inverted: True
+    name: "Luz Exterior Vivienda"
+
 binary_sensor:
+  - platform: gpio
+    pin:
+      number: GPIO27
+      mode:
+        input: true
+        pulldown: true
+    id: button_entrada_2
+    name: "Botón entrada 2"
+    on_press:
+      - switch.toggle: relay_luz_techo_entrada
+
   - platform: gpio
     pin:
       number: GPIO33
       mode:
         input: true
         pulldown: true
-    id: button_2
-    name: "Button 2"
+    id: button_lavadero_1
+    name: "Botón lavadero 1"
     on_press:
-      - switch.toggle: relay_luz_techo_entrada
+      - switch.toggle: relay_luz_techo_lavadero
+  - platform: gpio
+    pin:
+      number: GPIO26
+      mode:
+        input: true
+        pulldown: true
+    id: button_lavadero_2
+    name: "Botón lavadero 2"
+    on_press:
+      - switch.toggle: relay_luz_exterior_lavadero
+  - platform: gpio
+    pin:
+      number: GPIO14
+      mode:
+        input: true
+        pulldown: true
+    id: button_lavadero_3
+    name: "Botón lavadero 3"
+    on_press:
+      - switch.toggle: relay_luz_exterior_vivienda
