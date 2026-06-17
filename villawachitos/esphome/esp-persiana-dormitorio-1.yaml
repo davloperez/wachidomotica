@@ -12,7 +12,6 @@ esphome:
 
 packages:
   base: !include persiana-base.yaml
-  dormitorio_base: !include persiana-dormitorio-base.yaml
 
 wifi:
   ssid: !secret wifi_ssid
@@ -25,22 +24,70 @@ wifi:
     password: "platano+1234"
     ssid: "AP-Persiana-Dormitorio-1"
 
-binary_sensor:
-  - platform: gpio
-    pin:
-      number: GPIO27
-      mode:
-        input: true
-        pulldown: true
-    id: button_5
-    name: "Button 5"
-    on_press:
-      - switch.toggle: relay_light_techo_vestidor
-
 switch:
+  # ====== CEILING LIGHT (existing relay) ======
+  - platform: gpio
+    pin: GPIO18
+    id: relay_light_techo_dormitorio_1
+    restore_mode: ALWAYS_OFF
+    inverted: True
+    name: "Luz Techo Dormitorio 1"
+  - platform: gpio
+    pin: GPIO19
+    id: relay_light_mesita_dormitorio_1
+    restore_mode: ALWAYS_OFF
+    inverted: True
+    name: "Luz Mesita Dormitorio 1"
   - platform: gpio
     pin: GPIO21
     id: relay_light_techo_vestidor
     restore_mode: ALWAYS_OFF
     inverted: True
     name: "Luz Techo Vestidor"
+
+# ====== EXTENDER COVER CON LÓGICA DE PERSIANAS ======
+cover:
+  - id: !extend persiana_cover
+    on_idle:
+      - lambda: |-
+          ESP_LOGI("persiana", "idle pos=%.2f op=%d",
+            id(persiana_cover).position,
+            id(persiana_cover).current_operation);
+          id(persiana_position_storage) = id(persiana_cover).position;
+          ESP_LOGI("persiana", "store idle pos=%.2f", id(persiana_position_storage));
+
+# No blink scripts: LEDs reflect physical button state (on while pressed)
+
+binary_sensor:
+  - platform: gpio
+    pin:
+      number: GPIO33
+      mode:
+        input: true
+        pulldown: true
+    id: boton_1_jung_dormitorio_1
+    name: "Botón 1 Jung Dormitorio 1"
+    on_press:
+      - script.execute: toggle_button_up
+
+  - platform: gpio
+    pin:
+      number: GPIO26
+      mode:
+        input: true
+        pulldown: true
+    id: boton_3_jung_dormitorio_1
+    name: "Botón 3 Jung Dormitorio 1"
+    on_press:
+      - script.execute: toggle_button_down
+
+  - platform: gpio
+    pin:
+      number: GPIO14
+      mode:
+        input: true
+        pulldown: true
+    id: boton_6_jung_dormitorio_1
+    name: "Botón 6 Jung Dormitorio 1"
+    on_press:
+      - switch.toggle: relay_light_mesita_dormitorio_1
