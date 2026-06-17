@@ -44,7 +44,7 @@ binary_sensor:
         input: true
         pulldown: true
     id: button_1
-    name: "Button 1"
+    name: "Botón 5 jung arriba"
     on_press:
       - script.execute: toggle_button_up
 
@@ -54,25 +54,7 @@ binary_sensor:
       mode:
         input: true
         pulldown: true
-    id: button_2
-    name: "Button 2"
-
-  - platform: gpio
-    pin:
-      number: GPIO14
-      mode:
-        input: true
-        pulldown: true
     id: button_3
-    name: "Button 3"
+    name: "Botón 7 jung arriba"
     on_press:
       - script.execute: toggle_button_down
-
-  - platform: gpio
-    pin:
-      number: GPIO13
-      mode:
-        input: true
-        pulldown: true
-    id: button_4
-    name: "Button 4"

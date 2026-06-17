@@ -24,15 +24,6 @@ wifi:
     password: "platano+1234"
     ssid: "AP-Persiana-Salon-1"
 
-switch:
-  # ====== CEILING LIGHT (existing relay) ======
-  - platform: gpio
-    pin: GPIO18
-    id: relay_light_techo_salon
-    restore_mode: ALWAYS_OFF
-    inverted: True
-    name: "Luz Techo Salon"
-
 cover:
   - id: !extend persiana_cover
     on_idle:
@@ -52,8 +43,8 @@ binary_sensor:
       mode:
         input: true
         pulldown: true
-    id: button_1
-    name: "Button 1"
+    id: boton_1_jung_abajo_salon
+    name: "Boton 1 jung abajo salon"
     on_press:
       - script.execute: toggle_button_up
 
@@ -63,10 +54,10 @@ binary_sensor:
       mode:
         input: true
         pulldown: true
-    id: button_2
-    name: "Button 2"
+    id: boton_3_jung_abajo_salon
+    name: "Boton 3 jung abajo salon"
     on_press:
-      - switch.toggle: relay_light_techo_salon
+      - script.execute: toggle_button_down
 
   - platform: gpio
     pin:
@@ -74,10 +65,8 @@ binary_sensor:
       mode:
         input: true
         pulldown: true
-    id: button_3
-    name: "Button 3"
-    on_press:
-      - script.execute: toggle_button_down
+    id: boton_5_jung_abajo_salon
+    name: "Boton 5 jung abajo salon"
 
   - platform: gpio
     pin:
@@ -85,5 +74,5 @@ binary_sensor:
       mode:
         input: true
         pulldown: true
-    id: button_4
-    name: "Button 4"
+    id: boton_7_jung_abajo_salon
+    name: "Boton 7 jung abajo salon"

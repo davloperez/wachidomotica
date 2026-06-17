@@ -24,6 +24,28 @@ wifi:
     password: "platano+1234"
     ssid: "AP-Persiana-Salon-3"
 
+switch:
+  - platform: gpio
+    pin: GPIO32
+    id: relay_luz_techo_salon
+    restore_mode: ALWAYS_OFF
+    inverted: True
+    name: "Luz Techo Salón"
+
+  - platform: gpio
+    pin: GPIO25
+    id: relay_luz_pasillo_salon
+    restore_mode: ALWAYS_OFF
+    inverted: True
+    name: "Luz Pasillo Salón"
+
+  - platform: gpio
+    pin: GPIO27
+    id: relay_luz_aplique_pasillo_salon
+    restore_mode: ALWAYS_OFF
+    inverted: True
+    name: "Luz Aplique Pasillo Salón"
+
 cover:
   - id: !extend persiana_cover
     on_idle:
@@ -43,8 +65,8 @@ binary_sensor:
       mode:
         input: true
         pulldown: true
-    id: button_1
-    name: "Button 1"
+    id: boton_1_jung_arriba
+    name: "Botón 1 jung arriba"
     on_press:
       - script.execute: toggle_button_up
 
@@ -54,25 +76,40 @@ binary_sensor:
       mode:
         input: true
         pulldown: true
-    id: button_2
-    name: "Button 2"
-
-  - platform: gpio
-    pin:
-      number: GPIO14
-      mode:
-        input: true
-        pulldown: true
-    id: button_3
-    name: "Button 3"
+    id: boton_3_jung_arriba
+    name: "Botón 3 jung arriba"
     on_press:
       - script.execute: toggle_button_down
 
   - platform: gpio
     pin:
-      number: GPIO13
+      number: GPIO15
       mode:
         input: true
         pulldown: true
-    id: button_4
-    name: "Button 4"
+    id: boton_1_jung_pasillo_salon
+    name: "Botón 1 jung pasillo salón"
+    on_press:
+      - switch.toggle: relay_luz_aplique_pasillo_salon
+
+  - platform: gpio
+    pin:
+      number: GPIO18
+      mode:
+        input: true
+        pulldown: true
+    id: boton_3_jung_pasillo_salon
+    name: "Botón 3 jung pasillo salón"
+    on_press:
+      - switch.toggle: relay_luz_pasillo_salon
+
+  - platform: gpio
+    pin:
+      number: GPIO19
+      mode:
+        input: true
+        pulldown: true
+    id: boton_5_jung_pasillo_salon
+    name: "Botón 5 jung pasillo salón"
+    on_press:
+      - switch.toggle: relay_luz_techo_salon
