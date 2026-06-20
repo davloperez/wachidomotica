@@ -1,0 +1,93 @@
+# @esphome-device
+# Baño 1 Configuration
+
+esphome:
+  name: esp-bano-1
+
+packages:
+  common: !include common.yaml
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  power_save_mode: none
+  output_power: 20.0dB
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    password: "platano+1234"
+    ssid: "AP-Bano-1"
+
+switch:
+  # ====== CEILING LIGHT (existing relay) ======
+  - platform: gpio
+    pin: GPIO18
+    id: relay_light_techo_bano_1
+    restore_mode: ALWAYS_OFF
+    inverted: True
+    name: "Luz Techo Baño 1"
+  - platform: gpio
+    pin: GPIO19
+    id: relay_light_hornacina_bano_1
+    restore_mode: ALWAYS_OFF
+    inverted: True
+    name: "Luz Hornacina Baño 1"
+  - platform: gpio
+    pin: GPIO21
+    id: relay_light_espejo_bano_1
+    restore_mode: ALWAYS_OFF
+    inverted: True
+    name: "Luz Espejo Baño 1"
+  - platform: gpio
+    pin: GPIO22
+    id: relay_toallero_bano_1
+    restore_mode: ALWAYS_OFF
+    inverted: True
+    name: "Luz Toallero Baño 1"
+
+# No blink scripts: LEDs reflect physical button state (on while pressed)
+
+binary_sensor:
+  - platform: gpio
+    pin:
+      number: GPIO33
+      mode:
+        input: true
+        pulldown: true
+    id: boton_1_jung_bano_1
+    name: "Botón 1 Jung Baño 1"
+    on_press:
+      - switch.toggle: relay_light_techo_bano_1
+
+  - platform: gpio
+    pin:
+      number: GPIO26
+      mode:
+        input: true
+        pulldown: true
+    id: boton_2_jung_bano_1
+    name: "Botón 2 Jung Baño 1"
+    on_press:
+      - switch.toggle: relay_light_espejo_bano_1
+
+  - platform: gpio
+    pin:
+      number: GPIO14
+      mode:
+        input: true
+        pulldown: true
+    id: boton_3_jung_bano_1
+    name: "Botón 3 Jung Baño 1"
+    on_press:
+      - switch.toggle: relay_light_hornacina_bano_1
+
+  - platform: gpio
+    pin:
+      number: GPIO13
+      mode:
+        input: true
+        pulldown: true
+    id: boton_4_jung_bano_1
+    name: "Botón 4 Jung Baño 1"
+    on_press:
+      - switch.toggle: relay_toallero_bano_1
