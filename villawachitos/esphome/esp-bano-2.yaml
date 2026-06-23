@@ -44,6 +44,18 @@ switch:
     restore_mode: ALWAYS_OFF
     inverted: True
     name: "Luz Toallero Baño 2"
+  - platform: gpio
+    pin: GPIO16
+    id: relay_light_techo_pasillo
+    restore_mode: ALWAYS_OFF
+    inverted: True
+    name: "Luz Techo Pasillo"
+  - platform: gpio
+    pin: GPIO17
+    id: relay_light_aplique_pasillo
+    restore_mode: ALWAYS_OFF
+    inverted: True
+    name: "Luz Aplique Pasillo"
 
 # No blink scripts: LEDs reflect physical button state (on while pressed)
 
@@ -91,3 +103,46 @@ binary_sensor:
     name: "Botón 4 Jung Baño 2"
     on_press:
       - switch.toggle: relay_toallero_bano_2
+
+  - platform: gpio
+    pin:
+      number: GPIO32
+      mode:
+        input: true
+        pulldown: true
+    id: boton_1_jung_este_pasillo
+    name: "Botón 1 Jung Este Pasillo"
+    on_press:
+      - switch.toggle: relay_light_techo_pasillo
+
+  - platform: gpio
+    pin:
+      number: GPIO25
+      mode:
+        input: true
+        pulldown: true
+    id: boton_2_jung_este_pasillo
+    name: "Botón 2 Jung Este Pasillo"
+    on_press:
+      - switch.toggle: relay_light_aplique_pasillo
+  - platform: gpio
+    pin:
+      number: GPIO27
+      mode:
+        input: true
+        pulldown: true
+    id: boton_1_jung_oeste_pasillo
+    name: "Botón 1 Jung Oeste Pasillo"
+    on_press:
+      - switch.toggle: relay_light_techo_pasillo
+
+  - platform: gpio
+    pin:
+      number: GPIO15
+      mode:
+        input: true
+        pulldown: true
+    id: boton_2_jung_oeste_pasillo
+    name: "Botón 2 Jung Oeste Pasillo"
+    on_press:
+      - switch.toggle: relay_light_aplique_pasillo
