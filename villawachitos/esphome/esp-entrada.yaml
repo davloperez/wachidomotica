@@ -50,6 +50,20 @@ switch:
     inverted: True
     name: "Luz Exterior Vivienda"
 
+  - platform: gpio
+    pin: GPIO21
+    id: relay_luz_cuadro_entrada
+    restore_mode: ALWAYS_OFF
+    inverted: True
+    name: "Luz Cuadro Entrada"
+
+  - platform: gpio
+    pin: GPIO22
+    id: relay_luz_mamposteria_entrada
+    restore_mode: ALWAYS_OFF
+    inverted: True
+    name: "Luz Mamposteria Entrada"
+
 binary_sensor:
   - platform: gpio
     pin:
@@ -92,3 +106,13 @@ binary_sensor:
     name: "Botón lavadero 3"
     on_press:
       - switch.toggle: relay_luz_exterior_vivienda
+  - platform: gpio
+    pin:
+      number: GPIO13
+      mode:
+        input: true
+        pulldown: true
+    id: button_entrada_1
+    name: "Botón entrada 1"
+    on_press:
+      - switch.toggle: relay_luz_cuadro_entrada

@@ -44,3 +44,69 @@ script:
       - switch.turn_on: relay_light_barra_cocina
       - delay: 300ms
       - switch.turn_off: relay_light_barra_cocina
+
+binary_sensor:
+  - platform: gpio
+    pin:
+      number: GPIO33
+      mode:
+        input: true
+        pulldown: true
+    id: boton_1_jung_exteriores
+    name: "Botón 1 Jung Exteriores"
+  - platform: gpio
+    pin:
+      number: GPIO32
+      mode:
+        input: true
+        pulldown: true
+    id: boton_2_jung_exteriores
+    name: "Botón 2 Jung Exteriores"
+  - platform: gpio
+    pin:
+      number: GPIO27
+      mode:
+        input: true
+        pulldown: true
+    id: boton_3_jung_exteriores
+    name: "Botón 3 Jung Exteriores"
+  - platform: gpio
+    pin:
+      number: GPIO26
+      mode:
+        input: true
+        pulldown: true
+    id: boton_4_jung_exteriores
+    name: "Botón 4 Jung Exteriores"
+  - platform: gpio
+    pin:
+      number: GPIO25
+      mode:
+        input: true
+        pulldown: true
+    id: boton_5_jung_exteriores
+    name: "Botón 5 Jung Exteriores"
+  - platform: gpio
+    pin:
+      number: GPIO15
+      mode:
+        input: true
+        pulldown: true
+    id: boton_6_jung_exteriores
+    name: "Botón 6 Jung Exteriores"
+  - platform: gpio
+    pin:
+      number: GPIO14
+      mode:
+        input: true
+        pulldown: true
+    id: boton_7_jung_exteriores
+    name: "Botón 7 Jung Exteriores"
+  - platform: gpio
+    pin:
+      number: GPIO13
+      mode:
+        input: true
+        pulldown: true
+    id: boton_8_jung_exteriores
+    name: "Botón 8 Jung Exteriores"
