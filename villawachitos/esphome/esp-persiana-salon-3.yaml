@@ -113,3 +113,12 @@ binary_sensor:
     name: "Botón 5 jung pasillo salón"
     on_press:
       - switch.toggle: relay_luz_techo_salon
+
+  - platform: gpio
+    pin:
+      number: GPIO21
+      mode:
+        input: true
+        pulldown: true
+    id: boton_8_jung_entrada
+    name: "Botón 8 jung entrada"
