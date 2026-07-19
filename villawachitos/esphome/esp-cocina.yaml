@@ -21,10 +21,10 @@ wifi:
 switch:
   - platform: gpio
     pin: GPIO19
-    id: relay_light_barra_cocina
+    id: relay_light_techo_barra_cocina
     restore_mode: ALWAYS_OFF
     inverted: True
-    name: "Luz Barra Cocina"
+    name: "Luz Techo Barra Cocina"
   - platform: gpio
     pin: GPIO21
     id: relay_light_isla_cocina
@@ -38,13 +38,6 @@ switch:
     inverted: True
     name: "Luz Techo Cocina"
 
-script:
-  - id: toggle_light_barra_cocina
-    then:
-      - switch.turn_on: relay_light_barra_cocina
-      - delay: 300ms
-      - switch.turn_off: relay_light_barra_cocina
-
 binary_sensor:
   - platform: gpio
     pin:
@@ -52,61 +45,97 @@ binary_sensor:
       mode:
         input: true
         pulldown: true
-    id: boton_1_jung_exteriores
-    name: "Botón 1 Jung Exteriores"
+    id: boton_1_jung_cocina
+    name: "Botón 1 Jung Cocina"
+    filters:
+      - delayed_on: 20ms
+      - delayed_off: 20ms
   - platform: gpio
     pin:
       number: GPIO32
       mode:
         input: true
         pulldown: true
-    id: boton_2_jung_exteriores
-    name: "Botón 2 Jung Exteriores"
+    id: boton_2_jung_cocina
+    name: "Botón 2 Jung Cocina"
+    filters:
+      - delayed_on: 20ms
+      - delayed_off: 20ms
   - platform: gpio
     pin:
       number: GPIO27
       mode:
         input: true
         pulldown: true
-    id: boton_3_jung_exteriores
-    name: "Botón 3 Jung Exteriores"
+    id: boton_3_jung_cocina
+    name: "Botón 3 Jung Cocina"
+    filters:
+      - delayed_on: 20ms
+      - delayed_off: 20ms
   - platform: gpio
     pin:
       number: GPIO26
       mode:
         input: true
         pulldown: true
-    id: boton_4_jung_exteriores
-    name: "Botón 4 Jung Exteriores"
+    id: boton_4_jung_cocina
+    name: "Botón 4 Jung Cocina"
+    filters:
+      - delayed_on: 20ms
+      - delayed_off: 20ms
+    on_click:
+      then:
+        - switch.toggle: relay_light_isla_cocina
   - platform: gpio
     pin:
       number: GPIO25
       mode:
         input: true
         pulldown: true
-    id: boton_5_jung_exteriores
-    name: "Botón 5 Jung Exteriores"
+    id: boton_5_jung_cocina
+    name: "Botón 5 Jung Cocina"
+    filters:
+      - delayed_on: 20ms
+      - delayed_off: 20ms
+    on_click:
+      then:
+        - switch.toggle: relay_light_techo_cocina
   - platform: gpio
     pin:
       number: GPIO15
       mode:
         input: true
         pulldown: true
-    id: boton_6_jung_exteriores
-    name: "Botón 6 Jung Exteriores"
+    id: boton_6_jung_cocina
+    name: "Botón 6 Jung Cocina"
+    filters:
+      - delayed_on: 20ms
+      - delayed_off: 20ms
+    on_press:
+      then:
+        - switch.turn_on: relay_light_techo_barra_cocina
+    on_release:
+      then:
+        - switch.turn_off: relay_light_techo_barra_cocina
   - platform: gpio
     pin:
       number: GPIO14
       mode:
         input: true
         pulldown: true
-    id: boton_7_jung_exteriores
-    name: "Botón 7 Jung Exteriores"
+    id: boton_7_jung_cocina
+    name: "Botón 7 Jung Cocina"
+    filters:
+      - delayed_on: 20ms
+      - delayed_off: 20ms
   - platform: gpio
     pin:
       number: GPIO13
       mode:
         input: true
         pulldown: true
-    id: boton_8_jung_exteriores
-    name: "Botón 8 Jung Exteriores"
+    id: boton_8_jung_cocina
+    name: "Botón 8 Jung Cocina"
+    filters:
+      - delayed_on: 20ms
+      - delayed_off: 20ms
