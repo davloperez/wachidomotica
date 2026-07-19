@@ -23,6 +23,31 @@ globals:
     type: float
     restore_value: yes
     initial_value: "0"
+  # Contadores y estados para detección de multi-press / long-press
+  - id: up_press_count
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: up_pressed
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: up_consumed
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: down_press_count
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: down_pressed
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: down_consumed
+    type: bool
+    restore_value: no
+    initial_value: "false"
 
 esphome:
   includes:
@@ -137,22 +162,136 @@ cover:
 # different devices can map their physical pins as needed.
 
 script:
+  # Compatibilidad: script antiguo redirige al nuevo manejador de press
   - id: toggle_button_up
     then:
-      - if:
-          condition:
-            lambda: "return id(persiana_cover).current_operation != esphome::cover::COVER_OPERATION_IDLE;"
-          then:
-            - cover.stop: persiana_cover
-          else:
-            - cover.open: persiana_cover
+      - script.execute: button_up_press
 
   - id: toggle_button_down
     then:
-      - if:
-          condition:
-            lambda: "return id(persiana_cover).current_operation != esphome::cover::COVER_OPERATION_IDLE;"
-          then:
-            - cover.stop: persiana_cover
-          else:
-            - cover.close: persiana_cover
+      - script.execute: button_down_press
+
+  # Pulsación corta / multi-press / long-press para botón "Up"
+  - id: button_up_press
+    then:
+      - lambda: |-
+          id(up_press_count)++;
+          id(up_pressed) = true;
+          id(up_consumed) = false;
+          ESP_LOGD("persiana", "button_up_press count=%d", id(up_press_count));
+      # Evaluación de long-press (1s)
+      - delay: 1s
+      - lambda: |-
+          if (id(up_pressed) && !id(up_consumed)) {
+            ESP_LOGI("persiana", "button_up long-press detected -> set 20%%");
+            auto call = id(persiana_cover).make_call();
+            call.set_position(20);
+            call.perform();
+            id(up_consumed) = true;
+            id(up_press_count) = 0;
+          }
+      # Evaluación de multi/click tras ventana corta (400ms)
+      - delay: 400ms
+      - lambda: |-
+          if (id(up_consumed)) return;
+          int cnt = id(up_press_count);
+          if (cnt == 0) return;
+          if (cnt == 1) {
+            // Comportamiento simple: si está en movimiento, pausa; si está idle, abre
+            if (id(persiana_cover).current_operation != esphome::cover::COVER_OPERATION_IDLE) {
+              ESP_LOGI("persiana", "button_up single press -> stop");
+              {
+                auto call = id(persiana_cover).make_call();
+                call.set_command_stop();
+                call.perform();
+              }
+            } else {
+              ESP_LOGI("persiana", "button_up single press -> open");
+              {
+                auto call = id(persiana_cover).make_call();
+                call.set_command_open();
+                call.perform();
+              }
+            }
+          }
+          else if (cnt == 2) {
+            ESP_LOGI("persiana", "button_up double press -> set 50%%");
+            auto call = id(persiana_cover).make_call();
+            call.set_position(50);
+            call.perform();
+          }
+          else if (cnt >= 3) {
+            ESP_LOGI("persiana", "button_up triple+ press -> set 30%%");
+            auto call = id(persiana_cover).make_call();
+            call.set_position(30);
+            call.perform();
+          }
+          id(up_press_count) = 0;
+
+  - id: button_up_release
+    then:
+      - lambda: |-
+          id(up_pressed) = false;
+          ESP_LOGD("persiana", "button_up released");
+
+  # Pulsación corta / multi-press / long-press para botón "Down"
+  - id: button_down_press
+    then:
+      - lambda: |-
+          id(down_press_count)++;
+          id(down_pressed) = true;
+          id(down_consumed) = false;
+          ESP_LOGD("persiana", "button_down_press count=%d", id(down_press_count));
+      # Evaluación de long-press (1s)
+      - delay: 1s
+      - lambda: |-
+          if (id(down_pressed) && !id(down_consumed)) {
+            ESP_LOGI("persiana", "button_down long-press detected -> set 20%%");
+            auto call = id(persiana_cover).make_call();
+            call.set_position(20);
+            call.perform();
+            id(down_consumed) = true;
+            id(down_press_count) = 0;
+          }
+      # Evaluación de multi/click tras ventana corta (400ms)
+      - delay: 400ms
+      - lambda: |-
+          if (id(down_consumed)) return;
+          int cnt = id(down_press_count);
+          if (cnt == 0) return;
+          if (cnt == 1) {
+            if (id(persiana_cover).current_operation != esphome::cover::COVER_OPERATION_IDLE) {
+              ESP_LOGI("persiana", "button_down single press -> stop");
+              {
+                auto call = id(persiana_cover).make_call();
+                call.set_command_stop();
+                call.perform();
+              }
+            } else {
+              ESP_LOGI("persiana", "button_down single press -> close");
+              {
+                auto call = id(persiana_cover).make_call();
+                call.set_command_close();
+                call.perform();
+              }
+            }
+          }
+          else if (cnt == 2) {
+            ESP_LOGI("persiana", "button_down double press -> set 50%%");
+            auto call = id(persiana_cover).make_call();
+            call.set_position(50);
+            call.perform();
+          }
+          else if (cnt >= 3) {
+            ESP_LOGI("persiana", "button_down triple+ press -> set 30%%");
+            auto call = id(persiana_cover).make_call();
+            call.set_position(30);
+            call.perform();
+          }
+          id(down_press_count) = 0;
+
+  - id: button_down_release
+    then:
+      - lambda: |-
+          id(down_pressed) = false;
+          ESP_LOGD("persiana", "button_down released");

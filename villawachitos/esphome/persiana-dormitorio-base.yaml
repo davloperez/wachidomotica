@@ -60,6 +60,8 @@ binary_sensor:
     name: "Button 1"
     on_press:
       - script.execute: toggle_button_up
+    on_release:
+      - script.execute: button_up_release
 
   - platform: gpio
     pin:
@@ -82,6 +84,8 @@ binary_sensor:
     name: "Button 3"
     on_press:
       - script.execute: toggle_button_down
+    on_release:
+      - script.execute: button_down_release
 
   - platform: gpio
     pin:
