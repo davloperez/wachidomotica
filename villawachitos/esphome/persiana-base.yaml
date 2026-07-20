@@ -156,3 +156,17 @@ script:
             - cover.stop: persiana_cover
           else:
             - cover.close: persiana_cover
+
+  - id: set_button_up_60
+    then:
+      - lambda: |-
+          auto call = id(persiana_cover).make_call();
+          call.set_position(0.60f);
+          call.perform();
+
+  - id: set_button_down_30
+    then:
+      - lambda: |-
+          auto call = id(persiana_cover).make_call();
+          call.set_position(0.30f);
+          call.perform();

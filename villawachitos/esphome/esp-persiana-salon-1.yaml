@@ -45,8 +45,19 @@ binary_sensor:
         pulldown: true
     id: boton_1_jung_abajo_salon
     name: "Boton 1 jung abajo salon"
-    on_press:
-      - script.execute: toggle_button_up
+    on_multi_click:
+      - timing:
+          - ON for 50ms to 350ms
+          - OFF for at least 350ms
+        then:
+          - script.execute: toggle_button_up
+      - timing:
+          - ON for 50ms to 350ms
+          - OFF for 50ms to 350ms
+          - ON for 50ms to 350ms
+          - OFF for at least 50ms
+        then:
+          - script.execute: set_button_up_60
 
   - platform: gpio
     pin:
@@ -56,8 +67,19 @@ binary_sensor:
         pulldown: true
     id: boton_3_jung_abajo_salon
     name: "Boton 3 jung abajo salon"
-    on_press:
-      - script.execute: toggle_button_down
+    on_multi_click:
+      - timing:
+          - ON for 50ms to 350ms
+          - OFF for at least 350ms
+        then:
+          - script.execute: toggle_button_down
+      - timing:
+          - ON for 50ms to 350ms
+          - OFF for 50ms to 350ms
+          - ON for 50ms to 350ms
+          - OFF for at least 50ms
+        then:
+          - script.execute: set_button_down_30
 
   - platform: gpio
     pin:

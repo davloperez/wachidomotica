@@ -45,8 +45,19 @@ binary_sensor:
         pulldown: true
     id: button_1
     name: "Botón 5 jung arriba"
-    on_press:
-      - script.execute: toggle_button_up
+    on_multi_click:
+      - timing:
+          - ON for 50ms to 350ms
+          - OFF for at least 350ms
+        then:
+          - script.execute: toggle_button_up
+      - timing:
+          - ON for 50ms to 350ms
+          - OFF for 50ms to 350ms
+          - ON for 50ms to 350ms
+          - OFF for at least 50ms
+        then:
+          - script.execute: set_button_up_60
 
   - platform: gpio
     pin:
@@ -56,5 +67,16 @@ binary_sensor:
         pulldown: true
     id: button_3
     name: "Botón 7 jung arriba"
-    on_press:
-      - script.execute: toggle_button_down
+    on_multi_click:
+      - timing:
+          - ON for 50ms to 350ms
+          - OFF for at least 350ms
+        then:
+          - script.execute: toggle_button_down
+      - timing:
+          - ON for 50ms to 350ms
+          - OFF for 50ms to 350ms
+          - ON for 50ms to 350ms
+          - OFF for at least 50ms
+        then:
+          - script.execute: set_button_down_30
