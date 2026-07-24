@@ -83,6 +83,61 @@ binary_sensor:
 
   - platform: gpio
     pin:
+      number: GPIO32
+      mode:
+        input: true
+        pulldown: true
+    id: boton_2_jung_dormitorio_1
+    name: "Botón 2 Jung Dormitorio 1"
+    on_multi_click:
+      - timing:
+          - ON for at least 800ms
+        then:
+          - homeassistant.event:
+              event: esphome.boton_2_dormitorio_1_long_press
+              data:
+                device: persiana-dormitorio-1
+                button: boton_2_jung_dormitorio_1
+                gesture: long_press
+      - timing:
+          - ON for 50ms to 350ms
+          - OFF for 50ms to 350ms
+          - ON for 50ms to 350ms
+          - OFF for 50ms to 350ms
+          - ON for 50ms to 350ms
+          - OFF for at least 350ms
+        then:
+          - homeassistant.event:
+              event: esphome.boton_2_dormitorio_1_triple_click
+              data:
+                device: persiana-dormitorio-1
+                button: boton_2_jung_dormitorio_1
+                gesture: triple_click
+      - timing:
+          - ON for 50ms to 350ms
+          - OFF for 50ms to 350ms
+          - ON for 50ms to 350ms
+          - OFF for at least 350ms
+        then:
+          - homeassistant.event:
+              event: esphome.boton_2_dormitorio_1_double_click
+              data:
+                device: persiana-dormitorio-1
+                button: boton_2_jung_dormitorio_1
+                gesture: double_click
+      - timing:
+          - ON for 50ms to 350ms
+          - OFF for at least 350ms
+        then:
+          - homeassistant.event:
+              event: esphome.boton_2_dormitorio_1_single_click
+              data:
+                device: persiana-dormitorio-1
+                button: boton_2_jung_dormitorio_1
+                gesture: single_click
+
+  - platform: gpio
+    pin:
       number: GPIO26
       mode:
         input: true
@@ -105,6 +160,17 @@ binary_sensor:
 
   - platform: gpio
     pin:
+      number: GPIO25
+      mode:
+        input: true
+        pulldown: true
+    id: boton_4_jung_dormitorio_1
+    name: "Botón 4 Jung Dormitorio 1"
+    on_press:
+      - switch.toggle: relay_light_mesita_dormitorio_1
+
+  - platform: gpio
+    pin:
       number: GPIO14
       mode:
         input: true
@@ -112,4 +178,15 @@ binary_sensor:
     id: boton_6_jung_dormitorio_1
     name: "Botón 6 Jung Dormitorio 1"
     on_press:
-      - switch.toggle: relay_light_mesita_dormitorio_1
+      - switch.toggle: relay_light_techo_vestidor
+
+  - platform: gpio
+    pin:
+      number: GPIO27
+      mode:
+        input: true
+        pulldown: true
+    id: boton_8_jung_dormitorio_1
+    name: "Botón 8 Jung Dormitorio 1"
+    on_press:
+      - switch.toggle: relay_light_techo_dormitorio_1
