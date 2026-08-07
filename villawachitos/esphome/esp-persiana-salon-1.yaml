@@ -89,6 +89,29 @@ binary_sensor:
         pulldown: true
     id: boton_5_jung_abajo_salon
     name: "Boton 5 jung abajo salon"
+    on_multi_click:
+      - timing:
+          - ON for 50ms to 350ms
+          - OFF for at least 350ms
+        then:
+          - homeassistant.event:
+              event: esphome.jung_single_click
+              data:
+                device: salon_3
+                button: button_5
+                gesture: single_click
+      - timing:
+          - ON for 50ms to 350ms
+          - OFF for 50ms to 350ms
+          - ON for 50ms to 350ms
+          - OFF for at least 50ms
+        then:
+          - homeassistant.event:
+              event: esphome.jung_double_click
+              data:
+                device: salon_3
+                button: button_5
+                gesture: double_click
 
   - platform: gpio
     pin:
@@ -98,3 +121,26 @@ binary_sensor:
         pulldown: true
     id: boton_7_jung_abajo_salon
     name: "Boton 7 jung abajo salon"
+    on_multi_click:
+      - timing:
+          - ON for 50ms to 350ms
+          - OFF for at least 350ms
+        then:
+          - homeassistant.event:
+              event: esphome.jung_single_click
+              data:
+                device: salon_3
+                button: button_7
+                gesture: single_click
+      - timing:
+          - ON for 50ms to 350ms
+          - OFF for 50ms to 350ms
+          - ON for 50ms to 350ms
+          - OFF for at least 50ms
+        then:
+          - homeassistant.event:
+              event: esphome.jung_double_click
+              data:
+                device: salon_3
+                button: button_7
+                gesture: double_click

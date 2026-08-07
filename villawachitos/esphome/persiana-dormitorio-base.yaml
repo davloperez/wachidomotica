@@ -49,6 +49,39 @@ cover:
 
 # No blink scripts: LEDs reflect physical button state (on while pressed)
 
+script:
+  - id: dimming_up_loop
+    mode: restart
+    then:
+      - delay: 200ms
+      - if:
+          condition:
+            binary_sensor.is_on: button_4
+          then:
+            - homeassistant.event:
+                event: esphome.jung_dimming_up
+                data:
+                  device: dormitorio_2
+                  button: button_4
+                  gesture: dimming_up
+            - script.execute: dimming_up_loop
+
+  - id: dimming_down_loop
+    mode: restart
+    then:
+      - delay: 200ms
+      - if:
+          condition:
+            binary_sensor.is_on: button_4
+          then:
+            - homeassistant.event:
+                event: esphome.jung_dimming_down
+                data:
+                  device: dormitorio_2
+                  button: button_4
+                  gesture: dimming_down
+            - script.execute: dimming_down_loop
+
 binary_sensor:
   - platform: gpio
     pin:
@@ -113,8 +146,60 @@ binary_sensor:
         pulldown: true
     id: button_4
     name: "Button 4"
+    on_multi_click:
+      - timing:
+          - ON for 50ms to 350ms
+          - OFF for 50ms to 350ms
+          - ON for 50ms to 350ms
+          - OFF for 50ms to 350ms
+          - ON for 50ms to 350ms
+          - OFF for 50ms to 350ms
+          - ON for 50ms to 350ms
+          - OFF for 50ms to 350ms
+          - ON for 50ms to 350ms
+          - OFF for at least 350ms
+        then:
+          - switch.toggle: relay_light_mesita
+      - timing:
+          - ON for 50ms to 350ms
+          - OFF for 50ms to 350ms
+          - ON for 50ms to 350ms
+          - OFF for at least 350ms
+        then:
+          - homeassistant.event:
+              event: esphome.jung_double_click
+              data:
+                device: dormitorio_2
+                button: button_4
+                gesture: double_click
+      - timing:
+          - ON for 50ms to 350ms
+          - OFF for at least 350ms
+        then:
+          - if:
+              condition:
+                switch.is_off: relay_light_mesita
+              then:
+                - switch.toggle: relay_light_mesita
+              else:
+                - homeassistant.event:
+                    event: esphome.jung_single_click
+                    data:
+                      device: dormitorio_2
+                      button: button_4
+                      gesture: single_click
+      - timing:
+          - ON for 50ms to 350ms
+          - OFF for 50ms to 350ms
+          - ON for at least 800ms
+        then:
+          - script.stop: dimming_up_loop
+          - script.execute: dimming_down_loop
     on_press:
-      - switch.toggle: relay_light_mesita
+      - script.execute: dimming_up_loop
+    on_release:
+      - script.stop: dimming_up_loop
+      - script.stop: dimming_down_loop
 
   # - platform: gpio
   #   pin:
