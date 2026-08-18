@@ -45,10 +45,10 @@ switch:
 
   - platform: gpio
     pin: GPIO19
-    id: relay_luz_exterior_vivienda
+    id: relay_luz_exterior_barbacoa
     restore_mode: ALWAYS_OFF
     inverted: True
-    name: "Luz Exterior Vivienda"
+    name: "Luz Exterior Barbacoa"
 
   - platform: gpio
     pin: GPIO21
@@ -105,7 +105,7 @@ binary_sensor:
     id: button_lavadero_3
     name: "Botón lavadero 3"
     on_press:
-      - switch.toggle: relay_luz_exterior_vivienda
+      - switch.toggle: relay_luz_exterior_barbacoa
   - platform: gpio
     pin:
       number: GPIO13
