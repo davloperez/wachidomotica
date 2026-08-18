@@ -56,6 +56,12 @@ switch:
     restore_mode: ALWAYS_OFF
     inverted: True
     name: "Luz Aplique Pasillo"
+  - platform: gpio
+    pin: GPIO23
+    id: relay_light_exterior_bano_2
+    restore_mode: ALWAYS_OFF
+    inverted: True
+    name: "Luz Exterior Baño 2"
 
 # No blink scripts: LEDs reflect physical button state (on while pressed)
 

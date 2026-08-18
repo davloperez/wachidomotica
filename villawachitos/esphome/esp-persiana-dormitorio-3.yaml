@@ -24,3 +24,19 @@ wifi:
   ap:
     password: "platano+1234"
     ssid: "AP-Persiana-Dormitorio-3"
+
+# ====== RELÉS ADICIONALES PARA LUCES EXTERIORES ======
+switch:
+  - platform: gpio
+    pin: GPIO2
+    id: relay_luz_exterior_2
+    restore_mode: ALWAYS_OFF
+    inverted: True
+    name: "Luz Exterior Dormitorio 2"
+
+  - platform: gpio
+    pin: GPIO21
+    id: relay_luz_exterior_3
+    restore_mode: ALWAYS_OFF
+    inverted: True
+    name: "Luz Exterior Dormitorio 3"
