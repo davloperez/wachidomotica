@@ -198,7 +198,7 @@ export class HouseDashboard extends LitElement {
       }
 
       <footer class="hud bottom">
-        <span>Toca una luz, persiana o la depuradora para controlarla</span><span>1 dedo: girar</span
+        <span>Toca luces, persianas, la TV o la depuradora para controlarlas</span><span>1 dedo: girar</span
         ><span>2 dedos: zoom y desplazar</span>
       </footer>
     `;
@@ -360,20 +360,6 @@ export class HouseDashboard extends LitElement {
         100% {
           box-shadow: 0 0 0 9px rgba(61, 255, 168, 0);
         }
-      }
-      .compass {
-        font-family: var(--font-hud);
-        font-weight: 700;
-        font-size: clamp(11px, 0.9vw, 15px);
-        color: var(--accent);
-        width: 2em;
-        height: 2em;
-        display: grid;
-        place-items: center;
-        border-radius: 50%;
-        border: 1.5px solid var(--accent);
-        background: var(--panel);
-        box-shadow: var(--accent-glow);
       }
       .panel {
         position: absolute;

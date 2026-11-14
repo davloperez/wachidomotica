@@ -67,6 +67,9 @@ export const PALETTES: Record<"light" | "dark", Palette> = {
 export const MATERIAL_COLORS = {
   white: "#f3f3f1",
   wood: "#a87a4f",
+  darkwood: "#5b3d27",
+  screen: "#0c0e13",
+  steel: "#a7adb5",
   beige: "#e4d8c1",
   sofa: "#e6dbc6",
   frame: "#16171a",

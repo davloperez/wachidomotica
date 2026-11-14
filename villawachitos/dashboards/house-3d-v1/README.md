@@ -9,13 +9,14 @@ Plano 3D interactivo de la vivienda (una planta) con el **estado real** de Home 
   calculada en el propio dashboard y recalculada cada 30 s. Por defecto usa Molina de Segura
   (38,0506 N, 1,2114 O, AEMET). La intensidad sigue un modelo de cielo despejado según la masa de aire
   (sol bajo = luz más débil y cálida), atenuado por la nubosidad (`cloud_coverage`) de la entidad `weather`.
-  El disco solar se ve en el cielo y la rosa **N** marca el norte real (el plano está girado 26°).
+  El disco solar se ve en el cielo (el plano está girado 26° respecto al norte real).
   Un tejado invisible hace que la luz solo entre por las ventanas, así que una persiana bajada oscurece la habitación.
 - **Parcela**: césped, piscina de 8 × 3 m al sur, playa, porche, aparcamiento y valla negra de 2 m, a escala
   del plano de la parcela. Las luces exteriores también son reales, y el agua de la piscina toma el color real
   de `light.luz_piscina`.
-- **Puertas de los vehículos**: dos correderas que corren una sobre otra y se abren o cierran según los
+- **Puertas de los vehículos**: dos correderas que corren una sobre otra (la del oeste por dentro) y se abren o cierran según los
   sensores de contacto `binary_sensor.sensor_puerta_garaje_1_contact` / `_2_contact` (`GATES` en el plano).
+  1 m al este, la puerta peatonal (`PEDESTRIAN_GATE`, aún sin sensor).
 - **Accionable**: toca una luz, una persiana o el agua de la piscina y se abre un panel con lo que admita ese
   dispositivo en Home Assistant: encender/apagar, intensidad, temperatura de color, color (muestras y tono),
   efectos (WLED); en persianas subir/parar/bajar, apertura exacta y atajos 0-25-50-75-100 %. El botón «···»
@@ -36,6 +37,9 @@ Plano 3D interactivo de la vivienda (una planta) con el **estado real** de Home 
   de nivel que sube con el % de carga (verde, ámbar o roja) e inversor en la pared con piloto ámbar y ondas
   mientras las placas producen. Junto al lavadero, una etiqueta con producción solar, % de batería
   (▲ cargando / ▼ descargando), consumo de la casa y red, de los sensores Sigenergy.
+- **TV del salón** (85", pared este, `TV` en el plano): con `media_player.salon_tv_samsung_salon_85` encendida
+  la pantalla muestra una animación esquemática con el título o la fuente y tiñe el salón. Al tocarla: encender
+  (por `remote.*` si el media_player no lo admite), apagar, reproducción, volumen, silencio y fuente.
 - **Luz general** suave que deja ver la casa de noche y rellena las sombras de día.
 - Gestos táctiles: **1 dedo gira**, **2 dedos hacen zoom y desplazan**. Tras 90 s sin tocar vuelve a la vista
   inicial (también con el botón de diana).

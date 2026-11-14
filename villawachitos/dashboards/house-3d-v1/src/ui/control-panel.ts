@@ -9,6 +9,14 @@ import {
   mdiLightbulbOutline,
   mdiPause,
   mdiPump,
+  mdiPlayPause,
+  mdiSkipNext,
+  mdiSkipPrevious,
+  mdiTelevision,
+  mdiVolumeHigh,
+  mdiVolumeMinus,
+  mdiVolumeOff,
+  mdiVolumePlus,
   mdiPower,
   mdiWindowShutter,
   mdiWindowShutterOpen,
@@ -25,6 +33,19 @@ const COVER_OPEN = 1;
 const COVER_CLOSE = 2;
 const COVER_SET_POSITION = 4;
 const COVER_STOP = 8;
+
+/** Bits de `supported_features` de los reproductores (MediaPlayerEntityFeature). */
+const MP_PAUSE = 1;
+const MP_VOLUME_SET = 4;
+const MP_VOLUME_MUTE = 8;
+const MP_PREVIOUS = 16;
+const MP_NEXT = 32;
+const MP_TURN_ON = 128;
+const MP_TURN_OFF = 256;
+const MP_VOLUME_STEP = 1024;
+const MP_SELECT_SOURCE = 2048;
+const MP_PLAY = 16384;
+const MEDIA_OFF = ["off", "standby", "unavailable", "unknown"];
 
 const COLOR_MODES = ["hs", "xy", "rgb", "rgbw", "rgbww"];
 
@@ -68,11 +89,16 @@ export class ControlPanel extends LitElement {
     return this.entityId ? this.hass?.states[this.entityId] : undefined;
   }
 
-  private async call(domain: string, service: string, data: Record<string, unknown> = {}): Promise<void> {
-    if (!this.hass || !this.entityId) return;
+  private async call(
+    domain: string,
+    service: string,
+    data: Record<string, unknown> = {},
+    entityId = this.entityId,
+  ): Promise<void> {
+    if (!this.hass || !entityId) return;
     this.error = undefined;
     try {
-      await this.hass.callService(domain, service, { entity_id: this.entityId, ...data });
+      await this.hass.callService(domain, service, { entity_id: entityId, ...data });
     } catch (err) {
       console.error("[house-3d-v1]", err);
       this.error = err instanceof Error ? err.message : "No se pudo enviar la orden";
@@ -105,15 +131,19 @@ export class ControlPanel extends LitElement {
     return html`
       <section class="card" role="dialog" aria-label=${name}>
         <header>
-          <span class="badge ${domain} ${st?.state === "on" ? "on" : ""}">
+          <span
+            class="badge ${domain} ${st?.state === "on" || (domain === "media_player" && st && !MEDIA_OFF.includes(st.state)) ? "on" : ""}"
+          >
             ${icon(
               domain === "cover"
                 ? mdiWindowShutterOpen
                 : domain === "switch"
                   ? mdiPump
-                  : st?.state === "on"
-                    ? mdiLightbulb
-                    : mdiLightbulbOutline,
+                  : domain === "media_player"
+                    ? mdiTelevision
+                    : st?.state === "on"
+                      ? mdiLightbulb
+                      : mdiLightbulbOutline,
             )}
           </span>
           <div class="title">
@@ -134,7 +164,9 @@ export class ControlPanel extends LitElement {
                 ? this.renderCover(st)
                 : domain === "switch"
                   ? this.renderSwitch(st)
-                  : nothing
+                  : domain === "media_player"
+                    ? this.renderMedia(st)
+                    : nothing
         }
         ${this.error ? html`<p class="error">${this.error}</p>` : nothing}
       </section>
@@ -150,6 +182,16 @@ export class ControlPanel extends LitElement {
       return typeof b === "number" ? `Encendida · ${Math.round((b / 255) * 100)} %` : "Encendida";
     }
     if (domain === "switch") return st.state === "on" ? "En marcha" : "Parada";
+    if (domain === "media_player") {
+      if (MEDIA_OFF.includes(st.state)) return "Apagada";
+      const what = st.attributes.media_title ?? st.attributes.app_name ?? st.attributes.source;
+      const label: Record<string, string> = {
+        playing: "Reproduciendo",
+        paused: "En pausa",
+        idle: "Encendida",
+      };
+      return `${label[st.state] ?? "Encendida"}${what ? ` · ${String(what)}` : ""}`;
+    }
     if (domain === "cover") {
       const pos = st.attributes.current_position;
       const label: Record<string, string> = {
@@ -290,6 +332,153 @@ export class ControlPanel extends LitElement {
           : nothing
       }
       ${!dimmable ? html`<p class="muted">Esta luz solo admite encender y apagar.</p>` : nothing}
+    `;
+  }
+
+  /* ---------------------------------------------------------------- */
+  /* Televisión                                                       */
+  /* ---------------------------------------------------------------- */
+
+  private renderMedia(st: HassEntity) {
+    const a = st.attributes;
+    const f = (a.supported_features as number | undefined) ?? 0;
+    const on = !MEDIA_OFF.includes(st.state);
+    const volume =
+      this.draft.volume ??
+      (typeof a.volume_level === "number" ? Math.round(a.volume_level * 100) : undefined);
+    const muted = a.is_volume_muted === true;
+    const sources = (a.source_list as string[] | undefined) ?? [];
+    // Muchas TV (Samsung) no se encienden por el media_player sino por su entidad `remote.*`.
+    const remote = `remote.${this.entityId!.split(".")[1]}`;
+    const powerOn = () =>
+      f & MP_TURN_ON || !this.hass?.states[remote]
+        ? this.call("media_player", "turn_on")
+        : this.call("remote", "turn_on", {}, remote);
+
+    return html`
+      <button
+        class="power ${on ? "on tv" : ""}"
+        @click=${() => (on ? (f & MP_TURN_OFF ? this.call("media_player", "turn_off") : nothing) : powerOn())}
+      >
+        ${icon(mdiPower)} ${on ? "Apagar" : "Encender"}
+      </button>
+      ${
+        on
+          ? html`
+              ${
+                f & (MP_PREVIOUS | MP_NEXT | MP_PAUSE | MP_PLAY)
+                  ? html`<div class="transport">
+                      ${
+                        f & MP_PREVIOUS
+                          ? html`<button
+                              class="action"
+                              title="Anterior"
+                              @click=${() => this.call("media_player", "media_previous_track")}
+                            >
+                              ${icon(mdiSkipPrevious)}
+                            </button>`
+                          : nothing
+                      }
+                      ${
+                        f & (MP_PAUSE | MP_PLAY)
+                          ? html`<button
+                              class="action"
+                              title="Reproducir / pausa"
+                              @click=${() => this.call("media_player", "media_play_pause")}
+                            >
+                              ${icon(mdiPlayPause)}
+                            </button>`
+                          : nothing
+                      }
+                      ${
+                        f & MP_NEXT
+                          ? html`<button
+                              class="action"
+                              title="Siguiente"
+                              @click=${() => this.call("media_player", "media_next_track")}
+                            >
+                              ${icon(mdiSkipNext)}
+                            </button>`
+                          : nothing
+                      }
+                    </div>`
+                  : nothing
+              }
+              ${
+                f & (MP_VOLUME_SET | MP_VOLUME_STEP | MP_VOLUME_MUTE)
+                  ? html`<div class="field">
+                      <span
+                        >Volumen
+                        ${volume !== undefined ? html`<b class="num">${volume} %</b>` : nothing}</span
+                      >
+                      <div class="volume">
+                        ${
+                          f & MP_VOLUME_MUTE
+                            ? html`<button
+                                class="action ${muted ? "sel" : ""}"
+                                title=${muted ? "Activar sonido" : "Silenciar"}
+                                @click=${() => this.call("media_player", "volume_mute", { is_volume_muted: !muted })}
+                              >
+                                ${icon(muted ? mdiVolumeOff : mdiVolumeHigh)}
+                              </button>`
+                            : nothing
+                        }
+                        ${
+                          f & MP_VOLUME_SET && volume !== undefined
+                            ? html`<input
+                                type="range"
+                                class="slider brightness"
+                                min="0"
+                                max="100"
+                                .value=${String(volume)}
+                                @input=${(e: Event) => (this.draft = { ...this.draft, volume: num(e) })}
+                                @change=${(e: Event) => this.call("media_player", "volume_set", { volume_level: num(e) / 100 })}
+                              />`
+                            : html`<span class="spacer"></span>`
+                        }
+                        ${
+                          f & MP_VOLUME_STEP
+                            ? html`<button
+                                  class="action"
+                                  title="Bajar volumen"
+                                  @click=${() => this.call("media_player", "volume_down")}
+                                >
+                                  ${icon(mdiVolumeMinus)}
+                                </button>
+                                <button
+                                  class="action"
+                                  title="Subir volumen"
+                                  @click=${() => this.call("media_player", "volume_up")}
+                                >
+                                  ${icon(mdiVolumePlus)}
+                                </button>`
+                            : nothing
+                        }
+                      </div>
+                    </div>`
+                  : nothing
+              }
+              ${
+                f & MP_SELECT_SOURCE && sources.length
+                  ? html`<div class="field">
+                      <span>Fuente</span>
+                      <div class="presets sources">
+                        ${sources.map(
+                          (src) =>
+                            html`<button
+                              class="preset ${a.source === src ? "sel" : ""}"
+                              @click=${() => this.call("media_player", "select_source", { source: src })}
+                            >
+                              ${src}
+                            </button>`,
+                        )}
+                      </div>
+                    </div>`
+                  : nothing
+              }
+            `
+          : nothing
+      }
     `;
   }
 
@@ -505,6 +694,39 @@ export class ControlPanel extends LitElement {
         background: var(--panel);
         border: 1px solid var(--panel-border);
         color: var(--text);
+      }
+      .power.on.tv {
+        --lamp: var(--accent);
+      }
+      .transport {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+      }
+      .volume {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .volume .action {
+        flex: none;
+        width: 44px;
+        padding: 8px 0;
+      }
+      .volume .slider,
+      .volume .spacer {
+        flex: 1;
+      }
+      .presets.sources {
+        grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
+      }
+      .action.sel {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+      .badge.media_player.on {
+        color: var(--accent);
+        box-shadow: 0 0 18px -4px var(--accent);
       }
       .power.on.pump {
         --lamp: #3dffa8;

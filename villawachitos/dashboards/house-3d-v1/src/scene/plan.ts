@@ -59,7 +59,18 @@ export interface Lamp {
   strip?: { length: number; axis: "x" | "z" };
 }
 
-export type FurnitureTone = "dark" | "light" | "accent" | "white" | "wood" | "beige" | "sofa";
+export type FurnitureTone =
+  | "dark"
+  | "light"
+  | "accent"
+  | "white"
+  | "wood"
+  | "darkwood"
+  | "beige"
+  | "sofa"
+  | "screen"
+  | "steel"
+  | "glass";
 
 export interface Furniture {
   /** Centro en planta, tamaño [ancho X, alto Y, fondo Z] */
@@ -131,17 +142,19 @@ export const WALLS: Wall[] = [
     openings: [
       win(1.33, 1.45, 0, 2.2, "cover.persiana_oficina_1_persiana"),
       win(3.66, 1.45, 0, 2.2, "cover.persiana_oficina_2_persiana"),
-      win(6.21, 0.9, 1.5, 0.7),
+      // Baño 2: ventana estrecha de suelo a techo (50 cm × 2,2 m)
+      win(6.21, 0.5, 0, 2.2),
     ],
   },
   {
-    // Lateral derecho: correderas de los dormitorios 3 y 2
+    // Lateral derecho: correderas de los dormitorios 3 y 2 y puerta de la ducha del baño 1
     from: [7.7, -5.7],
     to: [7.7, 5.7],
     exterior: true,
     openings: [
       win(1.82, 1.5, 0, 2.2, "cover.persiana_dormitorio_3_persiana"),
       win(4.89, 1.45, 0, 2.2, "cover.persiana_dormitorio_2_persiana"),
+      door(8.4, 0.75, 2.1),
     ],
   },
   {
@@ -256,8 +269,8 @@ export const LAMPS: Lamp[] = [
   },
   /* Oficina 2 */
   { entity: "light.persiana_oficina_2_luz_techo", kind: "ceiling", pos: [-0.12, 2.55, -4.05] },
-  { entity: "light.oficina_2_lampara_pro_mi_1", kind: "lamp", pos: [-0.75, 1.15, -5.15] },
-  { entity: "light.oficina_2_lampara_pro_mi_2_mijia_desk_lamp_sw", kind: "lamp", pos: [0.5, 1.15, -5.15] },
+  { entity: "light.oficina_2_lampara_pro_mi_1", kind: "lamp", pos: [-1.0, 1.15, -5.0] },
+  { entity: "light.oficina_2_lampara_pro_mi_2_mijia_desk_lamp_sw", kind: "lamp", pos: [-1.0, 1.15, -3.4] },
   {
     entity: "light.oficina_2_wled_cortinero_oficina_2",
     kind: "strip",
@@ -346,23 +359,32 @@ export const LAMPS: Lamp[] = [
 /* ------------------------------------------------------------------ */
 
 export const FURNITURE: Furniture[] = [
-  // Cocina: encimera, isla
+  // Cocina: muebles bajos con encimera en la pared oeste, fregadero bajo la ventana,
+  // muebles altos en toda la pared rodeando el hueco de la ventana, e isla
   { at: [-6.1, 2.1], size: [0.6, 0.9, 4.4], tone: "wood", top: "beige" },
+  { at: [-6.12, 2.12], size: [0.42, 0.03, 0.62], tone: "steel", lift: 0.9 },
+  { at: [-6.33, 2.12], size: [0.04, 0.32, 0.04], tone: "steel", lift: 0.92 },
+  { at: [-6.21, 0.66], size: [0.35, 0.8, 1.52], tone: "wood", lift: 1.45 },
+  { at: [-6.21, 3.56], size: [0.35, 0.8, 1.48], tone: "wood", lift: 1.45 },
+  { at: [-6.21, 2.12], size: [0.35, 0.2, 1.4], tone: "wood", lift: 2.05 },
   { at: [-4.21, 1.77], size: [0.98, 0.92, 2.98], tone: "wood", top: "beige" },
-  // Salón: sofá en U, mueble y TV en la pared este
+  // Salón: sofá en U y mueble bajo de la TV (la TV, en `TV`)
   { at: [-1.82, 1.61], size: [0.82, 0.8, 3.8], tone: "sofa" },
   { at: [-1.33, -0.08], size: [1.8, 0.8, 0.76], tone: "sofa" },
   { at: [-1.33, 3.13], size: [1.8, 0.8, 0.76], tone: "sofa" },
   { at: [1.03, 1.15], size: [0.3, 0.5, 4.4], tone: "dark" },
-  { at: [1.15, 1.15], size: [0.05, 0.8, 1.45], tone: "dark", lift: 1.0 },
   // Lavadero (las baterías y el inversor, en la parte norte, van en `ENERGY`)
   { at: [-6.35, -2.35], size: [0.6, 0.9, 1.6], tone: "light" },
-  // Oficina 1
-  { at: [-2.6, -5.2], size: [1.6, 0.75, 0.7], tone: "light" },
-  { at: [-1.6, -4.05], size: [0.45, 2.2, 3.2], tone: "dark" },
-  // Oficina 2
-  { at: [-0.12, -5.2], size: [2.0, 0.75, 0.7], tone: "light" },
-  { at: [0.73, -4.05], size: [0.38, 2.2, 3.2], tone: "dark" },
+  // Oficina 1: escritorio contra la pared oeste con su pantalla, armario de madera oscura
+  { at: [-3.44, -4.2], size: [0.7, 0.75, 1.6], tone: "light" },
+  { at: [-3.66, -4.2], size: [0.04, 0.42, 0.72], tone: "screen", lift: 0.86 },
+  { at: [-3.64, -4.2], size: [0.06, 0.12, 0.06], tone: "screen", lift: 0.75 },
+  { at: [-1.6, -4.05], size: [0.45, 2.2, 3.2], tone: "darkwood" },
+  // Oficina 2: escritorio contra la pared oeste con su pantalla, armario blanco
+  { at: [-0.92, -4.2], size: [0.7, 0.75, 2.0], tone: "light" },
+  { at: [-1.14, -4.2], size: [0.04, 0.42, 0.72], tone: "screen", lift: 0.86 },
+  { at: [-1.12, -4.2], size: [0.06, 0.12, 0.06], tone: "screen", lift: 0.75 },
+  { at: [0.73, -4.05], size: [0.38, 2.2, 3.2], tone: "white" },
   // Baño 2
   { at: [1.5, -2.95], size: [0.6, 0.85, 0.9], tone: "light" },
   { at: [1.45, -4.1], size: [0.4, 0.45, 0.6], tone: "light" },
@@ -381,9 +403,11 @@ export const FURNITURE: Furniture[] = [
   // Dormitorio 1
   { at: [4.16, 3.13], size: [1.8, 0.5, 1.85], tone: "light" },
   { at: [4.16, 2.36], size: [2.5, 0.9, 0.3], tone: "dark" },
-  // Baño 1
+  // Baño 1: ducha al norte (plato y mampara) con salida al exterior, lavabo en la pared este, WC al sur
+  { at: [6.81, 2.7], size: [1.7, 0.05, 0.95], tone: "white" },
+  { at: [6.5, 3.18], size: [1.1, 2.0, 0.02], tone: "glass" },
   { at: [7.35, 4.0], size: [0.45, 0.85, 1.4], tone: "light" },
-  { at: [7.35, 2.6], size: [0.6, 0.45, 0.4], tone: "light" },
+  { at: [6.55, 5.35], size: [0.4, 0.45, 0.6], tone: "white" },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -420,7 +444,8 @@ export interface Gate {
 
 /**
  * Puertas correderas de los vehículos, una por coche. Ambas corren hacia la derecha por carriles
- * paralelos: la 2 se esconde tras la valla y la 1 pasa por delante del hueco de la 2.
+ * paralelos: la 1 (la más al oeste) va por el carril de dentro y pasa por detrás del hueco de la 2;
+ * la 2 corre por el de fuera y se esconde junto a la valla.
  */
 export const GATES: Gate[] = [
   {
@@ -428,16 +453,22 @@ export const GATES: Gate[] = [
     from: streetAt(-11.75),
     to: streetAt(-8.8),
     slide: 2.95,
-    track: 0.12,
+    track: 0.26,
   },
   {
     entity: "binary_sensor.sensor_puerta_garaje_2_contact",
     from: streetAt(-8.8),
     to: streetAt(-5.95),
     slide: 2.85,
-    track: 0.26,
+    track: 0.12,
   },
 ];
+
+/** Puerta peatonal, 1 m al este de las de los vehículos (todavía sin sensor). */
+export const PEDESTRIAN_GATE: { from: Point; to: Point } = {
+  from: streetAt(-4.95),
+  to: streetAt(-3.95),
+};
 
 /** Lámina de agua de la piscina (8 × 3 m) y su profundidad */
 export const POOL: { rect: Rect; depth: number } = { rect: [-5.24, 9.77, 2.74, 12.79], depth: 1.4 };
@@ -491,4 +522,16 @@ export const ENERGY = {
     /** Intercambio con la red (kW) */
     grid: "sensor.david_lopez_perez_grid_power",
   },
+};
+
+/** TV del salón (85"), colgada en la pared este mirando al oeste. */
+export const TV = {
+  entity: "media_player.salon_tv_samsung_salon_85",
+  /** Centro en planta, junto a la pared */
+  at: [1.16, 1.15] as Point,
+  /** 85" en 16:9 */
+  width: 1.88,
+  height: 1.06,
+  /** Altura del borde inferior */
+  lift: 0.95,
 };

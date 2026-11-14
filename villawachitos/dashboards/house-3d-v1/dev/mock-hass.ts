@@ -1,5 +1,5 @@
 import type { HassEntity, HomeAssistant } from "../src/types";
-import { ENERGY, GATES, LAMPS, PUMP, WALLS } from "../src/scene/plan";
+import { ENERGY, GATES, LAMPS, PUMP, TV, WALLS } from "../src/scene/plan";
 
 /**
  * `hass` simulado: usa las entidades del plano, enciende algunas luces al azar
@@ -60,6 +60,14 @@ export function createMockHass(getDarkMode: () => boolean, onUpdate: (hass: Home
   };
   for (const [id, v] of Object.entries(solar)) states[id] = entity(id, v);
   states[PUMP.power] = entity(PUMP.power, "742", { unit_of_measurement: "W" });
+
+  states[TV.entity] = entity(TV.entity, "off", {
+    friendly_name: "TV Samsung Salón 85",
+    device_class: "tv",
+    supported_features: 24381,
+    source_list: ["TV", "HDMI"],
+  });
+  states["remote.salon_tv_samsung_salon_85"] = entity("remote.salon_tv_samsung_salon_85", "off");
 
   for (const g of GATES) states[g.entity] = entity(g.entity, Math.random() < 0.5 ? "on" : "off");
   states["light.luz_piscina"] = entity("light.luz_piscina", "on", {
@@ -148,6 +156,24 @@ function mockService(
         a.rgb_color = [255, 255, 255];
       }
       if (typeof data.effect === "string") a.effect = data.effect;
+    }
+  }
+  if (domain === "remote" && service === "turn_on" && states[TV.entity]) {
+    states[TV.entity] = entity(TV.entity, "on", {
+      ...states[TV.entity].attributes,
+      source: "TV",
+      volume_level: 0.18,
+    });
+  }
+  if (domain === "media_player") {
+    if (service === "turn_off") state = "off";
+    if (service === "turn_on") state = "on";
+    if (service === "volume_set") a.volume_level = data.volume_level;
+    if (service === "volume_mute") a.is_volume_muted = data.is_volume_muted;
+    if (service === "select_source") a.source = data.source;
+    if (service === "volume_up" || service === "volume_down") {
+      const v = typeof a.volume_level === "number" ? a.volume_level : 0.2;
+      a.volume_level = Math.min(1, Math.max(0, v + (service === "volume_up" ? 0.02 : -0.02)));
     }
   }
   if (domain === "switch") {

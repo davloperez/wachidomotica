@@ -60,6 +60,8 @@ import {
   PORCH,
   PUMP,
   ENERGY,
+  PEDESTRIAN_GATE,
+  TV,
   ROOMS,
   WALLS,
   WALL_HEIGHT,
@@ -192,7 +194,7 @@ interface ShutterRuntime {
 
 /** Elemento accionable que se ha tocado en el plano. */
 export interface ScenePick {
-  kind: "light" | "cover" | "switch";
+  kind: "light" | "cover" | "switch" | "media";
   entity: string;
 }
 
@@ -239,6 +241,17 @@ export class HouseScene {
     label: HTMLDivElement;
     html: string;
     producing: boolean | undefined;
+  };
+  private tv!: {
+    on: boolean | undefined;
+    screen: Mesh<PlaneGeometry, Material>;
+    offMaterial: MeshStandardMaterial;
+    onMaterial: MeshBasicMaterial;
+    ctx: CanvasRenderingContext2D;
+    texture: CanvasTexture;
+    light: PointLight;
+    title: string;
+    lastDraw: number;
   };
   private pump!: {
     on: boolean | undefined;
@@ -477,7 +490,8 @@ export class HouseScene {
       });
     }
     const block = (x: number, z: number, y0: number, [w, h, d]: [number, number, number], tone: string) => {
-      const mesh = new Mesh(new BoxGeometry(w, h, d), this.furnitureMaterials[tone]);
+      const material = tone === "glass" ? this.glassMaterial : this.furnitureMaterials[tone];
+      const mesh = new Mesh(new BoxGeometry(w, h, d), material);
       mesh.position.set(x, y0 + h / 2, z);
       mesh.castShadow = true;
       mesh.receiveShadow = true;
@@ -492,6 +506,7 @@ export class HouseScene {
     }
 
     this.buildEnergy();
+    this.buildTv();
 
     // Luminarias
     const glowTexture = makeGlowTexture();
@@ -569,8 +584,11 @@ export class HouseScene {
       s.add(mesh);
       return mesh;
     };
+    // Tras las puertas de los vehículos: valla, puerta peatonal y valla hasta la esquina
     const lastGate = GATES[GATES.length - 1];
-    panel(lastGate.to, PLOT[1], 0.08);
+    panel(lastGate.to, PEDESTRIAN_GATE.from, 0.08);
+    panel(PEDESTRIAN_GATE.to, PLOT[1], 0.08);
+    this.buildPedestrianGate(panel);
     for (let i = 1; i < PLOT.length; i++) panel(PLOT[i], PLOT[(i + 1) % PLOT.length], 0.08);
 
     // Puertas correderas: cada una en su carril, desplazado hacia dentro de la parcela
@@ -585,15 +603,141 @@ export class HouseScene {
       mesh.position.copy(closed);
       this.gates.push({ def, mesh, closed, dir, current: 0, target: 0 });
     }
+  }
 
-    // Rosa de los vientos: etiqueta "N" en la dirección del norte real
-    const north = (NORTH_ANGLE * Math.PI) / 180;
-    const el = document.createElement("div");
-    el.className = "compass";
-    el.textContent = "N";
-    const label = new CSS2DObject(el);
-    label.position.set(PLOT_CENTER.x + Math.sin(north) * 14.5, 0.1, PLOT_CENTER.z - Math.cos(north) * 14.5);
-    s.add(label);
+  /** Puerta peatonal: hoja de lamas entre dos postes, con tirador (sin sensor por ahora). */
+  private buildPedestrianGate(panel: (from: Point, to: Point, thickness: number) => Mesh): void {
+    const { from, to } = PEDESTRIAN_GATE;
+    const dx = to[0] - from[0];
+    const dz = to[1] - from[1];
+    const length = Math.hypot(dx, dz);
+    const ux = dx / length;
+    const uz = dz / length;
+    // La hoja deja 5 cm a cada lado para los postes
+    const leaf = panel(
+      [from[0] + ux * 0.05, from[1] + uz * 0.05],
+      [to[0] - ux * 0.05, to[1] - uz * 0.05],
+      0.05,
+    );
+    leaf.scale.y = 0.97;
+    leaf.position.y = (FENCE_HEIGHT * 0.97) / 2;
+    const post = (p: Point) => {
+      const m = new Mesh(new BoxGeometry(0.08, FENCE_HEIGHT + 0.08, 0.08), this.frameMaterial);
+      m.position.set(p[0], (FENCE_HEIGHT + 0.08) / 2, p[1]);
+      m.rotation.y = -Math.atan2(dz, dx);
+      m.castShadow = true;
+      this.scene.add(m);
+    };
+    post(from);
+    post(to);
+    // Tirador hacia dentro de la parcela
+    const handle = new Mesh(
+      new BoxGeometry(0.03, 0.18, 0.05),
+      new MeshStandardMaterial({ color: 0xa7adb5, metalness: 0.7, roughness: 0.3 }),
+    );
+    handle.position.set(to[0] - ux * 0.15 - uz * 0.06, 1.05, to[1] - uz * 0.15 + ux * 0.06);
+    handle.rotation.y = -Math.atan2(dz, dx);
+    this.scene.add(handle);
+  }
+
+  /** TV de 85" en la pared este del salón: pantalla animada cuando está encendida y accionable. */
+  private buildTv(): void {
+    const { width: w, height: h, lift } = TV;
+    const [x, z] = TV.at;
+    const y = lift + h / 2;
+    const body = new Mesh(new BoxGeometry(0.04, h + 0.03, w + 0.03), this.frameMaterial);
+    body.position.set(x, y, z);
+    body.castShadow = true;
+    this.scene.add(body);
+
+    const canvas = document.createElement("canvas");
+    canvas.width = 384;
+    canvas.height = 216;
+    const texture = new CanvasTexture(canvas);
+    texture.colorSpace = SRGBColorSpace;
+    const offMaterial = new MeshStandardMaterial({ color: 0x06070a, roughness: 0.15, metalness: 0.6 });
+    const onMaterial = new MeshBasicMaterial({ map: texture, toneMapped: false });
+    const screen = new Mesh<PlaneGeometry, Material>(new PlaneGeometry(w, h), offMaterial);
+    // El plano mira a +Z; girado -90° mira al oeste, hacia el sofá.
+    screen.rotation.y = -Math.PI / 2;
+    screen.position.set(x - 0.022, y, z);
+    this.scene.add(screen);
+
+    // Reflejo de la pantalla en el salón
+    const light = new PointLight(0x8fb4ff, 0, 5.5, 2);
+    light.position.set(x - 0.6, y, z);
+    light.visible = false;
+    this.scene.add(light);
+
+    this.tv = {
+      on: undefined,
+      screen,
+      offMaterial,
+      onMaterial,
+      ctx: canvas.getContext("2d")!,
+      texture,
+      light,
+      title: "",
+      lastDraw: 0,
+    };
+    const hit = this.addHitTarget(new BoxGeometry(0.3, h + 0.2, w + 0.2), "media", TV.entity);
+    hit.position.set(x - 0.1, y, z);
+  }
+
+  /** Imagen esquemática en pantalla: fondo de color en movimiento, ondas, ecualizador y título. */
+  private drawTv(time: number): void {
+    const { ctx, title } = this.tv;
+    const W = ctx.canvas.width;
+    const H = ctx.canvas.height;
+    const hue = (time * 18) % 360;
+    const bg = ctx.createLinearGradient(0, 0, W, H);
+    bg.addColorStop(0, `hsl(${hue} 70% 22%)`);
+    bg.addColorStop(1, `hsl(${(hue + 70) % 360} 75% 12%)`);
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, W, H);
+    // Ondas
+    for (let k = 0; k < 3; k++) {
+      ctx.beginPath();
+      for (let x = 0; x <= W; x += 6) {
+        const yy = H * 0.5 + Math.sin(x / (38 + k * 14) + time * (1.4 + k * 0.5)) * (16 + k * 9);
+        if (x === 0) ctx.moveTo(x, yy);
+        else ctx.lineTo(x, yy);
+      }
+      ctx.strokeStyle = `hsla(${(hue + 40 * k + 180) % 360} 90% 70% / ${0.55 - k * 0.12})`;
+      ctx.lineWidth = 3;
+      ctx.stroke();
+    }
+    // Ecualizador
+    const bars = 24;
+    const bw = W / bars;
+    for (let i = 0; i < bars; i++) {
+      const v = 0.25 + 0.75 * Math.abs(Math.sin(time * 3.1 + i * 0.7) * Math.cos(time * 1.7 + i * 0.31));
+      ctx.fillStyle = `hsla(${(hue + i * 6) % 360} 95% 65% / 0.75)`;
+      ctx.fillRect(i * bw + 2, H - v * H * 0.28 - 8, bw - 4, v * H * 0.28);
+    }
+    // Título del contenido o fuente
+    ctx.fillStyle = "rgba(0,0,0,0.35)";
+    ctx.fillRect(0, 0, W, 34);
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "600 18px system-ui, sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.fillText(`▶ ${title}`.slice(0, 34), 12, 17);
+    this.tv.texture.needsUpdate = true;
+  }
+
+  private updateTv(hass: HomeAssistant, changed: Vector3[]): void {
+    const st = hass.states[TV.entity];
+    const on = !!st && !["off", "unavailable", "unknown", "standby"].includes(st.state);
+    const a = st?.attributes ?? {};
+    this.tv.title = String(a.media_title ?? a.app_name ?? a.source ?? "TV");
+    if (on === this.tv.on) return;
+    if (this.tv.on !== undefined) changed.push(new Vector3(TV.at[0], TV.lift + TV.height / 2, TV.at[1]));
+    this.tv.on = on;
+    this.tv.screen.material = on ? this.tv.onMaterial : this.tv.offMaterial;
+    this.tv.light.visible = on;
+    this.tv.light.intensity = on ? 5 : 0;
+    if (on) this.drawTv(this.clock.elapsedTime);
+    this.dirty = true;
   }
 
   /** Baterías e inversor en el lavadero, con un indicador de nivel de carga y los datos solares. */
@@ -789,6 +933,14 @@ export class HouseScene {
         sp.scale.set(e.size[0] * grow, e.size[1] * grow, 1);
         sp.material.opacity = 0.7 * e.strength * (1 - phase) * (1 - phase);
       });
+    }
+    // La pantalla de la TV se redibuja a ~12 fps (suficiente para una animación esquemática)
+    if (this.tv.on) {
+      any = true;
+      if (time - this.tv.lastDraw > 1 / 12) {
+        this.tv.lastDraw = time;
+        this.drawTv(time);
+      }
     }
     for (const l of this.lamps) {
       if (!l.on) continue;
@@ -1055,6 +1207,7 @@ export class HouseScene {
     }
 
     this.updateEnergy(hass);
+    this.updateTv(hass, changed);
 
     const pumpState = hass.states[PUMP.entity];
     const pumpOn = pumpState?.state === "on";
