@@ -1,0 +1,37 @@
+{
+  "name": "functional-v1",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Functional v1 — panel de pared con vista general de la casa y detalle por estancia (Home Assistant).",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build && node ../shared/scripts/check-bundle.mjs",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "deploy": "npm run build && node ../shared/scripts/deploy.mjs",
+    "deploy:only": "node ../shared/scripts/deploy.mjs"
+  },
+  "dependencies": {
+    "@fontsource-variable/fraunces": "^5.2.0",
+    "@fontsource-variable/manrope": "^5.2.0",
+    "@mdi/js": "^7.4.47",
+    "lit": "^3.3.3"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^26.6.6",
+    "eslint": "^10.15.0",
+    "eslint-plugin-lit": "^2.3.1",
+    "globals": "^17.14.0",
+    "home-assistant-js-websocket": "^9.8.1",
+    "prettier": "^3.10.1",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.72.2",
+    "vite": "^8.3.8"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

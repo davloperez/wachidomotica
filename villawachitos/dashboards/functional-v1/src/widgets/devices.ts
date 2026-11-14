@@ -1,0 +1,832 @@
+import { LitElement, css, html, nothing, type PropertyValues, type TemplateResult } from "lit";
+import { customElement, property, state } from "lit/decorators.js";
+import {
+  mdiAirConditioner,
+  mdiAirFilter,
+  mdiCameraOutline,
+  mdiCat,
+  mdiDishwasher,
+  mdiDotsHorizontal,
+  mdiFridgeOutline,
+  mdiGate,
+  mdiHeatingCoil,
+  mdiHomeImportOutline,
+  mdiLockOpenVariantOutline,
+  mdiLockOutline,
+  mdiMinus,
+  mdiMotionSensor,
+  mdiPause,
+  mdiPlay,
+  mdiPlus,
+  mdiPot,
+  mdiPower,
+  mdiPowerPlugOutline,
+  mdiPump,
+  mdiRobotVacuum,
+  mdiSolarPowerVariant,
+  mdiTelevision,
+  mdiVolumeHigh,
+  mdiVolumeMinus,
+  mdiVolumeOff,
+  mdiVolumePlus,
+  mdiWashingMachine,
+} from "@mdi/js";
+import type { HomeAssistant } from "../types";
+import { shared } from "../styles/tokens";
+import { HVAC_ES, call, fmt, icon, isOn, isUnavailable, moreInfo, num, relTime, st } from "../lib/ha";
+import { hourlyMeans, type Point } from "../lib/data";
+import { ENERGY, FRIDGE, type DeviceDef } from "../house/rooms";
+import "../charts/charts";
+
+const ICONS: Record<DeviceDef["type"], string> = {
+  hvac: mdiAirConditioner,
+  tv: mdiTelevision,
+  vacuum: mdiRobotVacuum,
+  fridge: mdiFridgeOutline,
+  dishwasher: mdiDishwasher,
+  airfryer: mdiPot,
+  washer: mdiWashingMachine,
+  litter: mdiCat,
+  towel: mdiHeatingCoil,
+  switch: mdiPowerPlugOutline,
+  pump: mdiPump,
+  energy: mdiSolarPowerVariant,
+  gates: mdiGate,
+  lock: mdiLockOutline,
+  cameras: mdiCameraOutline,
+  presence: mdiMotionSensor,
+};
+
+const MEDIA_OFF = ["off", "standby", "unavailable", "unknown"];
+const VACUUM_ES: Record<string, string> = {
+  docked: "En la base",
+  cleaning: "Limpiando",
+  returning: "Volviendo a la base",
+  paused: "En pausa",
+  idle: "En reposo",
+  error: "Error",
+};
+const DISH_ES: Record<string, string> = {
+  ready: "Listo",
+  run: "Lavando",
+  finished: "Terminado",
+  delayedstart: "Inicio diferido",
+  pause: "En pausa",
+  inactive: "Apagado",
+  actionrequired: "Requiere atención",
+  aborting: "Cancelando",
+  unavailable: "Sin conexión",
+};
+
+/** Tarjeta de un dispositivo de la estancia; el contenido depende del tipo. */
+@customElement("fv1-device")
+export class DeviceCard extends LitElement {
+  @property({ attribute: false }) hass?: HomeAssistant;
+  @property({ attribute: false }) def?: DeviceDef;
+  @state() private series: Record<string, Point[]> = {};
+  @state() private armed?: string;
+  @state() private hvacDraft?: number;
+  private armTimer = 0;
+  private loadTimer = 0;
+
+  connectedCallback(): void {
+    super.connectedCallback();
+    this.loadTimer = window.setInterval(() => this.load(), 5 * 60_000);
+  }
+
+  disconnectedCallback(): void {
+    super.disconnectedCallback();
+    window.clearInterval(this.loadTimer);
+    window.clearTimeout(this.armTimer);
+  }
+
+  protected willUpdate(changed: PropertyValues<this>): void {
+    if (changed.has("def") || (changed.has("hass") && !changed.get("hass") && this.hass)) this.load();
+    if (changed.has("hass") && this.hvacDraft !== undefined && this.def?.type === "hvac") {
+      const prev = (changed.get("hass") as HomeAssistant | undefined)?.states[this.def.entity];
+      if (prev?.attributes.temperature !== this.hass?.states[this.def.entity]?.attributes.temperature)
+        this.hvacDraft = undefined;
+    }
+  }
+
+  /** Series de 24 h para las tarjetas con gráfica. */
+  private async load(): Promise<void> {
+    const d = this.def;
+    if (!this.hass || !d) return;
+    const ids =
+      d.type === "fridge"
+        ? [FRIDGE.sensors.fridge, FRIDGE.sensors.freezer]
+        : d.type === "pump"
+          ? [d.power]
+          : d.type === "energy"
+            ? [ENERGY.sensors.soc, ENERGY.sensors.pv]
+            : [];
+    if (!ids.length) return;
+    try {
+      this.series = await hourlyMeans(this.hass, ids, 24);
+    } catch (err) {
+      console.warn("[functional-v1] estadísticas", err);
+    }
+  }
+
+  /** Acción con confirmación: el primer toque arma el botón 4 s, el segundo la ejecuta. */
+  private confirm(key: string, action: () => void): void {
+    if (this.armed === key) {
+      this.armed = undefined;
+      action();
+      return;
+    }
+    this.armed = key;
+    window.clearTimeout(this.armTimer);
+    this.armTimer = window.setTimeout(() => (this.armed = undefined), 4000);
+  }
+
+  render() {
+    const d = this.def;
+    if (!d) return nothing;
+    const { status, body, entity, active } = this.content(d);
+    return html`
+      <section class="card ${active ? "active" : ""}">
+        <header class="card-head">
+          <span class="ico">${icon(ICONS[d.type])}</span>
+          <div class="grow ttl">
+            <b>${d.name}</b>
+            ${status ? html`<span>${status}</span>` : nothing}
+          </div>
+          ${
+            entity
+              ? html`<button class="dots" title="Más información" @click=${() => moreInfo(this, entity)}>
+                  ${icon(mdiDotsHorizontal)}
+                </button>`
+              : nothing
+          }
+        </header>
+        ${body}
+      </section>
+    `;
+  }
+
+  private content(d: DeviceDef): {
+    status?: string;
+    body: TemplateResult | typeof nothing;
+    entity?: string;
+    active?: boolean;
+  } {
+    const h = this.hass;
+    switch (d.type) {
+      case "hvac":
+        return this.hvac(d.entity);
+      case "tv":
+        return this.tv(d.entity);
+      case "vacuum": {
+        const e = st(h, d.entity);
+        const bat = num(h, d.battery);
+        const cleaning = e?.state === "cleaning";
+        return {
+          entity: d.entity,
+          active: cleaning,
+          status: `${VACUUM_ES[e?.state ?? ""] ?? e?.state ?? "—"}${bat !== undefined ? ` · ${bat} %` : ""}`,
+          body: html`<div class="actions">
+            <button
+              class="btn ${cleaning ? "" : "primary"}"
+              @click=${() => call(h, "vacuum", cleaning ? "pause" : "start", { entity_id: d.entity })}
+            >
+              ${icon(cleaning ? mdiPause : mdiPlay)} ${cleaning ? "Pausar" : "Limpiar"}
+            </button>
+            <button class="btn" @click=${() => call(h, "vacuum", "return_to_base", { entity_id: d.entity })}>
+              ${icon(mdiHomeImportOutline)} A la base
+            </button>
+          </div>`,
+        };
+      }
+      case "fridge": {
+        const s = FRIDGE.sensors;
+        const open = isOn(h, s.door);
+        return {
+          entity: s.fridge,
+          active: open,
+          status: open ? "¡Puerta abierta!" : "Puerta cerrada",
+          body: html`
+            <div class="stats">
+              ${this.stat("Frigorífico", `${fmt(num(h, s.fridge), 0)}°`, `objetivo ${fmt(num(h, s.fridgeTarget), 0)}°`, "var(--sky)")}
+              ${this.stat("Congelador", `${fmt(num(h, s.freezer), 0)}°`, `objetivo ${fmt(num(h, s.freezerTarget), 0)}°`, "var(--lilac)")}
+            </div>
+            <fv1-area-chart
+              .height=${80}
+              .digits=${0}
+              .series=${[
+                { data: this.series[s.fridge] ?? [], color: "var(--sky)", unit: "°", own: true },
+                { data: this.series[s.freezer] ?? [], color: "var(--lilac)", unit: "°", own: true },
+              ]}
+            ></fv1-area-chart>
+          `,
+        };
+      }
+      case "dishwasher": {
+        const state = st(h, d.state)?.state ?? "unavailable";
+        const progress = num(h, d.progress);
+        const end = st(h, d.end)?.state;
+        const running = state.toLowerCase() === "run";
+        const warn = [
+          st(h, d.salt)?.state === "on" || st(h, d.salt)?.state === "present" ? "Sal" : "",
+          st(h, d.rinse)?.state === "on" || st(h, d.rinse)?.state === "present" ? "Abrillantador" : "",
+        ].filter(Boolean);
+        return {
+          entity: d.state,
+          active: running,
+          status: DISH_ES[state.toLowerCase()] ?? state,
+          body: html`
+            ${running && progress !== undefined ? this.bar(progress, "var(--sky)", `${progress} %`) : nothing}
+            <div class="chips">
+              <span class="pill"
+                >${st(h, d.door)?.state === "open" ? "Puerta abierta" : "Puerta cerrada"}</span
+              >
+              ${end && !isUnavailable(st(h, d.end)) ? html`<span class="pill info">Termina ${new Date(end).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}</span>` : nothing}
+              ${warn.map((w) => html`<span class="pill warn">Falta ${w.toLowerCase()}</span>`)}
+            </div>
+          `,
+        };
+      }
+      case "airfryer": {
+        const status = st(h, d.status)?.state ?? "—";
+        const t = num(h, d.temperature);
+        const rem = num(h, d.remaining);
+        const cooking = !!rem && rem > 0;
+        return {
+          entity: d.status,
+          active: cooking,
+          status: cooking ? `Cocinando · quedan ${rem} min` : status === "bereit" ? "Lista" : status,
+          body: html`<div class="stats">
+            ${this.stat("Temperatura", `${fmt(t, 0)}°`, "interior")}${this.stat("Restante", `${fmt(rem, 0)}`, "minutos")}
+          </div>`,
+        };
+      }
+      case "washer": {
+        const p = num(h, d.power) ?? 0;
+        const on = isOn(h, d.entity);
+        const running = p > 5;
+        return {
+          entity: d.entity,
+          active: running,
+          status: running ? `Lavando · ${fmt(p, 0)} W` : on ? "En espera" : "Enchufe apagado",
+          body: html`<div class="line-ctl">
+            <span class="muted">Enchufe</span>
+            <button
+              class="toggle ${on ? "on" : ""}"
+              @click=${() => call(h, "switch", "toggle", { entity_id: d.entity })}
+            ></button>
+          </div>`,
+        };
+      }
+      case "litter": {
+        const visits = num(h, d.visits);
+        const sand = num(h, d.sand);
+        const alerts = [
+          isOn(h, d.clean) ? "Necesita limpieza" : "",
+          isOn(h, d.full) ? "Cubo lleno" : "",
+        ].filter(Boolean);
+        return {
+          entity: d.status,
+          status: st(h, d.status)?.state === "idle" ? "En reposo" : st(h, d.status)?.state,
+          body: html`
+            <div class="stats">
+              ${this.stat("Visitas hoy", fmt(visits, 0), "")}${this.stat("Arena", `${fmt(sand, 0)} %`, "")}
+            </div>
+            ${alerts.length ? html`<div class="chips">${alerts.map((a) => html`<span class="pill warn">${a}</span>`)}</div>` : nothing}
+          `,
+        };
+      }
+      case "towel": {
+        const on = isOn(h, d.entity);
+        const mode = st(h, d.mode);
+        const opts = (mode?.attributes.options as string[] | undefined) ?? [];
+        return {
+          entity: d.entity,
+          active: on,
+          status: on ? "Calentando" : "Apagado",
+          body: html`
+            <div class="line-ctl">
+              <span class="muted">Encendido</span>
+              <button
+                class="toggle amber ${on ? "on" : ""}"
+                @click=${() => call(h, "switch", "toggle", { entity_id: d.entity })}
+              ></button>
+            </div>
+            ${
+              opts.length
+                ? html`<div class="seg">
+                    ${opts.map(
+                      (o) =>
+                        html`<button
+                          class=${mode?.state === o ? "on" : ""}
+                          @click=${() => call(h, "input_select", "select_option", { entity_id: d.mode, option: o })}
+                        >
+                          ${o.replace("Automático ", "Auto ")}
+                        </button>`,
+                    )}
+                  </div>`
+                : nothing
+            }
+          `,
+        };
+      }
+      case "switch": {
+        const on = isOn(h, d.entity);
+        const p = num(h, d.power);
+        return {
+          entity: d.entity,
+          active: on,
+          status: `${on ? "Encendido" : "Apagado"}${p !== undefined ? ` · ${fmt(p, 0)} W` : ""}`,
+          body: html`<div class="line-ctl">
+            <span class="muted">${isUnavailable(st(h, d.entity)) ? "Sin conexión" : "Encendido"}</span>
+            <button
+              class="toggle ${on ? "on" : ""}"
+              @click=${() => call(h, "switch", "toggle", { entity_id: d.entity })}
+            ></button>
+          </div>`,
+        };
+      }
+      case "pump": {
+        const on = isOn(h, d.entity);
+        const p = num(h, d.power);
+        return {
+          entity: d.entity,
+          active: on,
+          status: on ? `Filtrando · ${fmt(p, 0)} W` : "Parada",
+          body: html`
+            <div class="line-ctl">
+              <span class="muted">Depuradora</span>
+              <button
+                class="toggle ${on ? "on" : ""}"
+                @click=${() => call(h, "switch", "toggle", { entity_id: d.entity })}
+              ></button>
+            </div>
+            <fv1-area-chart
+              .height=${70}
+              .digits=${0}
+              .series=${[{ data: this.series[d.power] ?? [], color: "var(--sky)", unit: " W" }]}
+            ></fv1-area-chart>
+          `,
+        };
+      }
+      case "energy":
+        return this.energy();
+      case "gates": {
+        const open = d.gates.filter((g) => isOn(h, g.entity));
+        return {
+          active: open.length > 0,
+          status: open.length ? `${open.length} abierta${open.length > 1 ? "s" : ""}` : "Todas cerradas",
+          body: html`<div class="list">
+            ${d.gates.map((g) => {
+              const e = st(h, g.entity);
+              const o = e?.state === "on";
+              return html`<div class="li">
+                <span class="dot ${o ? "warn" : "ok"}"></span><b>${g.name}</b>
+                <span class="muted"
+                  >${isUnavailable(e) ? "Sin sensor" : o ? "Abierta" : "Cerrada"} ·
+                  ${relTime(e?.last_changed)}</span
+                >
+              </div>`;
+            })}
+          </div>`,
+        };
+      }
+      case "lock": {
+        const e = st(h, d.entity);
+        const locked = e?.state === "locked";
+        return {
+          entity: d.entity,
+          status: isUnavailable(e) ? "Sin conexión" : locked ? "Cerrada" : "Abierta",
+          body: html`<button
+            class="btn ${this.armed === "lock" ? "armed" : "primary"} wide"
+            @click=${() => this.confirm("lock", () => call(h, "lock", "unlock", { entity_id: d.entity }))}
+          >
+            ${icon(mdiLockOpenVariantOutline)}
+            ${this.armed === "lock" ? "Toca otra vez para abrir" : "Abrir la puerta de la calle"}
+          </button>`,
+        };
+      }
+      case "cameras": {
+        const busy = d.cameras.filter((c) => isOn(h, c.motion) || isOn(h, c.person));
+        return {
+          active: busy.length > 0,
+          status: busy.length ? `Movimiento en ${busy.length}` : "Sin movimiento",
+          body: html`<div class="list">
+            ${d.cameras.map((c) => {
+              const person = isOn(h, c.person);
+              const motion = isOn(h, c.motion);
+              return html`<div class="li">
+                <span class="dot ${person ? "bad" : motion ? "warn" : "ok"}"></span><b>${c.name}</b>
+                <span class="muted"
+                  >${person ? "Persona" : motion ? "Movimiento" : "Tranquilo"} ·
+                  ${relTime(st(h, c.motion)?.last_changed)}</span
+                >
+              </div>`;
+            })}
+          </div>`,
+        };
+      }
+      case "presence": {
+        const occ = st(h, d.occupancy);
+        const lux = num(h, d.illuminance);
+        const present = occ?.state === "on";
+        return {
+          entity: d.occupancy,
+          active: present,
+          status: present ? "Hay alguien" : `Sin presencia${occ ? ` · ${relTime(occ.last_changed)}` : ""}`,
+          body:
+            lux !== undefined
+              ? html`<div class="stats">${this.stat("Luz ambiente", `${fmt(lux, 0)}`, "lux")}</div>`
+              : nothing,
+        };
+      }
+    }
+  }
+
+  private hvac(entity: string) {
+    const h = this.hass;
+    const e = st(h, entity);
+    const a = e?.attributes ?? {};
+    const mode = e?.state ?? "off";
+    const target = this.hvacDraft ?? (a.temperature as number | undefined) ?? 24;
+    const cur = a.current_temperature as number | undefined;
+    const min = (a.min_temp as number | undefined) ?? 15;
+    const max = (a.max_temp as number | undefined) ?? 32;
+    const modes = (a.hvac_modes as string[] | undefined) ?? [];
+    const fans = (a.fan_modes as string[] | undefined) ?? [];
+    const on = mode !== "off";
+    const color = mode === "heat" ? "var(--terracotta)" : mode === "cool" ? "var(--sky)" : "var(--sage)";
+    const set = (t: number) => {
+      const v = Math.max(min, Math.min(max, t));
+      this.hvacDraft = v;
+      call(h, "climate", "set_temperature", { entity_id: entity, temperature: v });
+    };
+    const FAN_ES: Record<string, string> = { auto: "Auto", low: "Bajo", medium: "Medio", high: "Alto" };
+    return {
+      entity,
+      active: on,
+      status: `${HVAC_ES[mode] ?? mode}${cur !== undefined ? ` · ${fmt(cur, 1)}° dentro` : ""}`,
+      body: html`
+        <div class="hvac">
+          <button class="round" title="Bajar" @click=${() => set(target - 1)}>${icon(mdiMinus)}</button>
+          <fv1-ring
+            .value=${((target - min) / (max - min)) * 100}
+            .size=${132}
+            .stroke=${11}
+            gauge
+            .color=${on ? color : "var(--text-faint)"}
+          >
+            <div class="ring-in">
+              <span class="faint">Objetivo</span>
+              <b class="big num">${fmt(target, 0)}°</b>
+              <span class="faint">${on ? (HVAC_ES[mode] ?? mode) : "Apagado"}</span>
+            </div>
+          </fv1-ring>
+          <button class="round" title="Subir" @click=${() => set(target + 1)}>${icon(mdiPlus)}</button>
+        </div>
+        <div class="seg">
+          ${modes.map(
+            (m) =>
+              html`<button
+                class=${m === mode ? "on" : ""}
+                @click=${() => call(h, "climate", "set_hvac_mode", { entity_id: entity, hvac_mode: m })}
+              >
+                ${m === "off" ? icon(mdiPower) : (HVAC_ES[m] ?? m)}
+              </button>`,
+          )}
+        </div>
+        ${
+          fans.length
+            ? html`<div class="seg">
+                ${fans.map(
+                  (f) =>
+                    html`<button
+                      class=${f === a.fan_mode ? "on" : ""}
+                      @click=${() => call(h, "climate", "set_fan_mode", { entity_id: entity, fan_mode: f })}
+                    >
+                      ${icon(mdiAirFilter)} ${FAN_ES[f] ?? f}
+                    </button>`,
+                )}
+              </div>`
+            : nothing
+        }
+      `,
+    };
+  }
+
+  private tv(entity: string) {
+    const h = this.hass;
+    const e = st(h, entity);
+    const on = !!e && !MEDIA_OFF.includes(e.state);
+    const a = e?.attributes ?? {};
+    const vol = typeof a.volume_level === "number" ? Math.round(a.volume_level * 100) : undefined;
+    const sources = (a.source_list as string[] | undefined) ?? [];
+    const remote = `remote.${entity.split(".")[1]}`;
+    const power = () => {
+      if (on) call(h, "media_player", "turn_off", { entity_id: entity });
+      else if (h?.states[remote]) call(h, "remote", "turn_on", { entity_id: remote });
+      else call(h, "media_player", "turn_on", { entity_id: entity });
+    };
+    const what = (a.media_title ?? a.app_name ?? a.source) as string | undefined;
+    return {
+      entity,
+      active: on,
+      status: on ? `Encendida${what ? ` · ${what}` : ""}` : "Apagada",
+      body: html`
+        <div class="actions">
+          <button class="btn ${on ? "" : "primary"}" @click=${power}>
+            ${icon(mdiPower)} ${on ? "Apagar" : "Encender"}
+          </button>
+          ${
+            on
+              ? html`
+                  <button
+                    class="round"
+                    title="Bajar volumen"
+                    @click=${() => call(h, "media_player", "volume_down", { entity_id: entity })}
+                  >
+                    ${icon(mdiVolumeMinus)}
+                  </button>
+                  <span class="num vol">${vol ?? "—"}</span>
+                  <button
+                    class="round"
+                    title="Subir volumen"
+                    @click=${() => call(h, "media_player", "volume_up", { entity_id: entity })}
+                  >
+                    ${icon(mdiVolumePlus)}
+                  </button>
+                  <button
+                    class="round ${a.is_volume_muted ? "on" : ""}"
+                    title="Silencio"
+                    @click=${() => call(h, "media_player", "volume_mute", { entity_id: entity, is_volume_muted: !a.is_volume_muted })}
+                  >
+                    ${icon(a.is_volume_muted ? mdiVolumeOff : mdiVolumeHigh)}
+                  </button>
+                `
+              : nothing
+          }
+        </div>
+        ${
+          on && sources.length
+            ? html`<div class="chips">
+                ${sources
+                  .slice(0, 8)
+                  .map(
+                    (s) =>
+                      html`<button
+                        class="pill ${s === a.source ? "ok" : ""}"
+                        @click=${() => call(h, "media_player", "select_source", { entity_id: entity, source: s })}
+                      >
+                        ${s}
+                      </button>`,
+                  )}
+              </div>`
+            : nothing
+        }
+      `,
+    };
+  }
+
+  private energy() {
+    const h = this.hass;
+    const s = ENERGY.sensors;
+    const pv = num(h, s.pv) ?? 0;
+    const bat = num(h, s.battery) ?? 0;
+    const grid = num(h, s.grid) ?? 0;
+    const load = num(h, s.load) ?? 0;
+    const soc = num(h, s.soc) ?? 0;
+    const today = (id: string) => num(h, `sensor.david_lopez_perez_${id}`);
+    return {
+      entity: s.soc,
+      active: pv > 0.05,
+      status: pv > 0.05 ? `Produciendo ${fmt(pv, 2)} kW` : "Sin producción",
+      body: html`
+        <fv1-energy-flow .pv=${pv} .battery=${bat} .grid=${grid} .load=${load} .soc=${soc}></fv1-energy-flow>
+        <div class="stats four">
+          ${this.stat("Solar hoy", `${fmt(today("daily_pv_generation"), 1)}`, "kWh", "var(--amber)")}
+          ${this.stat("Consumo", `${fmt(today("home_consumption_today"), 1)}`, "kWh", "var(--terracotta)")}
+          ${this.stat("Vertido", `${fmt(today("grid_export_today"), 1)}`, "kWh", "var(--lilac)")}
+          ${this.stat("Comprado", `${fmt(today("grid_import_today"), 1)}`, "kWh", "var(--sky)")}
+        </div>
+        <span class="sub">Batería y producción · últimas 24 h</span>
+        <fv1-area-chart
+          .height=${90}
+          .digits=${0}
+          .series=${[
+            { data: this.series[s.soc] ?? [], color: "var(--sage)", unit: " %", own: true },
+            { data: this.series[s.pv] ?? [], color: "var(--amber)", unit: " kW", own: true },
+          ]}
+        ></fv1-area-chart>
+      `,
+    };
+  }
+
+  private stat(label: string, value: string, sub: string, color?: string) {
+    return html`<div class="stat" style=${color ? `--c:${color}` : ""}>
+      <span class="lbl">${color ? html`<i></i>` : nothing}${label}</span>
+      <b class="num">${value}</b>
+      ${sub ? html`<span class="faint">${sub}</span>` : nothing}
+    </div>`;
+  }
+
+  private bar(pct: number, color: string, label: string) {
+    return html`<div class="progress">
+      <span style="width:${pct}%;background:${color}"></span><b>${label}</b>
+    </div>`;
+  }
+
+  static styles = [
+    shared,
+    css`
+      :host {
+        display: block;
+        border-radius: var(--radius-sm);
+        background: var(--chip);
+        transition: background 400ms var(--ease);
+      }
+      .card {
+        padding: 12px;
+      }
+      .card.active {
+        background: var(--sage-soft);
+        border-radius: var(--radius-sm);
+      }
+      .ttl {
+        display: grid;
+        min-width: 0;
+      }
+      .ttl b {
+        color: var(--text);
+        font-size: var(--fs-small);
+      }
+      .ttl span {
+        font-weight: 500;
+        font-size: var(--fs-label);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .active .ico {
+        background: var(--sage);
+        color: #fff;
+      }
+      .dots {
+        display: grid;
+        place-items: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        color: var(--text-faint);
+      }
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+      }
+      .actions .round {
+        width: 38px;
+        height: 38px;
+        background: var(--glass-strong);
+      }
+      .vol {
+        min-width: 2ch;
+        text-align: center;
+        font-weight: 700;
+      }
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+        gap: 8px;
+      }
+      .stats.four {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .stat {
+        display: grid;
+        padding: 8px 10px;
+        border-radius: 12px;
+        background: var(--glass-strong);
+      }
+      .stat .lbl {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: var(--fs-label);
+        color: var(--text-muted);
+      }
+      .stat i {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--c);
+      }
+      .stat b {
+        font-size: calc(var(--fs-title) * 1.05);
+        font-weight: 700;
+      }
+      .stat .faint {
+        font-size: var(--fs-label);
+      }
+      .sub {
+        font-size: var(--fs-label);
+        color: var(--text-muted);
+        font-weight: 600;
+      }
+      .line-ctl {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: var(--fs-small);
+      }
+      .list {
+        display: grid;
+        gap: 6px;
+      }
+      .li {
+        display: grid;
+        grid-template-columns: 10px auto 1fr;
+        align-items: center;
+        gap: 8px;
+        font-size: var(--fs-small);
+      }
+      .li .muted {
+        text-align: right;
+        font-size: var(--fs-label);
+      }
+      .dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: var(--sage);
+      }
+      .dot.warn {
+        background: var(--amber);
+        --ripple: rgba(224, 162, 74, 0.6);
+        animation: ripple 1.8s ease-out infinite;
+      }
+      .dot.bad {
+        background: var(--danger);
+        --ripple: rgba(196, 84, 74, 0.6);
+        animation: ripple 1.4s ease-out infinite;
+      }
+      .wide {
+        width: 100%;
+        padding: 12px;
+      }
+      .hvac {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: var(--space-3);
+      }
+      .ring-in {
+        display: grid;
+        gap: 0;
+        font-size: var(--fs-label);
+      }
+      .big {
+        font-size: 34px;
+        font-weight: 600;
+        line-height: 1.05;
+      }
+      .seg button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+      }
+      .progress {
+        position: relative;
+        height: 24px;
+        border-radius: 999px;
+        background: var(--track);
+        overflow: hidden;
+      }
+      .progress span {
+        position: absolute;
+        inset: 0 auto 0 0;
+        border-radius: 999px;
+        transition: width 1s var(--ease);
+      }
+      .progress b {
+        position: relative;
+        display: block;
+        text-align: center;
+        line-height: 24px;
+        font-size: var(--fs-label);
+      }
+    `,
+  ];
+}
+
+declare global {
+  interface HTMLElementTagNameMap {
+    "fv1-device": DeviceCard;
+  }
+}
