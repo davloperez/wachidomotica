@@ -5,6 +5,9 @@ import {
   mdiCrosshairsGps,
   mdiLightbulbGroup,
   mdiMoonWaningCrescent,
+  mdiWeatherNight,
+  mdiWeatherPartlyCloudy,
+  mdiWeatherSunny,
   mdiWhiteBalanceSunny,
   mdiWindowShutterOpen,
 } from "@mdi/js";
@@ -12,7 +15,11 @@ import {
 import type { DashboardConfig, HomeAssistant, ThemeMode } from "./types";
 import { tokens } from "./styles/tokens";
 import { loadThemeMode, resolveTheme, saveThemeMode } from "./lib/theme";
-import { HouseScene, type SceneStats } from "./scene/house-scene";
+import { HouseScene, type SceneStats, type SunInfo } from "./scene/house-scene";
+import { compassPoint } from "./lib/solar";
+
+/** Molina de Segura (Murcia), coordenadas de AEMET: 38° 3' 2'' N, 1° 12' 41'' O. */
+const DEFAULT_LOCATION = { latitude: 38.0506, longitude: -1.2114 };
 
 const icon = (path: string) =>
   html`<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d=${path}></path></svg>`;
@@ -28,13 +35,16 @@ export class HouseDashboard extends LitElement {
   @state() private themeMode: ThemeMode = "auto";
   @state() private stats?: SceneStats;
   @state() private error?: string;
+  @state() private sun?: SunInfo;
+  /** Hora simulada para el sol (solo la usa la página de desarrollo). */
+  @property({ attribute: false }) simulatedTime?: Date;
 
   @query(".stage") private stage!: HTMLDivElement;
   private house?: HouseScene;
   private resolvedTheme: "light" | "dark" = "dark";
 
   setConfig(config: DashboardConfig): void {
-    this.config = { title: "Villawachitos", theme: "auto", sun: "sun.sun", ...config };
+    this.config = { title: "Villawachitos", theme: "auto", ...DEFAULT_LOCATION, ...config };
     this.themeMode = loadThemeMode(this.config.theme ?? "auto");
   }
 
@@ -52,7 +62,10 @@ export class HouseDashboard extends LitElement {
     super.disconnectedCallback();
     this.house?.dispose();
     this.house = undefined;
+    window.clearInterval(this.sunTimer);
   }
+
+  private sunTimer = 0;
 
   protected firstUpdated(): void {
     this.createScene();
@@ -60,9 +73,18 @@ export class HouseDashboard extends LitElement {
 
   private createScene(): void {
     try {
-      this.house = new HouseScene(this.stage, { maxPixelRatio: this.config.max_pixel_ratio });
+      this.house = new HouseScene(this.stage, {
+        maxPixelRatio: this.config.max_pixel_ratio,
+        latitude: this.config.latitude ?? DEFAULT_LOCATION.latitude,
+        longitude: this.config.longitude ?? DEFAULT_LOCATION.longitude,
+      });
       this.house.setTheme(this.resolvedTheme);
-      if (this.hass) this.stats = this.house.update(this.hass, this.config.sun);
+      if (this.simulatedTime) this.house.setTime(this.simulatedTime);
+      if (this.hass) this.stats = this.house.update(this.hass, this.config.weather);
+      this.sun = this.house.sunState;
+      // El indicador del sol se refresca aunque Home Assistant no envíe cambios.
+      window.clearInterval(this.sunTimer);
+      this.sunTimer = window.setInterval(() => (this.sun = this.house?.sunState), 30_000);
     } catch (err) {
       console.error("[house-3d-v1]", err);
       this.error = "No se pudo iniciar WebGL en este navegador.";
@@ -76,9 +98,13 @@ export class HouseDashboard extends LitElement {
       this.setAttribute("data-theme", theme);
       this.house?.setTheme(theme);
     }
-    if (changed.has("hass") && this.hass && this.house) {
-      this.stats = this.house.update(this.hass, this.config.sun);
+    if (changed.has("simulatedTime") && this.house) {
+      this.house.setTime(this.simulatedTime);
     }
+    if (changed.has("hass") && this.hass && this.house) {
+      this.stats = this.house.update(this.hass, this.config.weather);
+    }
+    if (this.house) this.sun = this.house.sunState;
   }
 
   private setTheme(mode: ThemeMode): void {
@@ -114,6 +140,7 @@ export class HouseDashboard extends LitElement {
             ><span class="dim">/${s?.lightsTotal ?? "—"}</span>
             luces
           </span>
+          ${this.renderSunChip()}
           <span class="chip accent">
             ${icon(mdiWindowShutterOpen)}<b class="num"
               >${s?.coversOpenAvg !== undefined ? Math.round(s.coversOpenAvg) : "—"}%</b
@@ -145,6 +172,23 @@ export class HouseDashboard extends LitElement {
 
       <footer class="hud bottom"><span>1 dedo: girar</span><span>2 dedos: zoom y desplazar</span></footer>
     `;
+  }
+
+  private renderSunChip() {
+    const sun = this.sun;
+    if (!sun) return null;
+    const up = sun.elevation > 0;
+    const cloudy = (sun.cloudCoverage ?? 0) >= 50;
+    const path = !up ? mdiWeatherNight : cloudy ? mdiWeatherPartlyCloudy : mdiWeatherSunny;
+    const title = up
+      ? `Sol a ${sun.elevation.toFixed(1)}° de altura, azimut ${sun.azimuth.toFixed(0)}°` +
+        ` · ~${Math.round(sun.directNormal)} W/m² directos` +
+        (sun.cloudCoverage !== undefined ? ` · nubes ${Math.round(sun.cloudCoverage)} %` : "")
+      : `Sol bajo el horizonte (${sun.elevation.toFixed(1)}°)`;
+    return html`<span class="chip sun ${up ? "" : "night"}" title=${title}>
+      ${icon(path)}<b class="num">${Math.round(sun.elevation)}°</b>
+      <span class="dim">${compassPoint(sun.azimuth)}</span>
+    </span>`;
   }
 
   static styles = [
@@ -190,6 +234,20 @@ export class HouseDashboard extends LitElement {
         border-radius: 999px;
         white-space: nowrap;
         opacity: 0.85;
+      }
+      .compass {
+        font-family: var(--font-hud);
+        font-weight: 700;
+        font-size: clamp(11px, 0.9vw, 15px);
+        color: var(--accent);
+        width: 2em;
+        height: 2em;
+        display: grid;
+        place-items: center;
+        border-radius: 50%;
+        border: 1.5px solid var(--accent);
+        background: var(--panel);
+        box-shadow: var(--accent-glow);
       }
       .error {
         position: absolute;
@@ -295,6 +353,12 @@ export class HouseDashboard extends LitElement {
       }
       .chip.warn svg {
         color: var(--warn);
+      }
+      .chip.sun svg {
+        color: #ffb340;
+      }
+      .chip.sun.night svg {
+        color: var(--text-muted);
       }
       .chip.accent svg {
         color: var(--accent);

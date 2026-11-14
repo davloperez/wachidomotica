@@ -2,5 +2,7 @@
   "type": "custom:house-3d-v1",
   "title": "Villawachitos",
   "theme": "auto",
-  "sun": "sun.sun"
+  "latitude": 38.0506,
+  "longitude": -1.2114,
+  "weather": "weather.forecast_casa"
 }

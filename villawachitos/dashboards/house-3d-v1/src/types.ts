@@ -9,6 +9,7 @@ export interface HassEntity {
     current_position?: number | null;
     azimuth?: number;
     elevation?: number;
+    cloud_coverage?: number;
   };
   last_changed: string;
   last_updated: string;
@@ -37,7 +38,11 @@ export interface DashboardConfig {
   type: string;
   title?: string;
   theme?: ThemeMode;
-  sun?: string;
+  /** Ubicación para calcular el sol. Por defecto, Molina de Segura (Murcia). */
+  latitude?: number;
+  longitude?: number;
+  /** Entidad `weather.*` cuya nubosidad (`cloud_coverage`) atenúa la luz del sol. */
+  weather?: string;
   /** Límite de resolución del lienzo 3D (rendimiento en tablets). Por defecto 1.5. */
   max_pixel_ratio?: number;
 }

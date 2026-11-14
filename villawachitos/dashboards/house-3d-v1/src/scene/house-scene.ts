@@ -1,6 +1,8 @@
 import {
   ACESFilmicToneMapping,
   AdditiveBlending,
+  AmbientLight,
+  BackSide,
   BoxGeometry,
   CanvasTexture,
   Clock,
@@ -8,7 +10,6 @@ import {
   CylinderGeometry,
   DirectionalLight,
   Fog,
-  GridHelper,
   Group,
   HemisphereLight,
   LineBasicMaterial,
@@ -23,12 +24,16 @@ import {
   PlaneGeometry,
   PointLight,
   RepeatWrapping,
+  Path,
+  Shape,
+  ShapeGeometry,
   SRGBColorSpace,
   Scene,
   SphereGeometry,
   Sprite,
   SpriteMaterial,
   TOUCH,
+  Vector2,
   Vector3,
   WebGLRenderer,
   type Material,
@@ -37,20 +42,31 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { CSS2DObject, CSS2DRenderer } from "three/examples/jsm/renderers/CSS2DRenderer.js";
 
 import type { HassEntity, HomeAssistant } from "../types";
+import { sunLight, sunPosition } from "../lib/solar";
 import {
-  EXTERIOR_THICKNESS,
+  FENCE_HEIGHT,
+  FOOTPRINT,
   FURNITURE,
+  GATES,
   INTERIOR_THICKNESS,
+  EXTERIOR_THICKNESS,
   LAMPS,
+  NORTH_ANGLE,
+  PAVING,
+  PLOT,
+  POOL,
+  POOL_DECK,
   ROOMS,
   WALLS,
   WALL_HEIGHT,
-  type FloorKind,
+  type Gate,
   type Lamp,
   type Opening,
+  type Point,
+  type Rect,
   type Wall,
 } from "./plan";
-import { PALETTES, type Palette } from "./palette";
+import { MATERIAL_COLORS, PALETTES, type Palette } from "./palette";
 
 /** Máximo de luces puntuales con sombra a la vez (cada una usa un cubemap: coste alto en tablets). */
 const MAX_SHADOW_LIGHTS = 6;
@@ -59,12 +75,45 @@ const SHUTTER_SPEED = 0.35;
 /** Tras este tiempo sin tocar la pantalla, la cámara vuelve a la vista inicial. */
 const IDLE_RETURN_MS = 90_000;
 
-const HOME_CAMERA = new Vector3(0, 18, 14.5);
-const HOME_TARGET = new Vector3(0, 0, 0.3);
+const HOME_CAMERA = new Vector3(-0.4, 31, 19.5);
+const HOME_TARGET = new Vector3(-0.4, 0, 2.4);
+/** Centro de la parcela: hacia aquí apunta el sol y alrededor se calcula su sombra. */
+const PLOT_CENTER = new Vector3(-0.4, 0, 2.6);
+/** Cada cuánto se recalcula la posición del sol aunque Home Assistant no cambie. */
+const SUN_REFRESH_MS = 30_000;
 const WARM_WHITE = new Color(255 / 255, 196 / 255, 137 / 255);
 
 /* Intensidad máxima (candelas) por tipo de luminaria, con unidades físicas de three.js */
-const LAMP_POWER: Record<Lamp["kind"], number> = { ceiling: 26, pendant: 14, lamp: 4, strip: 6 };
+const LAMP_POWER: Record<Lamp["kind"], number> = {
+  ceiling: 26,
+  pendant: 14,
+  lamp: 4,
+  strip: 6,
+  wall: 7,
+  pool: 22,
+};
+const LAMP_RANGE: Record<Lamp["kind"], number> = {
+  ceiling: 12,
+  pendant: 7,
+  lamp: 7,
+  strip: 7,
+  wall: 9,
+  pool: 7,
+};
+
+export interface SceneOptions {
+  maxPixelRatio?: number;
+  latitude: number;
+  longitude: number;
+}
+
+export interface SunInfo {
+  azimuth: number;
+  elevation: number;
+  /** Irradiancia directa estimada (W/m²) */
+  directNormal: number;
+  cloudCoverage?: number;
+}
 
 interface LampRuntime {
   def: Lamp;
@@ -74,6 +123,20 @@ interface LampRuntime {
   on: boolean;
   level: number;
 }
+
+interface GateRuntime {
+  def: Gate;
+  mesh: Mesh;
+  /** Posición cerrada y dirección de apertura */
+  closed: Vector3;
+  dir: Vector3;
+  /** Fracción abierta actual y objetivo */
+  current: number;
+  target: number;
+}
+
+/** Velocidad visual de las puertas correderas (fracción de recorrido por segundo). */
+const GATE_SPEED = 0.3;
 
 interface ShutterRuntime {
   entity: string;
@@ -89,6 +152,7 @@ export interface SceneStats {
   lightsTotal: number;
   coversOpenAvg: number | undefined;
   coversTotal: number;
+  sun: SunInfo;
 }
 
 export class HouseScene {
@@ -103,16 +167,29 @@ export class HouseScene {
   private palette: Palette = PALETTES.dark;
   private sun!: DirectionalLight;
   private hemi!: HemisphereLight;
-  private ground!: Mesh<PlaneGeometry, MeshStandardMaterial>;
-  private grid!: GridHelper;
+  private sunDisc!: Sprite;
+  private sunInfo: SunInfo = { azimuth: 0, elevation: 0, directNormal: 0 };
+  private cloudCoverage: number | undefined;
+  private timeOverride: Date | undefined;
+  private sunTimer = 0;
+  private outdoorMaterials: Record<"lawn" | "paving" | "water" | "basin", MeshStandardMaterial> = {} as never;
+  private ground!: Mesh<ShapeGeometry, MeshStandardMaterial>;
+  private grid!: LineSegments<BufferGeometry, LineBasicMaterial>;
   private wallMaterial!: MeshStandardMaterial;
   private wallLines!: LineSegments<BufferGeometry, LineBasicMaterial>;
-  private floorMaterials: Record<FloorKind, MeshStandardMaterial> = {} as never;
+  /** Suelos sin iluminación: siempre del mismo beige, enciendas o no las luces. */
+  private floorMaterial!: MeshBasicMaterial;
   private furnitureMaterials: Record<string, MeshStandardMaterial> = {};
   private glassMaterial!: MeshStandardMaterial;
   private shutterMaterial!: MeshStandardMaterial;
+  private frameMaterial!: MeshStandardMaterial;
 
   private lamps: LampRuntime[] = [];
+  private gates: GateRuntime[] = [];
+  private fenceMaterial!: MeshStandardMaterial;
+  private fenceClones: MeshStandardMaterial[] = [];
+  private ambient!: AmbientLight;
+  private water!: Mesh<PlaneGeometry, MeshStandardMaterial>;
   private shutters: ShutterRuntime[] = [];
   private raf = 0;
   private dirty = true;
@@ -121,7 +198,7 @@ export class HouseScene {
 
   constructor(
     private readonly container: HTMLElement,
-    opts: { maxPixelRatio?: number } = {},
+    private readonly opts: SceneOptions,
   ) {
     this.renderer = new WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, opts.maxPixelRatio ?? 1.5));
@@ -145,7 +222,7 @@ export class HouseScene {
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.08;
     this.controls.minDistance = 6;
-    this.controls.maxDistance = 45;
+    this.controls.maxDistance = 60;
     this.controls.maxPolarAngle = Math.PI * 0.46;
     this.controls.screenSpacePanning = false;
     this.controls.touches = { ONE: TOUCH.ROTATE, TWO: TOUCH.DOLLY_PAN };
@@ -156,8 +233,8 @@ export class HouseScene {
     this.controls.addEventListener("change", () => {
       this.lastInteraction = performance.now();
       // Mantener el centro de giro dentro de la casa.
-      this.controls.target.x = Math.max(-10, Math.min(10, this.controls.target.x));
-      this.controls.target.z = Math.max(-7, Math.min(7, this.controls.target.z));
+      this.controls.target.x = Math.max(-12, Math.min(11, this.controls.target.x));
+      this.controls.target.z = Math.max(-10, Math.min(15, this.controls.target.z));
       this.controls.target.y = 0;
       this.dirty = true;
     });
@@ -169,6 +246,8 @@ export class HouseScene {
     this.resizeObserver = new ResizeObserver(() => this.resize());
     this.resizeObserver.observe(container);
     this.resize();
+    this.updateSun();
+    this.sunTimer = window.setInterval(() => this.updateSun(), SUN_REFRESH_MS);
     this.tick();
   }
 
@@ -182,42 +261,59 @@ export class HouseScene {
     // Iluminación ambiental y sol
     this.hemi = new HemisphereLight(0xdfe8ff, 0x3a3326, 0.8);
     s.add(this.hemi);
+    // Luz general suave: deja ver la casa y la parcela de noche y rellena las sombras de día.
+    this.ambient = new AmbientLight(0xc9d6ff, 0.45);
+    s.add(this.ambient);
 
     this.sun = new DirectionalLight(0xfff2dd, 2.5);
     this.sun.castShadow = true;
     this.sun.shadow.mapSize.set(2048, 2048);
-    this.sun.shadow.camera.left = -16;
-    this.sun.shadow.camera.right = 16;
-    this.sun.shadow.camera.top = 16;
-    this.sun.shadow.camera.bottom = -16;
+    this.sun.shadow.camera.left = -18;
+    this.sun.shadow.camera.right = 18;
+    this.sun.shadow.camera.top = 18;
+    this.sun.shadow.camera.bottom = -18;
     this.sun.shadow.camera.near = 1;
-    this.sun.shadow.camera.far = 90;
+    this.sun.shadow.camera.far = 120;
+    this.sun.target.position.copy(PLOT_CENTER);
     this.sun.shadow.bias = -0.0005;
     this.sun.shadow.normalBias = 0.02;
     s.add(this.sun, this.sun.target);
 
-    // Terreno
-    this.ground = new Mesh(new PlaneGeometry(160, 160), new MeshStandardMaterial({ roughness: 1 }));
-    this.ground.rotation.x = -Math.PI / 2;
+    // Disco solar visible en el cielo, en la dirección real del sol.
+    this.sunDisc = new Sprite(
+      new SpriteMaterial({
+        map: makeGlowTexture(),
+        color: 0xfff1c9,
+        blending: AdditiveBlending,
+        transparent: true,
+        depthWrite: false,
+        fog: false,
+      }),
+    );
+    this.sunDisc.scale.set(9, 9, 1);
+    s.add(this.sunDisc);
+
+    // Terreno fuera de la parcela (con hueco para ella)
+    const outside = rectShape([-80, -80, 80, 80]);
+    outside.holes.push(polygonPath(PLOT));
+    this.ground = new Mesh(groundGeometry(outside), new MeshStandardMaterial({ roughness: 1 }));
     this.ground.receiveShadow = true;
     s.add(this.ground);
 
-    this.grid = new GridHelper(80, 80);
+    this.grid = makeGrid(80, PLOT);
     this.grid.position.y = 0.002;
-    (this.grid.material as Material).transparent = true;
     s.add(this.grid);
 
     // Suelos de cada estancia
-    for (const kind of ["wood", "tile", "stone"] as FloorKind[]) {
-      this.floorMaterials[kind] = new MeshStandardMaterial({ roughness: kind === "tile" ? 0.35 : 0.75 });
-    }
+    this.floorMaterial = new MeshBasicMaterial({ toneMapped: false });
     ROOMS.forEach((room, i) => {
       const [x1, z1, x2, z2] = room.rect;
-      const floor = new Mesh(new PlaneGeometry(x2 - x1, z2 - z1), this.floorMaterials[room.floor]);
+      const floor = new Mesh(new PlaneGeometry(x2 - x1, z2 - z1), this.floorMaterial);
       floor.rotation.x = -Math.PI / 2;
-      floor.position.set((x1 + x2) / 2, 0.01 + i * 0.002, (z1 + z2) / 2);
+      floor.position.set((x1 + x2) / 2, 0.02 + i * 0.002, (z1 + z2) / 2);
       floor.receiveShadow = true;
       s.add(floor);
+      if (!room.name) return;
 
       const el = document.createElement("div");
       el.className = "room-label";
@@ -238,6 +334,11 @@ export class HouseScene {
       depthWrite: false,
     });
     this.shutterMaterial = new MeshStandardMaterial({ roughness: 0.6, metalness: 0.2 });
+    this.frameMaterial = new MeshStandardMaterial({
+      color: MATERIAL_COLORS.frame,
+      roughness: 0.45,
+      metalness: 0.3,
+    });
     const walls = new Group();
     const lineVerts: number[] = [];
     for (const wall of WALLS) this.buildWall(wall, walls, lineVerts);
@@ -249,30 +350,136 @@ export class HouseScene {
     s.add(this.wallLines);
 
     // Tejado invisible: solo proyecta sombra, para que el sol entre únicamente por las ventanas.
-    const roof = new Mesh(
-      new BoxGeometry(18 + EXTERIOR_THICKNESS, 0.2, 12 + EXTERIOR_THICKNESS),
-      new MeshBasicMaterial({ colorWrite: false, depthWrite: false }),
-    );
-    roof.position.y = WALL_HEIGHT + 0.1;
-    roof.castShadow = true;
-    s.add(roof);
+    const roofMaterial = new MeshBasicMaterial({ colorWrite: false, depthWrite: false });
+    for (const [x1, z1, x2, z2] of FOOTPRINT) {
+      const roof = new Mesh(new BoxGeometry(x2 - x1, 0.2, z2 - z1), roofMaterial);
+      roof.position.set((x1 + x2) / 2, WALL_HEIGHT + 0.1, (z1 + z2) / 2);
+      roof.castShadow = true;
+      s.add(roof);
+    }
+
+    this.buildOutdoors();
 
     // Mobiliario (bloques sencillos para dar escala y sombras)
     for (const tone of ["dark", "light", "accent"]) {
       this.furnitureMaterials[tone] = new MeshStandardMaterial({ roughness: 0.7 });
     }
-    for (const f of FURNITURE) {
-      const [w, h, d] = f.size;
-      const mesh = new Mesh(new BoxGeometry(w, h, d), this.furnitureMaterials[f.tone ?? "light"]);
-      mesh.position.set(f.at[0], h / 2 + 0.02, f.at[1]);
+    for (const [tone, color] of Object.entries(MATERIAL_COLORS)) {
+      this.furnitureMaterials[tone] = new MeshStandardMaterial({
+        color,
+        roughness: tone === "sofa" ? 0.95 : 0.6,
+      });
+    }
+    const block = (x: number, z: number, y0: number, [w, h, d]: [number, number, number], tone: string) => {
+      const mesh = new Mesh(new BoxGeometry(w, h, d), this.furnitureMaterials[tone]);
+      mesh.position.set(x, y0 + h / 2, z);
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       s.add(mesh);
+    };
+    for (const f of FURNITURE) {
+      const [w, h, d] = f.size;
+      const top = f.top ? 0.04 : 0;
+      block(f.at[0], f.at[1], 0.02, [w, h - top, d], f.tone ?? "light");
+      if (f.top) block(f.at[0], f.at[1], 0.02 + h - top, [w + 0.03, top, d + 0.03], f.top);
     }
 
     // Luminarias
     const glowTexture = makeGlowTexture();
     for (const def of LAMPS) this.lamps.push(this.buildLamp(def, glowTexture));
+  }
+
+  /** Césped, pavimentos, piscina y cerramiento de la parcela. */
+  private buildOutdoors(): void {
+    const s = this.scene;
+    const o = this.outdoorMaterials;
+    o.lawn = new MeshStandardMaterial({ roughness: 1 });
+    o.paving = new MeshStandardMaterial({ roughness: 0.85 });
+    o.water = new MeshStandardMaterial({
+      roughness: 0.04,
+      metalness: 0.1,
+      transparent: true,
+      opacity: 0.78,
+      depthWrite: false,
+    });
+    o.basin = new MeshStandardMaterial({ roughness: 0.5, side: BackSide });
+
+    const flat = (shape: Shape, material: MeshStandardMaterial, y: number) => {
+      const mesh = new Mesh(groundGeometry(shape), material);
+      mesh.position.y = y;
+      mesh.receiveShadow = true;
+      s.add(mesh);
+      return mesh;
+    };
+
+    // Césped en toda la parcela salvo la playa de la piscina
+    const lawn = polygonShape(PLOT);
+    lawn.holes.push(rectPath(POOL_DECK));
+    flat(lawn, o.lawn, 0.004);
+
+    // Playa de la piscina (con el hueco del vaso) y resto de pavimentos
+    const deck = rectShape(POOL_DECK);
+    deck.holes.push(rectPath(POOL.rect));
+    flat(deck, o.paving, 0.008);
+    for (const r of PAVING) flat(rectShape(r), o.paving, 0.01);
+
+    // Vaso de la piscina: caja vista desde dentro (paredes y fondo) y lámina de agua
+    const [px1, pz1, px2, pz2] = POOL.rect;
+    const basin = new Mesh(new BoxGeometry(px2 - px1, POOL.depth, pz2 - pz1), o.basin);
+    basin.position.set((px1 + px2) / 2, -POOL.depth / 2, (pz1 + pz2) / 2);
+    basin.receiveShadow = true;
+    s.add(basin);
+    const water = new Mesh(new PlaneGeometry(px2 - px1, pz2 - pz1), o.water);
+    this.water = water;
+    water.rotation.x = -Math.PI / 2;
+    water.position.set((px1 + px2) / 2, -0.12, (pz1 + pz2) / 2);
+    s.add(water);
+
+    // Valla negra de 2 m; en la calle empieza tras las puertas de los vehículos
+    this.fenceMaterial = new MeshStandardMaterial({ roughness: 0.55, metalness: 0.35 });
+    const barTexture = makeBarTexture();
+    const panel = (from: Point, to: Point, thickness: number) => {
+      const dx = to[0] - from[0];
+      const dz = to[1] - from[1];
+      const length = Math.hypot(dx, dz);
+      const material = this.fenceMaterial.clone();
+      material.map = barTexture.clone();
+      material.map.repeat.set(length * 9, 1);
+      material.map.needsUpdate = true;
+      this.fenceClones.push(material);
+      const mesh = new Mesh(new BoxGeometry(length, FENCE_HEIGHT, thickness), material);
+      mesh.position.set((from[0] + to[0]) / 2, FENCE_HEIGHT / 2, (from[1] + to[1]) / 2);
+      mesh.rotation.y = -Math.atan2(dz, dx);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      s.add(mesh);
+      return mesh;
+    };
+    const lastGate = GATES[GATES.length - 1];
+    panel(lastGate.to, PLOT[1], 0.08);
+    for (let i = 1; i < PLOT.length; i++) panel(PLOT[i], PLOT[(i + 1) % PLOT.length], 0.08);
+
+    // Puertas correderas: cada una en su carril, desplazado hacia dentro de la parcela
+    for (const def of GATES) {
+      const dx = def.to[0] - def.from[0];
+      const dz = def.to[1] - def.from[1];
+      const length = Math.hypot(dx, dz);
+      const dir = new Vector3(dx / length, 0, dz / length);
+      const inward = new Vector3(-dir.z, 0, dir.x);
+      const mesh = panel(def.from, def.to, 0.05);
+      const closed = mesh.position.clone().addScaledVector(inward, def.track);
+      mesh.position.copy(closed);
+      this.gates.push({ def, mesh, closed, dir, current: 0, target: 0 });
+    }
+
+    // Rosa de los vientos: etiqueta "N" en la dirección del norte real
+    const north = (NORTH_ANGLE * Math.PI) / 180;
+    const el = document.createElement("div");
+    el.className = "compass";
+    el.textContent = "N";
+    const label = new CSS2DObject(el);
+    label.position.set(PLOT_CENTER.x + Math.sin(north) * 14.5, 0.1, PLOT_CENTER.z - Math.cos(north) * 14.5);
+    s.add(label);
   }
 
   private buildWall(wall: Wall, group: Group, lineVerts: number[]): void {
@@ -318,6 +525,7 @@ export class HouseScene {
       piece(a, b, 0, o.sill);
       piece(a, b, o.sill + o.height, WALL_HEIGHT);
       cursor = b;
+      if (wall.exterior) this.buildFrame(o, x1 + ux * o.at, z1 + uz * o.at, angle, t, group);
 
       if (o.kind === "window") {
         const cx = x1 + ux * o.at;
@@ -349,9 +557,29 @@ export class HouseScene {
     lineVerts.push(x1 - ux * ext, y, z1 - uz * ext, x2 + ux * ext, y, z2 + uz * ext);
   }
 
+  /** Marco negro de 5 cm alrededor de las ventanas y puertas exteriores. */
+  private buildFrame(o: Opening, cx: number, cz: number, angle: number, t: number, group: Group): void {
+    const f = 0.05;
+    const depth = t * 0.55;
+    const bar = (w: number, h: number, along: number, y: number) => {
+      const mesh = new Mesh(new BoxGeometry(w, h, depth), this.frameMaterial);
+      mesh.position.set(cx + Math.cos(angle) * along, y, cz + Math.sin(angle) * along);
+      mesh.rotation.y = -angle;
+      mesh.castShadow = true;
+      group.add(mesh);
+    };
+    const top = o.sill + o.height;
+    bar(o.width, f, 0, top - f / 2);
+    if (o.sill > 0) bar(o.width, f, 0, o.sill + f / 2);
+    bar(f, o.height, -o.width / 2 + f / 2, o.sill + o.height / 2);
+    bar(f, o.height, o.width / 2 - f / 2, o.sill + o.height / 2);
+    // Montante central en ventanas anchas y balconeras
+    if (o.kind === "window" && o.width > 1.2) bar(f * 0.8, o.height, 0, o.sill + o.height / 2);
+  }
+
   private buildLamp(def: Lamp, glowTexture: CanvasTexture): LampRuntime {
     const [x, y, z] = def.pos;
-    const light = new PointLight(WARM_WHITE, 0, def.kind === "ceiling" ? 12 : 7, 2);
+    const light = new PointLight(WARM_WHITE, 0, LAMP_RANGE[def.kind], 2);
     light.position.set(x, def.kind === "ceiling" ? y - 0.15 : y, z);
     light.shadow.mapSize.set(512, 512);
     light.shadow.camera.near = 0.1;
@@ -368,6 +596,8 @@ export class HouseScene {
           : new BoxGeometry(0.03, 0.03, def.strip.length);
     } else if (def.kind === "ceiling") {
       geometry = new CylinderGeometry(0.22, 0.22, 0.04, 24);
+    } else if (def.kind === "wall") {
+      geometry = new BoxGeometry(0.16, 0.16, 0.16);
     } else {
       geometry = new SphereGeometry(def.kind === "pendant" ? 0.14 : 0.08, 16, 12);
     }
@@ -385,7 +615,12 @@ export class HouseScene {
       }),
     );
     glow.position.copy(bulb.position);
-    const size = def.kind === "ceiling" ? 1.6 : def.kind === "strip" ? (def.strip?.length ?? 1) * 0.9 : 0.9;
+    const size =
+      def.kind === "ceiling" || def.kind === "pool"
+        ? 1.6
+        : def.kind === "strip"
+          ? (def.strip?.length ?? 1) * 0.9
+          : 0.9;
     glow.scale.set(size, def.kind === "strip" ? 0.6 : size, 1);
     glow.visible = false;
     this.scene.add(glow);
@@ -407,7 +642,7 @@ export class HouseScene {
   /* Estado de Home Assistant                                            */
   /* ================================================================== */
 
-  update(hass: HomeAssistant, sunEntity = "sun.sun"): SceneStats {
+  update(hass: HomeAssistant, weatherEntity?: string): SceneStats {
     let lightsOn = 0;
     let lightsTotal = 0;
     for (const lamp of this.lamps) {
@@ -422,6 +657,7 @@ export class HouseScene {
         lamp.level = level;
         lamp.light.color.copy(color);
         lamp.light.intensity = LAMP_POWER[lamp.def.kind] * level;
+        if (lamp.def.kind === "pool") this.tintPool(on, color, level);
         lamp.light.visible = on;
         lamp.glow.visible = on;
         lamp.glow.material.color.copy(color);
@@ -450,14 +686,37 @@ export class HouseScene {
       }
     }
 
-    this.updateSun(hass.states[sunEntity]);
+    for (const g of this.gates) {
+      const st = hass.states[g.def.entity];
+      if (!st || st.state === "unavailable" || st.state === "unknown") continue;
+      const target = st.state === "on" ? 1 : 0;
+      if (target !== g.target) {
+        g.target = target;
+        this.dirty = true;
+      }
+    }
+
+    const clouds = weatherEntity ? hass.states[weatherEntity]?.attributes.cloud_coverage : undefined;
+    this.cloudCoverage = typeof clouds === "number" ? clouds : undefined;
+    this.updateSun();
 
     return {
       lightsOn,
       lightsTotal,
       coversOpenAvg: openCount ? openSum / openCount : undefined,
       coversTotal: this.shutters.length,
+      sun: this.sunInfo,
     };
+  }
+
+  /** El agua y el vaso brillan con el color real de la luz de la piscina. */
+  private tintPool(on: boolean, color: Color, level: number): void {
+    const water = this.water.material;
+    const basin = this.outdoorMaterials.basin;
+    water.emissive.copy(on ? color : new Color(0x000000));
+    water.emissiveIntensity = on ? 0.35 + 0.65 * level : 0;
+    basin.emissive.copy(on ? color : new Color(0x000000));
+    basin.emissiveIntensity = on ? 0.6 * level : 0;
   }
 
   /** Las luces de techo encendidas más intensas proyectan sombra; el resto no (límite de la GPU). */
@@ -475,25 +734,54 @@ export class HouseScene {
     }
   }
 
-  private updateSun(sun: HassEntity | undefined): void {
-    const elevation = Number(sun?.attributes.elevation ?? 45);
-    const azimuth = Number(sun?.attributes.azimuth ?? 180);
-    const el = (Math.max(elevation, 2) * Math.PI) / 180;
-    const az = (azimuth * Math.PI) / 180;
-    // Azimut desde el norte en sentido horario; el norte es -Z.
-    const dir = new Vector3(Math.sin(az) * Math.cos(el), Math.sin(el), -Math.cos(az) * Math.cos(el));
-    const day = smoothstep(-4, 12, elevation);
+  /** Fija una hora simulada (desarrollo) o vuelve a la hora real con `undefined`. */
+  setTime(date: Date | undefined): SunInfo {
+    this.timeOverride = date;
+    this.updateSun();
+    return this.sunInfo;
+  }
 
-    const nextPos = dir.multiplyScalar(40);
-    const intensity = 3.2 * day;
-    if (!this.sun.position.equals(nextPos) || this.sun.intensity !== intensity) {
+  get sunState(): SunInfo {
+    return this.sunInfo;
+  }
+
+  /**
+   * Sol real calculado para la ubicación y la hora: posición (azimut/elevación sobre el plano,
+   * girado según el norte del plano) y luminosidad (masa de aire + nubosidad de la previsión).
+   */
+  private updateSun(): void {
+    const now = this.timeOverride ?? new Date();
+    const { azimuth, elevation } = sunPosition(now, this.opts.latitude, this.opts.longitude);
+    const { directNormal, sky } = sunLight(elevation, this.cloudCoverage);
+    this.sunInfo = { azimuth, elevation, directNormal, cloudCoverage: this.cloudCoverage };
+
+    // Azimut de brújula → ángulo en el plano (desde "arriba", horario); arriba del plano es -Z.
+    const theta = ((azimuth + NORTH_ANGLE) * Math.PI) / 180;
+    const direction = (elevationDeg: number) => {
+      const el = (elevationDeg * Math.PI) / 180;
+      return new Vector3(Math.sin(theta) * Math.cos(el), Math.sin(el), -Math.cos(theta) * Math.cos(el));
+    };
+
+    // La luz direccional nunca baja de 2° para que las sombras no se estiren hasta el infinito.
+    const nextPos = direction(Math.max(elevation, 2)).multiplyScalar(60).add(PLOT_CENTER);
+    const intensity = 5.2 * (directNormal / 1000);
+    const day = smoothstep(-6, 12, elevation);
+    if (!this.sun.position.equals(nextPos) || Math.abs(this.sun.intensity - intensity) > 0.002) {
       this.sun.position.copy(nextPos);
       this.sun.intensity = intensity;
       this.sun.visible = intensity > 0.01;
-      this.sun.color.setHSL(0.09, 0.9, 0.62 + 0.3 * smoothstep(0, 30, elevation));
-      this.hemi.intensity = 0.06 + 0.9 * day;
+      // Más cálido y rojizo cuanto más bajo está el sol (más atmósfera que atravesar).
+      this.sun.color.setHSL(0.085, 0.9, 0.6 + 0.32 * smoothstep(0, 35, elevation));
+      this.hemi.intensity = 0.12 + 1.35 * sky;
+      this.ambient.intensity = 0.45 + 0.25 * sky;
+      this.ambient.color.set(day > 0.5 ? 0xfff6ea : 0xc9d6ff);
       this.hemi.color.set(day > 0.5 ? 0xdfe8ff : 0x8fa6ff);
       this.renderer.toneMappingExposure = 0.95 + 0.25 * (1 - day);
+
+      this.sunDisc.position.copy(direction(elevation).multiplyScalar(90).add(PLOT_CENTER));
+      this.sunDisc.visible = elevation > -1.5;
+      this.sunDisc.material.color.setHSL(0.11, 1, 0.55 + 0.35 * smoothstep(0, 30, elevation));
+      this.sunDisc.material.opacity = 0.35 + 0.65 * Math.max(0.15, 1 - (this.cloudCoverage ?? 0) / 110);
       this.dirty = true;
     }
   }
@@ -510,20 +798,22 @@ export class HouseScene {
   private applyPalette(): void {
     const p = this.palette;
     this.scene.background = new Color(p.background);
-    this.scene.fog = new Fog(p.background, 38, 95);
+    this.scene.fog = new Fog(p.background, 55, 140);
     this.ground.material.color.set(p.ground);
-    const gridMat = this.grid.material as LineBasicMaterial;
-    gridMat.color.set(p.grid);
-    gridMat.opacity = p.gridOpacity;
+    this.grid.material.color.set(p.grid);
+    this.grid.material.opacity = p.gridOpacity;
     this.wallMaterial.color.set(p.wall);
     this.wallLines.material.color.set(p.wallLine);
     this.wallLines.material.opacity = p.wallLineOpacity;
-    this.floorMaterials.wood.color.set(p.wood);
-    this.floorMaterials.tile.color.set(p.tile);
-    this.floorMaterials.stone.color.set(p.stone);
+    this.floorMaterial.color.set(p.floor);
     this.furnitureMaterials.dark.color.set(p.furnitureDark);
     this.furnitureMaterials.light.color.set(p.furnitureLight);
     this.furnitureMaterials.accent.color.set(p.accent);
+    this.outdoorMaterials.lawn.color.set(p.lawn);
+    this.outdoorMaterials.paving.color.set(p.paving);
+    this.outdoorMaterials.water.color.set(p.water);
+    this.outdoorMaterials.basin.color.set(p.basin);
+    for (const m of this.fenceClones) m.color.set(p.fence);
     for (const sh of this.shutters) sh.mesh.material.color.set(p.shutter);
     for (const l of this.lamps) if (!l.on) l.bulb.material.color.set(p.fixture);
     this.dirty = true;
@@ -569,6 +859,15 @@ export class HouseScene {
 
     if (this.controls.update(dt)) this.dirty = true;
 
+    for (const g of this.gates) {
+      if (Math.abs(g.current - g.target) > 0.001) {
+        const step = GATE_SPEED * dt;
+        g.current += Math.max(-step, Math.min(step, g.target - g.current));
+        g.mesh.position.copy(g.closed).addScaledVector(g.dir, g.current * g.def.slide);
+        this.dirty = true;
+      }
+    }
+
     for (const sh of this.shutters) {
       if (Math.abs(sh.current - sh.target) > 0.001) {
         const step = SHUTTER_SPEED * dt;
@@ -592,6 +891,7 @@ export class HouseScene {
 
   dispose(): void {
     cancelAnimationFrame(this.raf);
+    window.clearInterval(this.sunTimer);
     this.resizeObserver.disconnect();
     this.controls.dispose();
     this.scene.traverse((o) => {
@@ -635,6 +935,54 @@ function smoothstep(a: number, b: number, x: number): number {
   return t * t * (3 - 2 * t);
 }
 
+/** Rejilla de 1 m alrededor de la parcela (sin entrar en ella, para no verse a través del agua). */
+function makeGrid(half: number, plot: Point[]): LineSegments<BufferGeometry, LineBasicMaterial> {
+  const xs = plot.map((p) => p[0]);
+  const zs = plot.map((p) => p[1]);
+  const [minX, maxX, minZ, maxZ] = [Math.min(...xs), Math.max(...xs), Math.min(...zs), Math.max(...zs)];
+  const v: number[] = [];
+  const line = (a: number, b: number, k: number, alongX: boolean) => {
+    if (b - a <= 0) return;
+    if (alongX) v.push(a, 0, k, b, 0, k);
+    else v.push(k, 0, a, k, 0, b);
+  };
+  for (let k = -half; k <= half; k++) {
+    // Líneas paralelas a Z (x = k) y a X (z = k), cortadas en el rectángulo de la parcela
+    if (k > minX && k < maxX) {
+      line(-half, minZ, k, false);
+      line(maxZ, half, k, false);
+    } else line(-half, half, k, false);
+    if (k > minZ && k < maxZ) {
+      line(-half, minX, k, true);
+      line(maxX, half, k, true);
+    } else line(-half, half, k, true);
+  }
+  const g = new BufferGeometry();
+  g.setAttribute("position", new Float32BufferAttribute(v, 3));
+  return new LineSegments(g, new LineBasicMaterial({ transparent: true }));
+}
+
+/* Formas en planta: ShapeGeometry trabaja en XY; al tumbarla, Y del dibujo pasa a ser -Z. */
+function polygonShape(points: Point[]): Shape {
+  return new Shape(points.map(([x, z]) => new Vector2(x, -z)));
+}
+function polygonPath(points: Point[]): Path {
+  return new Path(points.map(([x, z]) => new Vector2(x, -z)));
+}
+const rectPoints = ([x1, z1, x2, z2]: Rect): Point[] => [
+  [x1, z1],
+  [x2, z1],
+  [x2, z2],
+  [x1, z2],
+];
+const rectShape = (r: Rect) => polygonShape(rectPoints(r));
+const rectPath = (r: Rect) => polygonPath(rectPoints(r));
+function groundGeometry(shape: Shape): ShapeGeometry {
+  const g = new ShapeGeometry(shape);
+  g.rotateX(-Math.PI / 2);
+  return g;
+}
+
 function makeGlowTexture(): CanvasTexture {
   const c = document.createElement("canvas");
   c.width = c.height = 128;
@@ -646,6 +994,22 @@ function makeGlowTexture(): CanvasTexture {
   g.fillStyle = grad;
   g.fillRect(0, 0, 128, 128);
   return new CanvasTexture(c);
+}
+
+/** Textura de lamas verticales para la valla y las puertas. */
+function makeBarTexture(): CanvasTexture {
+  const c = document.createElement("canvas");
+  c.width = 16;
+  c.height = 4;
+  const g = c.getContext("2d")!;
+  g.fillStyle = "#ffffff";
+  g.fillRect(0, 0, 16, 4);
+  g.fillStyle = "#6a6a6a";
+  g.fillRect(12, 0, 4, 4);
+  const tex = new CanvasTexture(c);
+  tex.wrapS = tex.wrapT = RepeatWrapping;
+  tex.colorSpace = SRGBColorSpace;
+  return tex;
 }
 
 /** Textura de lamas horizontales para las persianas. */

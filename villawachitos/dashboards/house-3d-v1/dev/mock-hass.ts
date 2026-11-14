@@ -1,5 +1,5 @@
 import type { HassEntity, HomeAssistant } from "../src/types";
-import { LAMPS, WALLS } from "../src/scene/plan";
+import { GATES, LAMPS, WALLS } from "../src/scene/plan";
 
 /**
  * `hass` simulado: usa las entidades del plano, enciende algunas luces al azar
@@ -22,11 +22,7 @@ const COLORS: [number, number, number][] = [
   [255, 200, 140],
 ];
 
-export function createMockHass(
-  getDarkMode: () => boolean,
-  getSunElevation: () => number,
-  onUpdate: (hass: HomeAssistant) => void,
-): void {
+export function createMockHass(getDarkMode: () => boolean, onUpdate: (hass: HomeAssistant) => void): void {
   const states: Record<string, HassEntity> = {};
   for (const l of LAMPS) {
     const on = Math.random() < 0.45;
@@ -43,11 +39,14 @@ export function createMockHass(
     states[c] = entity(c, pos === 0 ? "closed" : "open", { current_position: pos });
   }
 
+  for (const g of GATES) states[g.entity] = entity(g.entity, Math.random() < 0.5 ? "on" : "off");
+  states["light.luz_piscina"] = entity("light.luz_piscina", "on", {
+    brightness: 230,
+    rgb_color: [40, 120, 255],
+  });
+
   const emit = () => {
-    states["sun.sun"] = entity("sun.sun", getSunElevation() > 0 ? "above_horizon" : "below_horizon", {
-      elevation: getSunElevation(),
-      azimuth: 200,
-    });
+    states["weather.forecast_casa"] = entity("weather.forecast_casa", "partlycloudy", { cloud_coverage: 20 });
     onUpdate({
       states: { ...states },
       connected: true,
@@ -68,6 +67,8 @@ export function createMockHass(
     states[c] = entity(c, pos === 0 ? "closed" : "open", { current_position: pos });
     const l = LAMPS[Math.floor(Math.random() * LAMPS.length)].entity;
     states[l] = { ...states[l], state: states[l].state === "on" ? "off" : "on" };
+    const g = GATES[Math.floor(Math.random() * GATES.length)].entity;
+    states[g] = entity(g, states[g].state === "on" ? "off" : "on");
     emit();
   }, 5000);
 

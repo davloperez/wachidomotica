@@ -44,7 +44,9 @@
     <div id="devbar">
       <span id="mode"></span>
       <button id="toggle-ha-dark">HA dark: <b id="ha-dark"></b></button>
-      <label class="mock-only">Sol <input id="sun" type="range" min="-20" max="70" value="35" /></label>
+      <label>Hora <input id="time" type="range" min="0" max="1439" step="5" /></label>
+      <b id="time-label"></b>
+      <button id="now">Ahora</button>
     </div>
     <script type="module" src="./main.ts"></script>
   </body>
