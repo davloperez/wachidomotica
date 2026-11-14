@@ -76,6 +76,13 @@ const SHUTTER_SPEED = 0.35;
 /** Tras este tiempo sin tocar la pantalla, la cámara vuelve a la vista inicial. */
 const IDLE_RETURN_MS = 90_000;
 
+/** Si el usuario ha movido la vista hace menos de esto, la cámara no salta a lo que se acciona. */
+const FOCUS_IDLE_MS = 20_000;
+/** Cambios que llegan con menos de esta separación se enfocan juntos (escenas, grupos de luces). */
+const FOCUS_GATHER_MS = 400;
+/** Tiempo que la cámara se queda mirando lo accionado tras el último cambio, antes de volver. */
+const FOCUS_HOLD_MS = 6_000;
+
 const HOME_CAMERA = new Vector3(-0.4, 31, 19.5);
 const HOME_TARGET = new Vector3(-0.4, 0, 2.4);
 /** Centro de la parcela: hacia aquí apunta el sol y alrededor se calcula su sombra. */
@@ -138,6 +145,20 @@ interface GateRuntime {
 
 /** Velocidad visual de las puertas correderas (fracción de recorrido por segundo). */
 const GATE_SPEED = 0.3;
+
+/** Enfoque momentáneo de la cámara sobre lo que acaba de cambiar en Home Assistant. */
+interface FocusRuntime {
+  /** Elementos que han cambiado y cuándo (los antiguos caducan para no acumular sin fin) */
+  points: { at: Vector3; time: number }[];
+  lastEvent: number;
+  /** Vista previa a la que se vuelve al terminar */
+  restorePos: Vector3;
+  restoreTarget: Vector3;
+  /** Destino actual de la cámara (undefined mientras se agrupan cambios) */
+  goalPos?: Vector3;
+  goalTarget?: Vector3;
+  returning: boolean;
+}
 
 interface ShutterRuntime {
   entity: string;
@@ -205,7 +226,12 @@ export class HouseScene {
   private raf = 0;
   private dirty = true;
   private lastInteraction = performance.now();
+  /** Último gesto real del usuario sobre la vista (no cuenta el movimiento automático). */
+  private lastUserInteraction = -Infinity;
   private returningHome = false;
+  private focus: FocusRuntime | undefined;
+  /** El primer estado de Home Assistant es la carga inicial, no un cambio que enfocar. */
+  private primed = false;
 
   /** Zonas táctiles invisibles de luces y persianas (más grandes que el objeto que representan). */
   private hitTargets: Mesh[] = [];
@@ -254,8 +280,13 @@ export class HouseScene {
     this.controls.screenSpacePanning = false;
     this.controls.touches = { ONE: TOUCH.ROTATE, TWO: TOUCH.DOLLY_PAN };
     this.controls.addEventListener("start", () => {
-      this.lastInteraction = performance.now();
+      this.lastInteraction = this.lastUserInteraction = performance.now();
       this.returningHome = false;
+      // El usuario toma el control: se cancela el enfoque automático y se queda donde lo deje.
+      this.focus = undefined;
+    });
+    this.controls.addEventListener("end", () => {
+      this.lastUserInteraction = performance.now();
     });
     this.controls.addEventListener("change", () => {
       this.lastInteraction = performance.now();
@@ -697,6 +728,7 @@ export class HouseScene {
   /* ================================================================== */
 
   update(hass: HomeAssistant, weatherEntity?: string): SceneStats {
+    const changed: Vector3[] = [];
     let lightsOn = 0;
     let lightsTotal = 0;
     for (const lamp of this.lamps) {
@@ -721,6 +753,7 @@ export class HouseScene {
         m.emissiveIntensity = on ? 1.5 + 2 * level : 0;
         m.color.set(on ? 0xffffff : this.palette.fixture);
         this.dirty = true;
+        changed.push(lamp.bulb.position.clone());
       }
     }
     this.assignShadows();
@@ -737,6 +770,8 @@ export class HouseScene {
       if (target !== sh.target) {
         sh.target = target;
         this.dirty = true;
+        const { sill, height } = sh.opening;
+        changed.push(new Vector3(sh.mesh.position.x, sill + height / 2, sh.mesh.position.z));
       }
     }
 
@@ -747,8 +782,12 @@ export class HouseScene {
       if (target !== g.target) {
         g.target = target;
         this.dirty = true;
+        changed.push(g.closed.clone());
       }
     }
+
+    if (this.primed) this.noteActivity(changed);
+    this.primed = true;
 
     const clouds = weatherEntity ? hass.states[weatherEntity]?.attributes.cloud_coverage : undefined;
     this.cloudCoverage = typeof clouds === "number" ? clouds : undefined;
@@ -875,7 +914,80 @@ export class HouseScene {
   }
 
   resetView(): void {
+    this.focus = undefined;
     this.returningHome = true;
+  }
+
+  /**
+   * Algo ha cambiado en Home Assistant: si nadie está usando la vista (ni hay un panel abierto),
+   * la cámara se acerca un momento a lo accionado; con varios cambios, al punto medio entre ellos.
+   */
+  private noteActivity(points: Vector3[]): void {
+    if (!points.length || this.selected) return;
+    const now = performance.now();
+    if (!this.focus) {
+      if (now - this.lastUserInteraction < FOCUS_IDLE_MS) return;
+      const home = this.returningHome;
+      this.returningHome = false;
+      this.focus = {
+        points: [],
+        lastEvent: now,
+        restorePos: home ? HOME_CAMERA.clone() : this.camera.position.clone(),
+        restoreTarget: home ? HOME_TARGET.clone() : this.controls.target.clone(),
+        returning: false,
+      };
+    }
+    const f = this.focus;
+    f.points = f.points.filter(
+      (q) => now - q.time < FOCUS_HOLD_MS && !points.some((p) => p.distanceToSquared(q.at) < 0.01),
+    );
+    for (const p of points) f.points.push({ at: p, time: now });
+    f.lastEvent = now;
+    f.returning = false;
+    // Si ya estaba enfocando, recalcular el encuadre con los nuevos puntos.
+    if (f.goalPos) this.aimFocus(f);
+  }
+
+  private aimFocus(f: FocusRuntime): void {
+    const center = new Vector3();
+    for (const { at } of f.points) center.add(at);
+    center.divideScalar(f.points.length);
+    center.y = 0;
+    let spread = 0;
+    for (const { at } of f.points) spread = Math.max(spread, Math.hypot(at.x - center.x, at.z - center.z));
+    // Encuadre: cerca para un solo elemento, más lejos cuanto más separados estén.
+    const distance = Math.min(42, Math.max(18, 18 + spread * 1.9));
+    const dir = HOME_CAMERA.clone().sub(HOME_TARGET).normalize();
+    f.goalTarget = center;
+    f.goalPos = center.clone().addScaledVector(dir, distance);
+  }
+
+  /** Avanza el enfoque automático; devuelve true mientras controla la cámara. */
+  private stepFocus(dt: number): boolean {
+    const f = this.focus;
+    if (!f) return false;
+    const now = performance.now();
+    if (!f.goalPos) {
+      if (now - f.lastEvent < FOCUS_GATHER_MS) return true;
+      this.aimFocus(f);
+    }
+    if (!f.returning && now - f.lastEvent > FOCUS_HOLD_MS) {
+      f.returning = true;
+      f.goalPos = f.restorePos;
+      f.goalTarget = f.restoreTarget;
+    }
+    const k = 1 - Math.pow(0.04, dt);
+    this.camera.position.lerp(f.goalPos!, k);
+    this.controls.target.lerp(f.goalTarget!, k);
+    this.dirty = true;
+    if (
+      f.returning &&
+      this.camera.position.distanceTo(f.goalPos!) < 0.02 &&
+      this.controls.target.distanceTo(f.goalTarget!) < 0.02
+    ) {
+      this.focus = undefined;
+    }
+    return true;
   }
 
   private resize(): void {
@@ -894,7 +1006,9 @@ export class HouseScene {
     this.raf = requestAnimationFrame(this.tick);
     const dt = Math.min(this.clock.getDelta(), 0.1);
 
-    if (!this.returningHome && performance.now() - this.lastInteraction > IDLE_RETURN_MS) {
+    const focusing = this.stepFocus(dt);
+    if (focusing) this.lastInteraction = performance.now();
+    if (!focusing && !this.returningHome && performance.now() - this.lastInteraction > IDLE_RETURN_MS) {
       const d = this.camera.position.distanceTo(HOME_CAMERA) + this.controls.target.distanceTo(HOME_TARGET);
       if (d > 0.05) this.returningHome = true;
     }

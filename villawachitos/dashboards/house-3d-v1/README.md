@@ -22,6 +22,11 @@ Plano 3D interactivo de la vivienda (una planta) con el **estado real** de Home 
   abre el diálogo nativo de Home Assistant. Tocar una zona vacía o pulsar Esc cierra el panel. Las zonas
   táctiles son invisibles y algo mayores que el objeto (`addHitTarget` en `house-scene.ts`); el panel está en
   [`src/ui/control-panel.ts`](src/ui/control-panel.ts). En `?mock` los servicios se simulan en local.
+- **Cámara que sigue la actividad**: cuando cambia una luz, persiana o puerta (desde aquí, desde Home Assistant
+  o por una automatización) y nadie ha movido la vista en los últimos 20 s, la cámara se acerca un momento a ese
+  elemento; si cambian varios a la vez, encuadra el punto medio entre ellos. A los 6 s del último cambio vuelve
+  a la vista que había. No salta con un panel de control abierto y se cancela al tocar la vista
+  (`FOCUS_IDLE_MS`, `FOCUS_HOLD_MS` en `house-scene.ts`).
 - **Luz general** suave que deja ver la casa de noche y rellena las sombras de día.
 - Gestos táctiles: **1 dedo gira**, **2 dedos hacen zoom y desplazan**. Tras 90 s sin tocar vuelve a la vista
   inicial (también con el botón de diana).

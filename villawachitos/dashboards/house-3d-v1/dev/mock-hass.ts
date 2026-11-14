@@ -83,7 +83,7 @@ export function createMockHass(getDarkMode: () => boolean, onUpdate: (hass: Home
     const g = GATES[Math.floor(Math.random() * GATES.length)].entity;
     states[g] = entity(g, states[g].state === "on" ? "off" : "on");
     emit();
-  }, 5000);
+  }, 25_000);
 
   window.addEventListener("h3d-dev-refresh", emit);
   emit();
