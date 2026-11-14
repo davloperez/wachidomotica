@@ -68,6 +68,8 @@ export interface Furniture {
   tone?: FurnitureTone;
   /** Encimera o tapa de otro color (4 cm) */
   top?: FurnitureTone;
+  /** Altura de la base sobre el suelo (para objetos colgados, como la TV) */
+  lift?: number;
 }
 
 /* ------------------------------------------------------------------ */
@@ -75,8 +77,8 @@ export interface Furniture {
 /* ------------------------------------------------------------------ */
 
 export const ROOMS: Room[] = [
-  { name: "Desp. 1", rect: [-3.85, -5.7, -1.33, -2.41], floor: "wood" },
-  { name: "Desp. 2", rect: [-1.33, -5.7, 1.09, -2.41], floor: "wood" },
+  { name: "Oficina 1", rect: [-3.85, -5.7, -1.33, -2.41], floor: "wood" },
+  { name: "Oficina 2", rect: [-1.33, -5.7, 1.09, -2.41], floor: "wood" },
   { name: "Baño 2", rect: [1.09, -5.7, 2.88, -2.41], floor: "tile" },
   { name: "Dormitorio 3", rect: [2.88, -5.7, 7.7, -2.41], floor: "wood" },
   { name: "Entrada", rect: [-5.76, -4.04, -3.85, -2.41], floor: "stone" },
@@ -122,24 +124,24 @@ const win = (at: number, width: number, sill: number, height: number, cover?: st
 export const WALLS: Wall[] = [
   /* ---------- Exteriores ---------- */
   {
-    // Fachada a la calle: despachos, baño 2 y dormitorio 3
+    // Fachada a la calle: oficinas (puertas correderas hasta el suelo), baño 2 y dormitorio 3
     from: [-3.85, -5.7],
     to: [7.7, -5.7],
     exterior: true,
     openings: [
-      win(1.33, 1.45, 0.9, 1.4, "cover.persiana_oficina_1_persiana"),
-      win(3.66, 1.45, 0.9, 1.4, "cover.persiana_oficina_2_persiana"),
+      win(1.33, 1.45, 0, 2.2, "cover.persiana_oficina_1_persiana"),
+      win(3.66, 1.45, 0, 2.2, "cover.persiana_oficina_2_persiana"),
       win(6.21, 0.9, 1.5, 0.7),
     ],
   },
   {
-    // Lateral derecho: dormitorios 3 y 2, baño 1
+    // Lateral derecho: correderas de los dormitorios 3 y 2
     from: [7.7, -5.7],
     to: [7.7, 5.7],
     exterior: true,
     openings: [
-      win(1.82, 1.5, 0.9, 1.4, "cover.persiana_dormitorio_3_persiana"),
-      win(4.89, 1.45, 0.9, 1.4, "cover.persiana_dormitorio_2_persiana"),
+      win(1.82, 1.5, 0, 2.2, "cover.persiana_dormitorio_3_persiana"),
+      win(4.89, 1.45, 0, 2.2, "cover.persiana_dormitorio_2_persiana"),
     ],
   },
   {
@@ -156,8 +158,9 @@ export const WALLS: Wall[] = [
     to: [1.15, 4.48],
     exterior: true,
     openings: [
-      win(1.73, 2.0, 0, 2.2, "cover.persiana_salon_1_persiana"),
-      win(4.12, 2.0, 0, 2.2, "cover.persiana_salon_2_persiana"),
+      // Las balconeras 1 y 2 van pegadas, sin pilar: solo las separa el perfil negro de sus marcos.
+      win(1.8275, 2.195, 0, 2.2, "cover.persiana_salon_1_persiana"),
+      win(4.0225, 2.195, 0, 2.2, "cover.persiana_salon_2_persiana"),
       win(6.47, 1.95, 0, 2.2, "cover.persiana_salon_3_persiana"),
     ],
   },
@@ -177,11 +180,11 @@ export const WALLS: Wall[] = [
     openings: [door(3.53, 0.82)],
   },
   {
-    // Fachada a la calle del lavadero y el hall: puerta principal y fijo de vidrio
+    // Fachada a la calle del lavadero y la entrada: puerta principal (el fijo de vidrio del plano no existe)
     from: [-7.68, -4.04],
     to: [-3.85, -4.04],
     exterior: true,
-    openings: [door(2.49, 0.95, 2.2), win(3.48, 0.4, 0, 2.2)],
+    openings: [door(2.49, 0.95, 2.2)],
   },
   { from: [-3.85, -5.7], to: [-3.85, -4.04], exterior: true },
 
@@ -222,10 +225,11 @@ export const LAMPS: Lamp[] = [
   { entity: "light.salon_persiana_salon_3_luz_pasillo_salon", kind: "ceiling", pos: [-0.6, 2.55, -1.9] },
   { entity: "light.salon_persiana_salon_3_luz_aplique_pasillo_salon", kind: "lamp", pos: [-1.33, 1.9, -2.3] },
   {
+    // Cortinero de la pared sur, encima de las tres balconeras
     entity: "light.wled_gledopto",
     kind: "strip",
-    pos: [1.12, 2.35, 1.15],
-    strip: { length: 3.8, axis: "z" },
+    pos: [-2.47, 2.4, 4.33],
+    strip: { length: 6.8, axis: "x" },
   },
   /* Entrada y lavadero */
   { entity: "light.salon_esp_entrada_luz_techo_entrada", kind: "ceiling", pos: [-4.8, 2.55, -3.2] },
@@ -241,7 +245,7 @@ export const LAMPS: Lamp[] = [
     strip: { length: 2.9, axis: "z" },
   },
   { entity: "light.luz_fregadero_cocina", kind: "lamp", pos: [-6.05, 2.0, 2.1] },
-  /* Despacho 1 (Oficina 1 en HA) */
+  /* Oficina 1 */
   { entity: "light.oficina_1_persiana_oficina_1_luz_techo", kind: "ceiling", pos: [-2.6, 2.55, -4.05] },
   { entity: "light.oficina_1_lampara_mueble_oficina_1", kind: "lamp", pos: [-3.5, 1.1, -2.85] },
   {
@@ -250,7 +254,7 @@ export const LAMPS: Lamp[] = [
     pos: [-2.52, 2.5, -5.45],
     strip: { length: 1.9, axis: "x" },
   },
-  /* Despacho 2 (Oficina 2 en HA) */
+  /* Oficina 2 */
   { entity: "light.persiana_oficina_2_luz_techo", kind: "ceiling", pos: [-0.12, 2.55, -4.05] },
   { entity: "light.oficina_2_lampara_pro_mi_1", kind: "lamp", pos: [-0.75, 1.15, -5.15] },
   { entity: "light.oficina_2_lampara_pro_mi_2_mijia_desk_lamp_sw", kind: "lamp", pos: [0.5, 1.15, -5.15] },
@@ -345,17 +349,18 @@ export const FURNITURE: Furniture[] = [
   // Cocina: encimera, isla
   { at: [-6.1, 2.1], size: [0.6, 0.9, 4.4], tone: "wood", top: "beige" },
   { at: [-4.21, 1.77], size: [0.98, 0.92, 2.98], tone: "wood", top: "beige" },
-  // Salón: sofá en U y mueble de TV
+  // Salón: sofá en U, mueble y TV en la pared este
   { at: [-1.82, 1.61], size: [0.82, 0.8, 3.8], tone: "sofa" },
   { at: [-1.33, -0.08], size: [1.8, 0.8, 0.76], tone: "sofa" },
   { at: [-1.33, 3.13], size: [1.8, 0.8, 0.76], tone: "sofa" },
   { at: [1.03, 1.15], size: [0.3, 0.5, 4.4], tone: "dark" },
-  // Lavadero
-  { at: [-6.35, -2.9], size: [0.6, 0.9, 1.8], tone: "light" },
-  // Despacho 1
+  { at: [1.15, 1.15], size: [0.05, 0.8, 1.45], tone: "dark", lift: 1.0 },
+  // Lavadero (las baterías y el inversor, en la parte norte, van en `ENERGY`)
+  { at: [-6.35, -2.35], size: [0.6, 0.9, 1.6], tone: "light" },
+  // Oficina 1
   { at: [-2.6, -5.2], size: [1.6, 0.75, 0.7], tone: "light" },
   { at: [-1.6, -4.05], size: [0.45, 2.2, 3.2], tone: "dark" },
-  // Despacho 2
+  // Oficina 2
   { at: [-0.12, -5.2], size: [2.0, 0.75, 0.7], tone: "light" },
   { at: [0.73, -4.05], size: [0.38, 2.2, 3.2], tone: "dark" },
   // Baño 2
@@ -436,13 +441,54 @@ export const GATES: Gate[] = [
 
 /** Lámina de agua de la piscina (8 × 3 m) y su profundidad */
 export const POOL: { rect: Rect; depth: number } = { rect: [-5.24, 9.77, 2.74, 12.79], depth: 1.4 };
-/** Playa de la piscina (pavimento alrededor del vaso) */
-export const POOL_DECK: Rect = [-6.1, 8.9, 3.6, 13.5];
+/** Coronación de la piscina: 35 cm alrededor del vaso, del mismo material que el suelo de la casa */
+export const POOL_COPING = 0.35;
+export const POOL_DECK: Rect = [
+  POOL.rect[0] - POOL_COPING,
+  POOL.rect[1] - POOL_COPING,
+  POOL.rect[2] + POOL_COPING,
+  POOL.rect[3] + POOL_COPING,
+];
 
-/** Zonas pavimentadas: aparcamiento, acceso, porche y pasillos laterales */
+/** Porche del salón: mismo suelo que la casa, llega hasta ~1 m de la piscina */
+export const PORCH: Rect = [-6.69, 4.63, 1.0, POOL_DECK[1] - 1.0];
+
+/** Zonas pavimentadas (gris): aparcamiento, acceso y paso lateral */
 export const PAVING: Rect[] = [
   [-11.4, -9.2, -6.0, -4.3], // aparcamiento (2 coches)
   [-6.0, -8.9, -4.4, -4.19], // acceso a la puerta principal
-  [-6.69, 4.63, 1.0, 6.9], // porche del salón
   [-8.6, -4.19, -7.83, 0.94], // paso junto al lavadero
 ];
+
+/**
+ * Caseta de la depuradora: enterrada (1 × 1 m), asoma 10 cm con césped artificial encima.
+ * El indicador muestra si `entity` está encendido y la potencia que consume.
+ */
+export const PUMP = {
+  entity: "switch.interruptor_depuradora",
+  power: "sensor.interruptor_depuradora_power_a",
+  rect: [-7.7, 10.8, -6.7, 11.8] as Rect,
+  height: 0.1,
+};
+
+/**
+ * Instalación solar en la parte norte del lavadero: baterías apiladas en el suelo e inversor colgado
+ * en la pared. Muestra los datos principales de la instalación (Sigenergy en Home Assistant).
+ */
+export const ENERGY = {
+  /** Torre de baterías (centro en planta, tamaño [ancho X, alto Y, fondo Z]) y número de módulos */
+  battery: { at: [-7.25, -3.86] as Point, size: [0.7, 1.35, 0.3] as [number, number, number], modules: 3 },
+  /** Inversor colgado en la pared norte */
+  inverter: { at: [-6.35, -3.93] as Point, size: [0.6, 0.62, 0.2] as [number, number, number], lift: 1.25 },
+  sensors: {
+    /** Producción de las placas (kW) */
+    pv: "sensor.david_lopez_perez_pv_power",
+    /** Carga de las baterías (%) y potencia (kW, positiva = cargando) */
+    soc: "sensor.david_lopez_perez_battery_state_of_charge",
+    battery: "sensor.david_lopez_perez_battery_power",
+    /** Consumo de la casa (kW) */
+    load: "sensor.david_lopez_perez_load_power",
+    /** Intercambio con la red (kW) */
+    grid: "sensor.david_lopez_perez_grid_power",
+  },
+};

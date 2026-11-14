@@ -57,6 +57,9 @@ import {
   PLOT,
   POOL,
   POOL_DECK,
+  PORCH,
+  PUMP,
+  ENERGY,
   ROOMS,
   WALLS,
   WALL_HEIGHT,
@@ -75,6 +78,12 @@ const MAX_SHADOW_LIGHTS = 6;
 const SHUTTER_SPEED = 0.35;
 /** Tras este tiempo sin tocar la pantalla, la cámara vuelve a la vista inicial. */
 const IDLE_RETURN_MS = 90_000;
+
+/** Ondas de luz que salen de cada luz encendida: periodo (s), ondas simultáneas y fps máximos de la animación. */
+const WAVE_PERIOD = 2.6;
+const WAVES_PER_EMITTER = 2;
+const ANIMATION_FPS = 30;
+const PUMP_ON_COLOR = new Color(0x3dffa8);
 
 /** Si el usuario ha movido la vista hace menos de esto, la cámara no salta a lo que se acciona. */
 const FOCUS_IDLE_MS = 20_000;
@@ -130,6 +139,18 @@ interface LampRuntime {
   glow: Sprite;
   on: boolean;
   level: number;
+  waves: WaveEmitter;
+}
+
+/** Ondas que se expanden y desvanecen en bucle mientras el elemento está encendido. */
+interface WaveEmitter {
+  sprites: Sprite[];
+  /** Tamaño máximo de la onda [ancho, alto] */
+  size: [number, number];
+  active: boolean;
+  strength: number;
+  /** Desfase para que no latan todas a la vez */
+  offset: number;
 }
 
 interface GateRuntime {
@@ -171,7 +192,7 @@ interface ShutterRuntime {
 
 /** Elemento accionable que se ha tocado en el plano. */
 export interface ScenePick {
-  kind: "light" | "cover";
+  kind: "light" | "cover" | "switch";
   entity: string;
 }
 
@@ -204,7 +225,28 @@ export class HouseScene {
   private cloudCoverage: number | undefined;
   private timeOverride: Date | undefined;
   private sunTimer = 0;
-  private outdoorMaterials: Record<"lawn" | "paving" | "water" | "basin", MeshStandardMaterial> = {} as never;
+  private outdoorMaterials: Record<"lawn" | "paving" | "water" | "basin" | "stone", MeshStandardMaterial> =
+    {} as never;
+  private waveTexture = makeRingTexture();
+  private emitters: WaveEmitter[] = [];
+  private lastAnimationFrame = 0;
+  private energy!: {
+    socBar: Mesh<BoxGeometry, MeshStandardMaterial>;
+    socHeight: number;
+    socBase: number;
+    led: MeshStandardMaterial;
+    waves: WaveEmitter;
+    label: HTMLDivElement;
+    html: string;
+    producing: boolean | undefined;
+  };
+  private pump!: {
+    on: boolean | undefined;
+    edge: MeshStandardMaterial;
+    waves: WaveEmitter;
+    label: HTMLDivElement;
+    point: Vector3;
+  };
   private ground!: Mesh<ShapeGeometry, MeshStandardMaterial>;
   private grid!: LineSegments<BufferGeometry, LineBasicMaterial>;
   private wallMaterial!: MeshStandardMaterial;
@@ -444,9 +486,12 @@ export class HouseScene {
     for (const f of FURNITURE) {
       const [w, h, d] = f.size;
       const top = f.top ? 0.04 : 0;
-      block(f.at[0], f.at[1], 0.02, [w, h - top, d], f.tone ?? "light");
-      if (f.top) block(f.at[0], f.at[1], 0.02 + h - top, [w + 0.03, top, d + 0.03], f.top);
+      const base = 0.02 + (f.lift ?? 0);
+      block(f.at[0], f.at[1], base, [w, h - top, d], f.tone ?? "light");
+      if (f.top) block(f.at[0], f.at[1], base + h - top, [w + 0.03, top, d + 0.03], f.top);
     }
+
+    this.buildEnergy();
 
     // Luminarias
     const glowTexture = makeGlowTexture();
@@ -467,6 +512,8 @@ export class HouseScene {
       depthWrite: false,
     });
     o.basin = new MeshStandardMaterial({ roughness: 0.5, side: BackSide });
+    // Mismo acabado que el suelo de la casa, pero iluminado (de noche se oscurece como el resto del exterior)
+    o.stone = new MeshStandardMaterial({ roughness: 0.8 });
 
     const flat = (shape: Shape, material: MeshStandardMaterial, y: number) => {
       const mesh = new Mesh(groundGeometry(shape), material);
@@ -481,11 +528,14 @@ export class HouseScene {
     lawn.holes.push(rectPath(POOL_DECK));
     flat(lawn, o.lawn, 0.004);
 
-    // Playa de la piscina (con el hueco del vaso) y resto de pavimentos
+    // Coronación de la piscina (con el hueco del vaso), porche y resto de pavimentos
     const deck = rectShape(POOL_DECK);
     deck.holes.push(rectPath(POOL.rect));
-    flat(deck, o.paving, 0.008);
+    flat(deck, o.stone, 0.03);
+    flat(rectShape(PORCH), o.stone, 0.012);
     for (const r of PAVING) flat(rectShape(r), o.paving, 0.01);
+
+    this.buildPump();
 
     // Vaso de la piscina: caja vista desde dentro (paredes y fondo) y lámina de agua
     const [px1, pz1, px2, pz2] = POOL.rect;
@@ -544,6 +594,208 @@ export class HouseScene {
     const label = new CSS2DObject(el);
     label.position.set(PLOT_CENTER.x + Math.sin(north) * 14.5, 0.1, PLOT_CENTER.z - Math.cos(north) * 14.5);
     s.add(label);
+  }
+
+  /** Baterías e inversor en el lavadero, con un indicador de nivel de carga y los datos solares. */
+  private buildEnergy(): void {
+    const { battery, inverter } = ENERGY;
+    const casing = new MeshStandardMaterial({ color: 0xe9eaee, roughness: 0.45, metalness: 0.1 });
+    const dark = new MeshStandardMaterial({ color: 0x2a2d33, roughness: 0.5 });
+    const [bw, bh, bd] = battery.size;
+    const [bx, bz] = battery.at;
+    // Torre de módulos apilados con una junta oscura entre ellos
+    const moduleH = bh / battery.modules;
+    for (let i = 0; i < battery.modules; i++) {
+      const m = new Mesh(new BoxGeometry(bw, moduleH - 0.02, bd), casing);
+      m.position.set(bx, 0.02 + i * moduleH + (moduleH - 0.02) / 2, bz);
+      m.castShadow = true;
+      m.receiveShadow = true;
+      this.scene.add(m);
+    }
+    // Barra de nivel en el frente (hacia el sur): su altura es el % de carga
+    const socHeight = bh - 0.1;
+    const socBase = 0.07;
+    const socBar = new Mesh(
+      new BoxGeometry(0.08, 1, 0.02),
+      new MeshStandardMaterial({ color: 0x000000, emissive: PUMP_ON_COLOR, emissiveIntensity: 1.1 }),
+    );
+    socBar.position.set(bx, socBase, bz + bd / 2 + 0.011);
+    socBar.visible = false;
+    this.scene.add(socBar);
+    const track = new Mesh(new BoxGeometry(0.1, socHeight, 0.01), dark);
+    track.position.set(bx, socBase + socHeight / 2, bz + bd / 2 + 0.004);
+    this.scene.add(track);
+
+    // Inversor en la pared, con su piloto de estado
+    const [iw, ih, id] = inverter.size;
+    const [ix, iz] = inverter.at;
+    const inv = new Mesh(new BoxGeometry(iw, ih, id), dark);
+    inv.position.set(ix, inverter.lift + ih / 2, iz);
+    inv.castShadow = true;
+    this.scene.add(inv);
+    const led = new MeshStandardMaterial({ color: 0x555a63 });
+    const ledMesh = new Mesh(new BoxGeometry(iw * 0.6, 0.03, 0.01), led);
+    ledMesh.position.set(ix, inverter.lift + ih * 0.78, iz + id / 2 + 0.006);
+    this.scene.add(ledMesh);
+    const waves = this.makeEmitter(new Vector3(ix, inverter.lift + ih / 2, iz + 0.15), [1.6, 1.6], 0.61);
+
+    const label = document.createElement("div");
+    label.className = "energy-label";
+    const tag = new CSS2DObject(label);
+    // Fuera, junto al muro oeste del lavadero, para no tapar las baterías desde la vista inicial.
+    tag.position.set(-9.9, 0.2, bz + 0.9);
+    this.scene.add(tag);
+    this.energy = { socBar, socHeight, socBase, led, waves, label, html: "", producing: undefined };
+  }
+
+  private updateEnergy(hass: HomeAssistant): void {
+    const e = this.energy;
+    const S = ENERGY.sensors;
+    const read = (id: string) => {
+      const v = Number(hass.states[id]?.state);
+      return Number.isFinite(v) ? v : undefined;
+    };
+    const pv = read(S.pv);
+    const soc = read(S.soc);
+    const batt = read(S.battery);
+    const load = read(S.load);
+    const grid = read(S.grid);
+
+    if (soc !== undefined) {
+      const h = Math.max(0.02, (soc / 100) * e.socHeight);
+      e.socBar.scale.y = h;
+      e.socBar.position.y = e.socBase + h / 2;
+      e.socBar.visible = true;
+      // Verde con carga alta, ámbar a media, rojo cuando queda poca
+      e.socBar.material.emissive.set(soc > 50 ? 0x3dffa8 : soc > 20 ? 0xffb547 : 0xff5c7a);
+    } else e.socBar.visible = false;
+
+    const producing = (pv ?? 0) > 0.05;
+    if (producing !== e.producing) {
+      e.producing = producing;
+      const sun = new Color(0xffc23d);
+      e.led.emissive.copy(producing ? sun : new Color(0x000000));
+      e.led.emissiveIntensity = producing ? 2 : 0;
+      e.led.color.set(producing ? 0xffffff : 0x555a63);
+      this.setEmitter(e.waves, producing, sun, 0.6);
+    }
+
+    const kw = (v: number | undefined) =>
+      v === undefined
+        ? "—"
+        : `${v.toLocaleString("es-ES", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} kW`;
+    const battFlow =
+      batt === undefined || Math.abs(batt) < 0.05
+        ? ""
+        : `<span class="${batt > 0 ? "in" : "out"}">${batt > 0 ? "▲" : "▼"} ${kw(Math.abs(batt))}</span>`;
+    const html =
+      `<div class="row sun"><i></i>Solar<b>${kw(pv)}</b></div>` +
+      `<div class="row bat"><i></i>Batería<b>${soc === undefined ? "—" : `${Math.round(soc)} %`}</b>${battFlow}</div>` +
+      `<div class="row load"><i></i>Casa<b>${kw(load)}</b></div>` +
+      `<div class="row grid"><i></i>Red<b>${kw(grid)}</b></div>`;
+    if (html !== e.html) {
+      e.html = html;
+      e.label.innerHTML = html;
+    }
+    this.dirty = true;
+  }
+
+  /** Caseta enterrada de la depuradora: tapa de césped que asoma 10 cm, borde luminoso e indicador. */
+  private buildPump(): void {
+    const [x1, z1, x2, z2] = PUMP.rect;
+    const cx = (x1 + x2) / 2;
+    const cz = (z1 + z2) / 2;
+    const h = PUMP.height;
+    const lid = new Mesh(new BoxGeometry(x2 - x1, h, z2 - z1), this.outdoorMaterials.lawn);
+    lid.position.set(cx, h / 2, cz);
+    lid.castShadow = true;
+    lid.receiveShadow = true;
+    this.scene.add(lid);
+    // Borde de 3 cm alrededor de la tapa: se ilumina en verde con la depuradora en marcha.
+    const edge = new MeshStandardMaterial({ color: 0x2a2d33, roughness: 0.5 });
+    const frame = new Mesh(new BoxGeometry(x2 - x1 + 0.06, h - 0.02, z2 - z1 + 0.06), edge);
+    frame.position.set(cx, (h - 0.02) / 2, cz);
+    this.scene.add(frame);
+
+    const waves = this.makeEmitter(new Vector3(cx, h + 0.05, cz), [3.2, 3.2], 0.37);
+    const label = document.createElement("div");
+    label.className = "pump-label";
+    const tag = new CSS2DObject(label);
+    // Etiqueta justo por encima (hacia la casa) para no tapar la caseta.
+    tag.position.set(cx, 0.15, z1 - 0.45);
+    this.scene.add(tag);
+    this.pump = { on: undefined, edge, waves, label, point: new Vector3(cx, h, cz) };
+    this.renderPumpLabel(false, undefined);
+
+    const hit = this.addHitTarget(new BoxGeometry(x2 - x1 + 0.6, 0.6, z2 - z1 + 0.6), "switch", PUMP.entity);
+    hit.position.set(cx, 0.2, cz);
+  }
+
+  private renderPumpLabel(on: boolean, watts: number | undefined, unavailable = false): void {
+    const el = this.pump.label;
+    el.classList.toggle("on", on);
+    el.classList.toggle("unavailable", unavailable);
+    const status = unavailable
+      ? "sin conexión"
+      : on
+        ? watts !== undefined
+          ? `${Math.round(watts)} W`
+          : "en marcha"
+        : "parada";
+    el.innerHTML = `<span class="dot"></span>Depuradora <b>${status}</b>`;
+  }
+
+  /** Crea un emisor de ondas de luz (anillos que crecen y se desvanecen) en `at`. */
+  private makeEmitter(at: Vector3, size: [number, number], offset: number): WaveEmitter {
+    const sprites: Sprite[] = [];
+    for (let i = 0; i < WAVES_PER_EMITTER; i++) {
+      const sprite = new Sprite(
+        new SpriteMaterial({
+          map: this.waveTexture,
+          blending: AdditiveBlending,
+          transparent: true,
+          depthWrite: false,
+          opacity: 0,
+        }),
+      );
+      sprite.position.copy(at);
+      sprite.visible = false;
+      this.scene.add(sprite);
+      sprites.push(sprite);
+    }
+    const emitter: WaveEmitter = { sprites, size, active: false, strength: 1, offset };
+    this.emitters.push(emitter);
+    return emitter;
+  }
+
+  private setEmitter(e: WaveEmitter, active: boolean, color: Color, strength: number): void {
+    e.active = active;
+    e.strength = strength;
+    for (const sp of e.sprites) {
+      sp.visible = active;
+      sp.material.color.copy(color);
+    }
+  }
+
+  /** Avanza las ondas y el "respirar" de los halos; devuelve true si hay algo animándose. */
+  private animateLights(time: number): boolean {
+    let any = false;
+    for (const e of this.emitters) {
+      if (!e.active) continue;
+      any = true;
+      e.sprites.forEach((sp, i) => {
+        const phase = (time / WAVE_PERIOD + e.offset + i / e.sprites.length) % 1;
+        const grow = 0.25 + 0.75 * phase;
+        sp.scale.set(e.size[0] * grow, e.size[1] * grow, 1);
+        sp.material.opacity = 0.7 * e.strength * (1 - phase) * (1 - phase);
+      });
+    }
+    for (const l of this.lamps) {
+      if (!l.on) continue;
+      const breath = 0.88 + 0.12 * Math.sin(time * 2.4 + l.waves.offset * Math.PI * 2);
+      l.glow.material.opacity = (0.35 + 0.65 * l.level) * breath;
+    }
+    return any;
   }
 
   private buildWall(wall: Wall, group: Group, lineVerts: number[]): void {
@@ -710,7 +962,22 @@ export class HouseScene {
       hit.position.set((px1 + px2) / 2, -0.05, (pz1 + pz2) / 2);
     }
 
-    return { def, light, bulb, glow, on: false, level: 0 };
+    // Ondas: anillos en torno a la luz (alargados en las tiras; sobre el agua en la piscina).
+    const waveSize: [number, number] =
+      def.kind === "strip"
+        ? [(def.strip?.length ?? 1) * 1.25, 0.9]
+        : def.kind === "pool"
+          ? [4.2, 4.2]
+          : def.kind === "ceiling"
+            ? [2.2, 2.2]
+            : [1.4, 1.4];
+    const waveAt =
+      def.kind === "pool"
+        ? new Vector3((POOL.rect[0] + POOL.rect[2]) / 2, 0.1, (POOL.rect[1] + POOL.rect[3]) / 2)
+        : bulb.position.clone();
+    const waves = this.makeEmitter(waveAt, waveSize, (this.lamps.length * 0.137) % 1);
+
+    return { def, light, bulb, glow, on: false, level: 0, waves };
   }
 
   private placeShutter(sh: ShutterRuntime): void {
@@ -752,6 +1019,7 @@ export class HouseScene {
         m.emissive.copy(on ? color : new Color(0x000000));
         m.emissiveIntensity = on ? 1.5 + 2 * level : 0;
         m.color.set(on ? 0xffffff : this.palette.fixture);
+        this.setEmitter(lamp.waves, on, color, 0.45 + 0.55 * level);
         this.dirty = true;
         changed.push(lamp.bulb.position.clone());
       }
@@ -785,6 +1053,26 @@ export class HouseScene {
         changed.push(g.closed.clone());
       }
     }
+
+    this.updateEnergy(hass);
+
+    const pumpState = hass.states[PUMP.entity];
+    const pumpOn = pumpState?.state === "on";
+    const watts = Number(hass.states[PUMP.power]?.state);
+    if (pumpOn !== this.pump.on) {
+      if (this.pump.on !== undefined) changed.push(this.pump.point.clone());
+      this.pump.on = pumpOn;
+      this.pump.edge.emissive.copy(pumpOn ? PUMP_ON_COLOR : new Color(0x000000));
+      this.pump.edge.emissiveIntensity = pumpOn ? 2.2 : 0;
+      this.pump.edge.color.set(pumpOn ? 0xffffff : 0x2a2d33);
+      this.setEmitter(this.pump.waves, pumpOn, PUMP_ON_COLOR, 0.8);
+      this.dirty = true;
+    }
+    this.renderPumpLabel(
+      pumpOn,
+      Number.isFinite(watts) ? watts : undefined,
+      !pumpState || pumpState.state === "unavailable",
+    );
 
     if (this.primed) this.noteActivity(changed);
     this.primed = true;
@@ -907,6 +1195,7 @@ export class HouseScene {
     this.outdoorMaterials.paving.color.set(p.paving);
     this.outdoorMaterials.water.color.set(p.water);
     this.outdoorMaterials.basin.color.set(p.basin);
+    this.outdoorMaterials.stone.color.set(p.floor);
     for (const m of this.fenceClones) m.color.set(p.fence);
     for (const sh of this.shutters) sh.mesh.material.color.set(p.shutter);
     for (const l of this.lamps) if (!l.on) l.bulb.material.color.set(p.fixture);
@@ -1042,6 +1331,15 @@ export class HouseScene {
         const step = SHUTTER_SPEED * dt;
         sh.current += Math.max(-step, Math.min(step, sh.target - sh.current));
         this.placeShutter(sh);
+        this.dirty = true;
+      }
+    }
+
+    // Las luces encendidas se animan siempre, pero a 30 fps como mucho para no agotar la tablet.
+    const now = performance.now();
+    if (now - this.lastAnimationFrame >= 1000 / ANIMATION_FPS) {
+      if (this.animateLights(this.clock.elapsedTime)) {
+        this.lastAnimationFrame = now;
         this.dirty = true;
       }
     }
@@ -1234,6 +1532,22 @@ function makeGlowTexture(): CanvasTexture {
   const grad = g.createRadialGradient(64, 64, 0, 64, 64, 64);
   grad.addColorStop(0, "rgba(255,255,255,1)");
   grad.addColorStop(0.2, "rgba(255,255,255,0.55)");
+  grad.addColorStop(1, "rgba(255,255,255,0)");
+  g.fillStyle = grad;
+  g.fillRect(0, 0, 128, 128);
+  return new CanvasTexture(c);
+}
+
+/** Anillo suave para las ondas de luz. */
+function makeRingTexture(): CanvasTexture {
+  const c = document.createElement("canvas");
+  c.width = c.height = 128;
+  const g = c.getContext("2d")!;
+  const grad = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grad.addColorStop(0, "rgba(255,255,255,0)");
+  grad.addColorStop(0.68, "rgba(255,255,255,0)");
+  grad.addColorStop(0.84, "rgba(255,255,255,0.95)");
+  grad.addColorStop(0.9, "rgba(255,255,255,0.35)");
   grad.addColorStop(1, "rgba(255,255,255,0)");
   g.fillStyle = grad;
   g.fillRect(0, 0, 128, 128);

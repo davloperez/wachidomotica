@@ -1,5 +1,5 @@
 import type { HassEntity, HomeAssistant } from "../src/types";
-import { GATES, LAMPS, WALLS } from "../src/scene/plan";
+import { ENERGY, GATES, LAMPS, PUMP, WALLS } from "../src/scene/plan";
 
 /**
  * `hass` simulado: usa las entidades del plano, enciende algunas luces al azar
@@ -49,6 +49,17 @@ export function createMockHass(getDarkMode: () => boolean, onUpdate: (hass: Home
     const pos = [0, 30, 60, 100][Math.floor(Math.random() * 4)];
     states[c] = entity(c, pos === 0 ? "closed" : "open", coverAttrs(c, pos));
   }
+
+  states[PUMP.entity] = entity(PUMP.entity, "on", { friendly_name: "Interruptor depuradora" });
+  const solar: Record<string, string> = {
+    [ENERGY.sensors.pv]: "4.9",
+    [ENERGY.sensors.soc]: "82",
+    [ENERGY.sensors.battery]: "4.3",
+    [ENERGY.sensors.load]: "0.6",
+    [ENERGY.sensors.grid]: "0.0",
+  };
+  for (const [id, v] of Object.entries(solar)) states[id] = entity(id, v);
+  states[PUMP.power] = entity(PUMP.power, "742", { unit_of_measurement: "W" });
 
   for (const g of GATES) states[g.entity] = entity(g.entity, Math.random() < 0.5 ? "on" : "off");
   states["light.luz_piscina"] = entity("light.luz_piscina", "on", {
@@ -138,6 +149,11 @@ function mockService(
       }
       if (typeof data.effect === "string") a.effect = data.effect;
     }
+  }
+  if (domain === "switch") {
+    state = service === "toggle" ? (state === "on" ? "off" : "on") : service === "turn_on" ? "on" : "off";
+    const power = id === PUMP.entity ? PUMP.power : undefined;
+    if (power) states[power] = entity(power, state === "on" ? "742" : "0", { unit_of_measurement: "W" });
   }
   if (domain === "cover") {
     const pos =

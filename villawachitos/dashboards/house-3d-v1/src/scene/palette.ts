@@ -38,7 +38,7 @@ export const PALETTES: Record<"light" | "dark", Palette> = {
     lawn: "#1f3b26",
     paving: "#4a4d55",
     water: "#1fb5d6",
-    basin: "#5fc6dc",
+    basin: "#c9bb9d",
     fence: "#24272c",
   },
   light: {
@@ -58,7 +58,7 @@ export const PALETTES: Record<"light" | "dark", Palette> = {
     lawn: "#8fbf72",
     paving: "#ddd6c8",
     water: "#3ccbe8",
-    basin: "#8fe0f0",
+    basin: "#dccfb5",
     fence: "#1c1e22",
   },
 };

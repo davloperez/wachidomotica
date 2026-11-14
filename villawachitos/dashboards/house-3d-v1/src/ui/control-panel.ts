@@ -8,6 +8,7 @@ import {
   mdiLightbulb,
   mdiLightbulbOutline,
   mdiPause,
+  mdiPump,
   mdiPower,
   mdiWindowShutter,
   mdiWindowShutterOpen,
@@ -105,7 +106,15 @@ export class ControlPanel extends LitElement {
       <section class="card" role="dialog" aria-label=${name}>
         <header>
           <span class="badge ${domain} ${st?.state === "on" ? "on" : ""}">
-            ${icon(domain === "cover" ? mdiWindowShutterOpen : st?.state === "on" ? mdiLightbulb : mdiLightbulbOutline)}
+            ${icon(
+              domain === "cover"
+                ? mdiWindowShutterOpen
+                : domain === "switch"
+                  ? mdiPump
+                  : st?.state === "on"
+                    ? mdiLightbulb
+                    : mdiLightbulbOutline,
+            )}
           </span>
           <div class="title">
             <b>${name}</b>
@@ -123,7 +132,9 @@ export class ControlPanel extends LitElement {
               ? this.renderLight(st)
               : domain === "cover"
                 ? this.renderCover(st)
-                : nothing
+                : domain === "switch"
+                  ? this.renderSwitch(st)
+                  : nothing
         }
         ${this.error ? html`<p class="error">${this.error}</p>` : nothing}
       </section>
@@ -138,6 +149,7 @@ export class ControlPanel extends LitElement {
       const b = st.attributes.brightness;
       return typeof b === "number" ? `Encendida · ${Math.round((b / 255) * 100)} %` : "Encendida";
     }
+    if (domain === "switch") return st.state === "on" ? "En marcha" : "Parada";
     if (domain === "cover") {
       const pos = st.attributes.current_position;
       const label: Record<string, string> = {
@@ -281,6 +293,19 @@ export class ControlPanel extends LitElement {
     `;
   }
 
+  /* ---------------------------------------------------------------- */
+  /* Interruptores (depuradora)                                       */
+  /* ---------------------------------------------------------------- */
+
+  private renderSwitch(st: HassEntity) {
+    const on = st.state === "on";
+    return html`
+      <button class="power ${on ? "on pump" : ""}" @click=${() => this.call("switch", "toggle")}>
+        ${icon(mdiPower)} ${on ? "Parar" : "Poner en marcha"}
+      </button>
+    `;
+  }
+
   /** Blanco: modo `white` si existe, si no un blanco neutro por temperatura o sin saturación. */
   private whiteData(modes: string[], minK: number, maxK: number): Record<string, unknown> {
     if (modes.includes("white")) return { white: true };
@@ -419,6 +444,10 @@ export class ControlPanel extends LitElement {
         color: var(--warn);
         box-shadow: 0 0 18px -4px var(--warn);
       }
+      .badge.switch.on {
+        color: #3dffa8;
+        box-shadow: 0 0 18px -4px #3dffa8;
+      }
       .badge.cover {
         color: var(--accent);
       }
@@ -476,6 +505,9 @@ export class ControlPanel extends LitElement {
         background: var(--panel);
         border: 1px solid var(--panel-border);
         color: var(--text);
+      }
+      .power.on.pump {
+        --lamp: #3dffa8;
       }
       .power.on {
         --lamp: var(--warn);

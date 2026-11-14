@@ -198,7 +198,7 @@ export class HouseDashboard extends LitElement {
       }
 
       <footer class="hud bottom">
-        <span>Toca una luz o persiana para controlarla</span><span>1 dedo: girar</span
+        <span>Toca una luz, persiana o la depuradora para controlarla</span><span>1 dedo: girar</span
         ><span>2 dedos: zoom y desplazar</span>
       </footer>
     `;
@@ -267,6 +267,99 @@ export class HouseDashboard extends LitElement {
         border-radius: 999px;
         white-space: nowrap;
         opacity: 0.85;
+      }
+      /* Datos de la instalación solar sobre el lavadero */
+      .energy-label {
+        display: grid;
+        gap: 2px;
+        font-size: clamp(10px, 0.72vw, 13px);
+        color: var(--text-muted);
+        background: var(--panel-strong);
+        border: 1px solid rgba(255, 194, 61, 0.45);
+        padding: 6px 10px;
+        border-radius: 12px;
+        white-space: nowrap;
+        box-shadow: 0 0 18px -8px rgba(255, 194, 61, 0.9);
+      }
+      .energy-label .row {
+        display: grid;
+        grid-template-columns: 10px auto auto auto;
+        align-items: center;
+        column-gap: 6px;
+      }
+      .energy-label b {
+        color: var(--text);
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+        text-align: right;
+        min-width: 4.4em;
+      }
+      .energy-label i {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+      }
+      .energy-label .sun i {
+        background: #ffc23d;
+      }
+      .energy-label .bat i {
+        background: #3dffa8;
+      }
+      .energy-label .load i {
+        background: var(--accent);
+      }
+      .energy-label .grid i {
+        background: var(--accent-2);
+      }
+      .energy-label .in {
+        color: #3dffa8;
+        font-size: 0.9em;
+      }
+      .energy-label .out {
+        color: var(--warn);
+        font-size: 0.9em;
+      }
+
+      /* Indicador de la depuradora sobre su caseta */
+      .pump-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: clamp(10px, 0.75vw, 13px);
+        color: var(--text-muted);
+        background: var(--panel);
+        border: 1px solid var(--panel-border);
+        padding: 3px 9px;
+        border-radius: 999px;
+        white-space: nowrap;
+      }
+      .pump-label b {
+        color: var(--text);
+        font-weight: 600;
+      }
+      .pump-label .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--text-faint);
+      }
+      .pump-label.on {
+        border-color: rgba(61, 255, 168, 0.55);
+      }
+      .pump-label.on .dot {
+        background: #3dffa8;
+        animation: pump-pulse 1.6s ease-out infinite;
+      }
+      .pump-label.unavailable .dot {
+        background: var(--danger);
+      }
+      @keyframes pump-pulse {
+        0% {
+          box-shadow: 0 0 0 0 rgba(61, 255, 168, 0.8);
+        }
+        100% {
+          box-shadow: 0 0 0 9px rgba(61, 255, 168, 0);
+        }
       }
       .compass {
         font-family: var(--font-hud);

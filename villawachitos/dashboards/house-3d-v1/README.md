@@ -27,6 +27,15 @@ Plano 3D interactivo de la vivienda (una planta) con el **estado real** de Home 
   elemento; si cambian varios a la vez, encuadra el punto medio entre ellos. A los 6 s del último cambio vuelve
   a la vista que había. No salta con un panel de control abierto y se cancela al tocar la vista
   (`FOCUS_IDLE_MS`, `FOCUS_HOLD_MS` en `house-scene.ts`).
+- **Luces vivas**: cada luz encendida emite ondas de su color que se expanden en bucle y su halo «respira»,
+  para que llamen la atención aunque la vista esté quieta (animación limitada a 30 fps).
+- **Depuradora**: caseta enterrada de 1 × 1 m que asoma 10 cm con césped artificial encima (`PUMP` en el plano,
+  junto a la piscina). Con `switch.interruptor_depuradora` encendido el borde se ilumina en verde, emite ondas
+  y la etiqueta muestra la potencia de `sensor.interruptor_depuradora_power_a`. Al tocarla se puede parar o poner en marcha.
+- **Instalación solar** en la parte norte del lavadero (`ENERGY` en el plano): torre de baterías con una barra
+  de nivel que sube con el % de carga (verde, ámbar o roja) e inversor en la pared con piloto ámbar y ondas
+  mientras las placas producen. Junto al lavadero, una etiqueta con producción solar, % de batería
+  (▲ cargando / ▼ descargando), consumo de la casa y red, de los sensores Sigenergy.
 - **Luz general** suave que deja ver la casa de noche y rellena las sombras de día.
 - Gestos táctiles: **1 dedo gira**, **2 dedos hacen zoom y desplazan**. Tras 90 s sin tocar vuelve a la vista
   inicial (también con el botón de diana).
@@ -41,9 +50,11 @@ Todo está en [`src/scene/plan.ts`](src/scene/plan.ts) en metros, medido sobre e
 - `WALLS`: muros con sus huecos (`door` / `window`); una ventana con `cover` lleva persiana.
 - `LAMPS`: luminarias vinculadas a entidades (`ceiling`, `pendant`, `lamp`, `strip`).
 - `FURNITURE`: bloques sencillos para dar escala y sombras.
-- `PLOT`, `POOL`, `POOL_DECK`, `PAVING`, `FOOTPRINT`: parcela, piscina, pavimentos y huella del tejado.
+- `PLOT`, `POOL`, `POOL_COPING`, `PORCH`, `PAVING`, `PUMP`, `FOOTPRINT`: parcela, piscina y su coronación de 35 cm,
+  porche (mismo suelo que la casa, hasta ~1 m de la piscina), pavimentos, caseta de la depuradora y huella del tejado.
 
-Las estancias siguen los nombres del plano (Despacho 1/2 = Oficina 1/2 en Home Assistant; Entrada = Hall del plano; los dormitorios 2 y 3 están intercambiados respecto al plano;
+Las estancias siguen los nombres del plano (Oficina 1/2 = Despacho 1/2 del plano; Entrada = Hall del plano; el fijo de vidrio junto a la puerta principal
+y las ventanas de oficinas y dormitorios 2 y 3 del plano son en realidad correderas hasta el suelo o no existen; los dormitorios 2 y 3 están intercambiados respecto al plano;
 Baño 1 = el de la suite). Para retocar algo, edita las coordenadas y vuelve a desplegar.
 
 ## Configuración de la tarjeta
