@@ -41,7 +41,11 @@ Plano 3D interactivo de la vivienda (una planta) con el **estado real** de Home 
   la pantalla muestra una animación esquemática con el título o la fuente y tiñe el salón. Al tocarla: encender
   (por `remote.*` si el media_player no lo admite), apagar, reproducción, volumen, silencio y fuente.
 - **Frigorífico** integrado en la cocina (`FRIDGE`): columna con frente de madera, piloto verde (rojo y ondas si la
-  puerta está abierta) y etiqueta con temperatura real y objetivo del frigorífico y del congelador y estado de la puerta.
+  puerta está abierta). Al tocarlo (o con la puerta abierta) aparece una etiqueta con temperatura real y objetivo del
+  frigorífico y del congelador y estado de la puerta; tocar en otro sitio la oculta.
+- **Toalleros eléctricos** a la salida de las duchas de los dos baños (`TOWEL_RAILS`): encendidos, las barras se
+  ponen naranjas y emiten ondas. Al tocarlos se encienden o apagan y se elige el modo (`input_select.modo_de_toalleros_*`).
+- **Vestidor**: las tiras de los armarios altos, bajos y cajones van en el frente de los armarios de la pared oeste.
 - **Downlights**: las luces de techo de oficinas, dormitorios y vestidor son 4 focos repartidos 2 × 2 (`downlights()`
   en el plano) que se encienden y se tocan como una sola luz.
 - **Luz general** suave que deja ver la casa de noche y rellena las sombras de día.

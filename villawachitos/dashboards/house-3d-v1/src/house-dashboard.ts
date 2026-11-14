@@ -15,7 +15,7 @@ import {
 import type { DashboardConfig, HomeAssistant, ThemeMode } from "./types";
 import { tokens } from "./styles/tokens";
 import { loadThemeMode, resolveTheme, saveThemeMode } from "./lib/theme";
-import { HouseScene, type SceneStats, type SunInfo } from "./scene/house-scene";
+import { HouseScene, type ScenePick, type SceneStats, type SunInfo } from "./scene/house-scene";
 import { compassPoint } from "./lib/solar";
 import "./ui/control-panel";
 
@@ -39,6 +39,7 @@ export class HouseDashboard extends LitElement {
   @state() private sun?: SunInfo;
   /** Luz o persiana tocada en el plano, cuyo panel de control está abierto. */
   @state() private selected?: string;
+  @state() private selectedPick?: ScenePick;
   /** Hora simulada para el sol (solo la usa la página de desarrollo). */
   @property({ attribute: false }) simulatedTime?: Date;
 
@@ -84,7 +85,7 @@ export class HouseDashboard extends LitElement {
         longitude: this.config.longitude ?? DEFAULT_LOCATION.longitude,
       });
       this.house.setTheme(this.resolvedTheme);
-      this.house.onPick = (pick) => this.selectEntity(pick?.entity);
+      this.house.onPick = (pick) => this.selectEntity(pick ?? undefined);
       this.house.select(this.selected);
       if (this.simulatedTime) this.house.setTime(this.simulatedTime);
       if (this.hass) this.stats = this.house.update(this.hass, this.config.weather);
@@ -114,9 +115,11 @@ export class HouseDashboard extends LitElement {
     if (this.house) this.sun = this.house.sunState;
   }
 
-  private selectEntity(entity: string | undefined): void {
-    this.selected = entity;
-    this.house?.select(entity);
+  /** Selecciona lo tocado: abre su panel (salvo los elementos que solo muestran datos en la escena). */
+  private selectEntity(pick: ScenePick | undefined): void {
+    this.selectedPick = pick;
+    this.selected = pick?.entity;
+    this.house?.select(pick?.entity);
   }
 
   private onKey = (e: KeyboardEvent): void => {
@@ -187,11 +190,12 @@ export class HouseDashboard extends LitElement {
       </header>
 
       ${
-        this.selected
+        this.selected && this.selectedPick?.kind !== "info"
           ? html`<h3d-control-panel
               class="panel"
               .hass=${this.hass}
               .entityId=${this.selected}
+              .related=${this.selectedPick?.related ?? []}
               @close=${() => this.selectEntity(undefined)}
             ></h3d-control-panel>`
           : null

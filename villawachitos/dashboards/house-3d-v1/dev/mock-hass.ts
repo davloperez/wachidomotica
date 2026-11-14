@@ -1,5 +1,5 @@
 import type { HassEntity, HomeAssistant } from "../src/types";
-import { ENERGY, FRIDGE, GATES, LAMPS, PUMP, TV, WALLS } from "../src/scene/plan";
+import { ENERGY, FRIDGE, GATES, LAMPS, PUMP, TOWEL_RAILS, TV, WALLS } from "../src/scene/plan";
 
 /**
  * `hass` simulado: usa las entidades del plano, enciende algunas luces al azar
@@ -76,6 +76,15 @@ export function createMockHass(getDarkMode: () => boolean, onUpdate: (hass: Home
     source_list: ["TV", "HDMI"],
   });
   states["remote.salon_tv_samsung_salon_85"] = entity("remote.salon_tv_samsung_salon_85", "off");
+
+  TOWEL_RAILS.forEach((t, i) => {
+    states[t.entity] = entity(t.entity, "off", { friendly_name: `Toallero Baño ${i + 1}` });
+    if (t.mode)
+      states[t.mode] = entity(t.mode, "Automático Invierno", {
+        friendly_name: `Modo de toalleros Baño ${i + 1}`,
+        options: ["Automático Invierno", "Automático Verano"],
+      });
+  });
 
   for (const g of GATES) states[g.entity] = entity(g.entity, Math.random() < 0.5 ? "on" : "off");
   states["light.luz_piscina"] = entity("light.luz_piscina", "on", {
@@ -184,6 +193,7 @@ function mockService(
       a.volume_level = Math.min(1, Math.max(0, v + (service === "volume_up" ? 0.02 : -0.02)));
     }
   }
+  if (domain === "input_select" && service === "select_option") state = String(data.option);
   if (domain === "switch") {
     state = service === "toggle" ? (state === "on" ? "off" : "on") : service === "turn_on" ? "on" : "off";
     const power = id === PUMP.entity ? PUMP.power : undefined;

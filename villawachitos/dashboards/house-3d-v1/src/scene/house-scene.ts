@@ -65,6 +65,8 @@ import {
   TV,
   SOFA,
   FRIDGE,
+  TOWEL_RAILS,
+  type TowelRail,
   ROOMS,
   WALLS,
   WALL_HEIGHT,
@@ -203,8 +205,11 @@ interface ShutterRuntime {
 
 /** Elemento accionable que se ha tocado en el plano. */
 export interface ScenePick {
-  kind: "light" | "cover" | "switch" | "media";
+  /** `info`: solo muestra datos en la propia escena (sin panel de control) */
+  kind: "light" | "cover" | "switch" | "media" | "info";
   entity: string;
+  /** Entidades relacionadas que el panel también muestra (p. ej. el modo de un toallero) */
+  related?: string[];
 }
 
 /** Un toque es un clic si el dedo apenas se mueve y se levanta pronto (si no, es un giro). */
@@ -251,7 +256,15 @@ export class HouseScene {
     html: string;
     producing: boolean | undefined;
   };
+  private towels: {
+    def: TowelRail;
+    material: MeshStandardMaterial;
+    waves: WaveEmitter;
+    point: Vector3;
+    on: boolean | undefined;
+  }[] = [];
   private fridge!: {
+    tag: CSS2DObject;
     led: MeshStandardMaterial;
     waves: WaveEmitter;
     label: HTMLDivElement;
@@ -525,6 +538,7 @@ export class HouseScene {
     this.buildTv();
     this.buildSofa();
     this.buildFridge();
+    for (const t of TOWEL_RAILS) this.buildTowelRail(t);
 
     // Luminarias
     const glowTexture = makeGlowTexture();
@@ -776,10 +790,75 @@ export class HouseScene {
     const label = document.createElement("div");
     label.className = "fridge-label";
     const tag = new CSS2DObject(label);
-    // Fuera del muro oeste, como el resto de indicadores, para no tapar la cocina
-    tag.position.set(-8.4, 0.2, fz);
+    // Solo aparece al tocar el frigorífico (o si se queda la puerta abierta)
+    tag.position.set(fx, h + 0.35, fz);
     this.scene.add(tag);
-    this.fridge = { led, waves, label, html: "", open: undefined };
+    this.fridge = { led, waves, label, tag, html: "", open: undefined };
+    this.showFridgeLabel();
+
+    const hit = this.addHitTarget(new BoxGeometry(w + 0.3, h, d + 0.1), "info", FRIDGE.sensors.fridge);
+    hit.position.set(fx + 0.1, 0.02 + h / 2, fz);
+  }
+
+  private showFridgeLabel(): void {
+    if (!this.fridge) return;
+    const visible = this.selected === FRIDGE.sensors.fridge || this.fridge.open === true;
+    // CSS2DRenderer controla `display` de cada etiqueta según la visibilidad del objeto
+    this.fridge.tag.visible = visible;
+    this.dirty = true;
+  }
+
+  /** Toallero eléctrico: escalera de barras que se ponen al rojo vivo y emiten calor al encenderse. */
+  private buildTowelRail(def: TowelRail): void {
+    const [x, z] = def.at;
+    const width = 0.5;
+    const height = 0.85;
+    const bottom = 0.9;
+    const material = new MeshStandardMaterial({ color: 0xf2f2f2, roughness: 0.35, metalness: 0.3 });
+    const group = new Group();
+    group.position.set(x, 0, z);
+    // Paralelo a su pared: en una pared de eje Z, el ancho va a lo largo de Z
+    if (def.axis === "z") group.rotation.y = Math.PI / 2;
+    for (const side of [-1, 1]) {
+      const post = new Mesh(new CylinderGeometry(0.018, 0.018, height, 10), material);
+      post.position.set((side * width) / 2, bottom + height / 2, 0);
+      group.add(post);
+    }
+    const bars = 7;
+    for (let i = 0; i < bars; i++) {
+      const bar = new Mesh(new CylinderGeometry(0.011, 0.011, width, 8), material);
+      bar.rotation.z = Math.PI / 2;
+      bar.position.set(0, bottom + 0.06 + (i * (height - 0.12)) / (bars - 1), 0);
+      group.add(bar);
+    }
+    group.traverse((o) => (o.castShadow = true));
+    this.scene.add(group);
+
+    const point = new Vector3(x, bottom + height / 2, z);
+    const waves = this.makeEmitter(point.clone(), [1.3, 1.3], (this.towels.length * 0.29 + 0.1) % 1);
+    this.towels.push({ def, material, waves, point, on: undefined });
+    const hit = this.addHitTarget(
+      new BoxGeometry(0.5, height + 0.3, 0.8),
+      "switch",
+      def.entity,
+      def.mode ? [def.mode] : undefined,
+    );
+    hit.position.copy(point);
+  }
+
+  private updateTowels(hass: HomeAssistant, changed: Vector3[]): void {
+    const heat = new Color(0xff7a2e);
+    for (const t of this.towels) {
+      const on = hass.states[t.def.entity]?.state === "on";
+      if (on === t.on) continue;
+      if (t.on !== undefined) changed.push(t.point.clone());
+      t.on = on;
+      t.material.emissive.copy(on ? heat : new Color(0x000000));
+      t.material.emissiveIntensity = on ? 0.9 : 0;
+      t.material.color.set(on ? 0xffd2b0 : 0xf2f2f2);
+      this.setEmitter(t.waves, on, heat, 0.75);
+      this.dirty = true;
+    }
   }
 
   private updateFridge(hass: HomeAssistant, changed: Vector3[]): void {
@@ -799,6 +878,7 @@ export class HouseScene {
       if (f.open !== undefined) changed.push(new Vector3(FRIDGE.at[0], 1.4, FRIDGE.at[1]));
       f.open = open;
       f.led.emissive.set(open ? 0xff5c7a : 0x3dffa8);
+      this.showFridgeLabel();
       this.setEmitter(f.waves, open, new Color(0xff5c7a), 0.9);
       this.dirty = true;
     }
@@ -1404,6 +1484,7 @@ export class HouseScene {
     this.updateEnergy(hass);
     this.updateTv(hass, changed);
     this.updateFridge(hass, changed);
+    this.updateTowels(hass, changed);
 
     const pumpState = hass.states[PUMP.entity];
     const pumpOn = pumpState?.state === "on";
@@ -1711,9 +1792,14 @@ export class HouseScene {
   /* Interacción: tocar luces y persianas                                */
   /* ================================================================== */
 
-  private addHitTarget(geometry: BufferGeometry, kind: ScenePick["kind"], entity: string): Mesh {
+  private addHitTarget(
+    geometry: BufferGeometry,
+    kind: ScenePick["kind"],
+    entity: string,
+    related?: string[],
+  ): Mesh {
     const mesh = new Mesh(geometry, this.hitMaterial);
-    mesh.userData = { kind, entity } satisfies ScenePick;
+    mesh.userData = { kind, entity, related } satisfies ScenePick;
     mesh.renderOrder = 10;
     this.scene.add(mesh);
     this.hitTargets.push(mesh);
@@ -1727,6 +1813,7 @@ export class HouseScene {
     for (const m of this.hitTargets) {
       m.material = (m.userData as ScenePick).entity === entity ? this.highlightMaterial : this.hitMaterial;
     }
+    this.showFridgeLabel();
     this.dirty = true;
   }
 

@@ -317,19 +317,20 @@ export const LAMPS: Lamp[] = [
   { entity: "light.luz_wifi_mesita_noche_dorm_2", kind: "lamp", pos: [4.85, 0.75, -0.95] },
   /* Vestidor */
   downlights("light.dormitorio_1_persiana_dormitorio_1_luz_techo_vestidor", [1.25, -1.22, 4.57, 2.18]),
+  // Tiras de los armarios: todas en el frente de los armarios de la pared oeste
   {
     entity: "light.luz_armarios_altos",
     kind: "strip",
-    pos: [3.95, 2.2, 0.5],
-    strip: { length: 2.8, axis: "z" },
+    pos: [1.86, 2.15, 0.48],
+    strip: { length: 3.2, axis: "z" },
   },
   {
     entity: "light.luz_armarios_bajos",
     kind: "strip",
-    pos: [3.95, 0.35, 0.5],
-    strip: { length: 2.8, axis: "z" },
+    pos: [1.86, 0.3, 0.48],
+    strip: { length: 3.2, axis: "z" },
   },
-  { entity: "light.luz_cajones", kind: "strip", pos: [1.88, 0.8, 1.0], strip: { length: 2.6, axis: "z" } },
+  { entity: "light.luz_cajones", kind: "strip", pos: [1.86, 0.85, 0.48], strip: { length: 3.2, axis: "z" } },
   /* Dormitorio 1 */
   downlights("light.dormitorio_1_persiana_dormitorio_1_luz_techo_dormitorio_1", [1.15, 2.18, 5.92, 5.7]),
   { entity: "light.luz_mesita_noche_dorm_1", kind: "lamp", pos: [2.95, 0.75, 2.5] },
@@ -558,3 +559,31 @@ export const FRIDGE = {
     door: "binary_sensor.cocina_frigo_de_60_puerta_abierta_refrigerador",
   },
 };
+
+/** Toallero eléctrico a la salida de la ducha: posición en la pared, orientación y su modo. */
+export interface TowelRail {
+  entity: string;
+  /** `input_select` con el modo de funcionamiento (se muestra en su panel) */
+  mode?: string;
+  /** Centro en planta, pegado a la pared */
+  at: Point;
+  /** Pared en la que está colgado: el toallero queda paralelo a ella */
+  axis: "x" | "z";
+}
+
+export const TOWEL_RAILS: TowelRail[] = [
+  {
+    // Baño 1: pared oeste, junto a la salida de la ducha
+    entity: "switch.bano_1_bano_1_luz_toallero_bano_1",
+    mode: "input_select.modo_de_toalleros_bano_1",
+    at: [6.0, 3.65],
+    axis: "z",
+  },
+  {
+    // Baño 2: pared este
+    entity: "switch.esp_bano_2_luz_toallero_bano_2",
+    mode: "input_select.modo_de_toalleros_bano_2",
+    at: [2.8, -3.75],
+    axis: "z",
+  },
+];

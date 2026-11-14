@@ -9,6 +9,7 @@ import {
   mdiLightbulbOutline,
   mdiPause,
   mdiPump,
+  mdiHeatingCoil,
   mdiPlayPause,
   mdiSkipNext,
   mdiSkipPrevious,
@@ -70,6 +71,8 @@ const SWATCHES: { name: string; hs: [number, number] }[] = [
 export class ControlPanel extends LitElement {
   @property({ attribute: false }) hass?: HomeAssistant;
   @property() entityId?: string;
+  /** Entidades relacionadas que se controlan en el mismo panel (p. ej. el modo de un toallero) */
+  @property({ attribute: false }) related: string[] = [];
   /** Valores mientras se arrastra un control, hasta que Home Assistant confirma el cambio. */
   @state() private draft: Record<string, number> = {};
   @state() private error?: string;
@@ -132,13 +135,15 @@ export class ControlPanel extends LitElement {
       <section class="card" role="dialog" aria-label=${name}>
         <header>
           <span
-            class="badge ${domain} ${st?.state === "on" || (domain === "media_player" && st && !MEDIA_OFF.includes(st.state)) ? "on" : ""}"
+            class="badge ${domain} ${this.entityId?.includes("toallero") ? "heat" : ""} ${st?.state === "on" || (domain === "media_player" && st && !MEDIA_OFF.includes(st.state)) ? "on" : ""}"
           >
             ${icon(
               domain === "cover"
                 ? mdiWindowShutterOpen
                 : domain === "switch"
-                  ? mdiPump
+                  ? this.entityId?.includes("toallero")
+                    ? mdiHeatingCoil
+                    : mdiPump
                   : domain === "media_player"
                     ? mdiTelevision
                     : st?.state === "on"
@@ -181,7 +186,10 @@ export class ControlPanel extends LitElement {
       const b = st.attributes.brightness;
       return typeof b === "number" ? `Encendida · ${Math.round((b / 255) * 100)} %` : "Encendida";
     }
-    if (domain === "switch") return st.state === "on" ? "En marcha" : "Parada";
+    if (domain === "switch") {
+      if (this.isPump) return st.state === "on" ? "En marcha" : "Parada";
+      return st.state === "on" ? "Encendido" : "Apagado";
+    }
     if (domain === "media_player") {
       if (MEDIA_OFF.includes(st.state)) return "Apagada";
       const what = st.attributes.media_title ?? st.attributes.app_name ?? st.attributes.source;
@@ -486,12 +494,47 @@ export class ControlPanel extends LitElement {
   /* Interruptores (depuradora)                                       */
   /* ---------------------------------------------------------------- */
 
+  private get isPump(): boolean {
+    return this.entityId?.includes("depuradora") ?? false;
+  }
+
   private renderSwitch(st: HassEntity) {
     const on = st.state === "on";
+    const pump = this.isPump;
     return html`
-      <button class="power ${on ? "on pump" : ""}" @click=${() => this.call("switch", "toggle")}>
-        ${icon(mdiPower)} ${on ? "Parar" : "Poner en marcha"}
+      <button
+        class="power ${on ? (pump ? "on pump" : "on heat") : ""}"
+        @click=${() => this.call("switch", "toggle")}
+      >
+        ${icon(mdiPower)} ${on ? (pump ? "Parar" : "Apagar") : pump ? "Poner en marcha" : "Encender"}
       </button>
+      ${this.related.map((id) => this.renderSelect(id))}
+    `;
+  }
+
+  /** `input_select` relacionado: sus opciones como botones. */
+  private renderSelect(id: string) {
+    const st = this.hass?.states[id];
+    if (!st || id.split(".")[0] !== "input_select") return nothing;
+    const options = (st.attributes.options as string[] | undefined) ?? [];
+    const name = String(st.attributes.friendly_name ?? id)
+      .replace(/^Modo de /i, "")
+      .replace(/^./, (c) => c.toUpperCase());
+    return html`
+      <div class="field">
+        <span>Modo <span class="muted-inline">${name}</span></span>
+        <div class="presets sources">
+          ${options.map(
+            (o) =>
+              html`<button
+                class="preset ${st.state === o ? "sel" : ""}"
+                @click=${() => this.call("input_select", "select_option", { option: o }, id)}
+              >
+                ${o}
+              </button>`,
+          )}
+        </div>
+      </div>
     `;
   }
 
@@ -727,6 +770,17 @@ export class ControlPanel extends LitElement {
       .badge.media_player.on {
         color: var(--accent);
         box-shadow: 0 0 18px -4px var(--accent);
+      }
+      .power.on.heat {
+        --lamp: #ff7a2e;
+      }
+      .badge.switch.on.heat {
+        color: #ff7a2e;
+        box-shadow: 0 0 18px -4px #ff7a2e;
+      }
+      .muted-inline {
+        color: var(--text-faint);
+        font-size: 0.9em;
       }
       .power.on.pump {
         --lamp: #3dffa8;
