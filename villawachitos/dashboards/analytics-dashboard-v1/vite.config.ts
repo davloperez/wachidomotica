@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { defineConfig, loadEnv } from "vite";
 
 const pkg = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8")) as {
@@ -11,7 +11,8 @@ const pkg = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), 
  *                     (librerías y fuentes incluidas, sin dependencias externas).
  */
 export default defineConfig(({ command, mode }) => {
-  const env = loadEnv(mode, process.cwd(), "");
+  // .env propio del dashboard o, si no hay, el compartido en villawachitos/dashboards/.env
+  const env = loadEnv(mode, existsSync(".env") ? process.cwd() : "..", "");
   const isServe = command === "serve";
 
   return {

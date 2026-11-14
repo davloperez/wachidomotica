@@ -6,13 +6,13 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build && node scripts/check-bundle.mjs",
+    "build": "tsc --noEmit && vite build && node ../shared/scripts/check-bundle.mjs",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "deploy": "npm run build && node scripts/deploy.mjs",
-    "deploy:only": "node scripts/deploy.mjs"
+    "deploy": "npm run build && node ../shared/scripts/deploy.mjs",
+    "deploy:only": "node ../shared/scripts/deploy.mjs"
   },
   "dependencies": {
     "@fontsource-variable/space-grotesk": "^5.3.0",

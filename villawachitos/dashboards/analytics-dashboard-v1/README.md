@@ -22,13 +22,14 @@ src/
   data/                 → estadísticas del recorder, previsión del tiempo
   lib/                  → formato, iconos, gestión de tema
 dev/                    → página de desarrollo con `hass` real (.env) o simulado
-scripts/deploy.mjs      → despliegue a Home Assistant
+deploy.json             → destino y dashboard para el script común ../shared/scripts/deploy.mjs
 ```
 
 ## Puesta en marcha (una sola vez)
 
-1. **Dependencias**: tarea de VSCode _Dashboard: instalar dependencias_ (o `npm ci`).
-2. **`.env`**: copia `.env.example` a `.env` y rellena:
+1. **Dependencias**: tarea de VSCode _Analytics v1: instalar dependencias_ (o `npm ci`).
+2. **`.env`**: copia `villawachitos/dashboards/.env.example` a `villawachitos/dashboards/.env` (compartido por
+   todos los dashboards; un `.env` dentro de esta carpeta tiene prioridad) y rellena:
    - `HA_URL`: URL de Home Assistant en tu red (p. ej. `http://192.168.0.10:8123`).
    - `HA_TOKEN`: token de larga duración (Perfil → Seguridad). Debe ser de un usuario administrador
      (registrar recursos y dashboards lo requiere).
@@ -43,10 +44,10 @@ scripts/deploy.mjs      → despliegue a Home Assistant
 
 | Tarea de VSCode                       | Qué hace                                                            |
 | ------------------------------------- | ------------------------------------------------------------------- |
-| **Dashboard: servidor de desarrollo** | Vite en `http://localhost:5173/dev/index.html` con recarga en vivo |
-| **Dashboard: build**                  | Typecheck + bundle en `dist/` (Ctrl+Shift+B)                        |
-| **Dashboard: deploy a Home Assistant**| Build → SSH → recurso `?v=<hash>` → dashboard `analytics-v1`        |
-| Dashboard: typecheck / lint           | Comprobaciones                                                      |
+| **Analytics v1: servidor de desarrollo** | Vite en `http://localhost:5173/dev/index.html` con recarga en vivo |
+| **Analytics v1: build**                  | Typecheck + bundle en `dist/` (Ctrl+Shift+B)                        |
+| **Analytics v1: deploy a Home Assistant**| Build → SSH → recurso `?v=<hash>` → dashboard `analytics-v1`        |
+| Analytics v1: typecheck / lint           | Comprobaciones                                                      |
 
 La página de desarrollo usa datos reales si `.env` tiene `HA_URL` y `HA_TOKEN`; si no (o con `?mock`),
 usa datos simulados. La barra inferior permite simular el modo oscuro de Home Assistant.

@@ -1,0 +1,12 @@
+{
+  "bundle": "dist/analytics-dashboard-v1.js",
+  "wwwDir": "/config/www/analytics-dashboard-v1",
+  "card": "dashboard.config.json",
+  "dashboard": {
+    "url_path": "analytics-v1",
+    "title": "Analytics v1",
+    "icon": "mdi:chart-timeline-variant-shimmer"
+  },
+  "view": { "title": "Analytics", "path": "main" },
+  "kiosk": true
+}

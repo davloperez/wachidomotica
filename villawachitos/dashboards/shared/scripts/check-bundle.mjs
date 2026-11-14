@@ -2,13 +2,13 @@
 /**
  * Comprobación tras el build: el bundle debe funcionar en el navegador tal cual lo carga
  * Home Assistant, sin variables de Node (`process`) ni restos de credenciales de desarrollo.
+ * Se ejecuta desde la carpeta del dashboard y usa el `bundle` de su deploy.json.
  */
 import { readFileSync } from "node:fs";
-import { resolve, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
 
-const file = resolve(dirname(fileURLToPath(import.meta.url)), "../dist/analytics-dashboard-v1.js");
-const code = readFileSync(file, "utf8");
+const { bundle } = JSON.parse(readFileSync(resolve(process.cwd(), "deploy.json"), "utf8"));
+const code = readFileSync(resolve(process.cwd(), bundle), "utf8");
 
 const forbidden = [
   [/\bprocess\.env\b/, "referencia a process.env (no existe en el navegador)"],

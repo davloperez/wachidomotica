@@ -1,0 +1,39 @@
+{
+  "name": "house-3d-v1",
+  "version": "0.1.0",
+  "private": true,
+  "description": "House 3D v1 — plano 3D interactivo de la vivienda con luces y persianas en tiempo real (Home Assistant).",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build && node ../shared/scripts/check-bundle.mjs",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "deploy": "npm run build && node ../shared/scripts/deploy.mjs",
+    "deploy:only": "node ../shared/scripts/deploy.mjs"
+  },
+  "dependencies": {
+    "@fontsource-variable/space-grotesk": "^5.3.0",
+    "@fontsource/orbitron": "^5.3.0",
+    "@mdi/js": "^7.4.47",
+    "lit": "^3.3.3",
+    "three": "^0.187.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^26.6.6",
+    "@types/three": "^0.187.0",
+    "eslint": "^10.15.0",
+    "eslint-plugin-lit": "^2.3.1",
+    "globals": "^17.14.0",
+    "home-assistant-js-websocket": "^9.8.1",
+    "prettier": "^3.10.1",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.72.2",
+    "vite": "^8.3.8"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
