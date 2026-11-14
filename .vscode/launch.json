@@ -1,0 +1,21 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Dashboard: depurar en Chrome",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:5173/dev/index.html",
+      "webRoot": "${workspaceFolder}/villawachitos/dashboards/analytics-dashboard-v1",
+      "preLaunchTask": "Dashboard: servidor de desarrollo"
+    },
+    {
+      "name": "Dashboard: depurar script de deploy",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/villawachitos/dashboards/analytics-dashboard-v1/scripts/deploy.mjs",
+      "cwd": "${workspaceFolder}/villawachitos/dashboards/analytics-dashboard-v1",
+      "console": "integratedTerminal"
+    }
+  ]
+}

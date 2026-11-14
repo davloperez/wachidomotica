@@ -1,0 +1,132 @@
+{
+  "version": "2.0.0",
+  "inputs": [],
+  "tasks": [
+    /* =====================================================================
+     * Analytics Dashboard v1  (villawachitos/dashboards/analytics-dashboard-v1)
+     * ===================================================================== */
+    {
+      "label": "Dashboard: instalar dependencias",
+      "type": "shell",
+      "command": "npm ci",
+      "options": { "cwd": "${workspaceFolder}/villawachitos/dashboards/analytics-dashboard-v1" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Dashboard: servidor de desarrollo",
+      "detail": "Vite en http://localhost:5173/dev/index.html (datos reales si hay .env, si no simulados)",
+      "type": "shell",
+      "command": "npm run dev",
+      "options": {
+        "cwd": "${workspaceFolder}/villawachitos/dashboards/analytics-dashboard-v1",
+        "env": { "VITE_USE_POLLING": "1" }
+      },
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "vite",
+        "pattern": { "regexp": "^__never_matches__$" },
+        "background": {
+          "activesBegin": ".",
+          "beginsPattern": "VITE v",
+          "endsPattern": "Local:"
+        }
+      }
+    },
+    {
+      "label": "Dashboard: build",
+      "type": "shell",
+      "command": "npm run build",
+      "options": { "cwd": "${workspaceFolder}/villawachitos/dashboards/analytics-dashboard-v1" },
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": ["$tsc"]
+    },
+    {
+      "label": "Dashboard: deploy a Home Assistant",
+      "detail": "Build + subida por SSH + recurso Lovelace con ?v=hash + dashboard analytics-v1",
+      "type": "shell",
+      "command": "npm run deploy",
+      "options": { "cwd": "${workspaceFolder}/villawachitos/dashboards/analytics-dashboard-v1" },
+      "problemMatcher": ["$tsc"],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
+    },
+    {
+      "label": "Dashboard: typecheck",
+      "type": "shell",
+      "command": "npm run typecheck",
+      "options": { "cwd": "${workspaceFolder}/villawachitos/dashboards/analytics-dashboard-v1" },
+      "group": "test",
+      "problemMatcher": ["$tsc"]
+    },
+    {
+      "label": "Dashboard: lint",
+      "type": "shell",
+      "command": "npm run lint",
+      "options": { "cwd": "${workspaceFolder}/villawachitos/dashboards/analytics-dashboard-v1" },
+      "group": "test",
+      "problemMatcher": ["$eslint-stylish"]
+    },
+
+    /* =====================================================================
+     * ESPHome  (villawachitos/esphome)
+     * ===================================================================== */
+    {
+      "label": "ESPHome: crear/actualizar entorno Python",
+      "detail": "Recrea villawachitos/esphome/venv con la versión actual de Python e instala ESPHome",
+      "type": "shell",
+      "command": "rm -rf venv && python3 -m venv venv && venv/bin/pip install --upgrade pip esphome",
+      "options": { "cwd": "${workspaceFolder}/villawachitos/esphome" },
+      "problemMatcher": []
+    },
+    {
+      "label": "ESPHome: compilar archivo actual",
+      "type": "shell",
+      "command": "esphome compile '${file}'",
+      "options": {
+        "cwd": "${workspaceFolder}/villawachitos/esphome",
+        "env": { "PATH": "${workspaceFolder}/villawachitos/esphome/venv/bin:${env:PATH}" }
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "ESPHome: subir archivo actual (OTA)",
+      "type": "shell",
+      "command": "esphome upload '${file}'",
+      "options": {
+        "cwd": "${workspaceFolder}/villawachitos/esphome",
+        "env": { "PATH": "${workspaceFolder}/villawachitos/esphome/venv/bin:${env:PATH}" }
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "ESPHome: logs del archivo actual",
+      "type": "shell",
+      "command": "esphome logs '${file}'",
+      "options": {
+        "cwd": "${workspaceFolder}/villawachitos/esphome",
+        "env": { "PATH": "${workspaceFolder}/villawachitos/esphome/venv/bin:${env:PATH}" }
+      },
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "ESPHome: compilar todos",
+      "type": "shell",
+      "command": "./compile_all.sh",
+      "options": {
+        "cwd": "${workspaceFolder}/villawachitos/esphome",
+        "env": { "PATH": "${workspaceFolder}/villawachitos/esphome/venv/bin:${env:PATH}" }
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "ESPHome: subir todos (OTA)",
+      "type": "shell",
+      "command": "./upload_all.sh",
+      "options": {
+        "cwd": "${workspaceFolder}/villawachitos/esphome",
+        "env": { "PATH": "${workspaceFolder}/villawachitos/esphome/venv/bin:${env:PATH}" }
+      },
+      "problemMatcher": []
+    }
+  ]
+}

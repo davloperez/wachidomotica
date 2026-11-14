@@ -1,0 +1,21 @@
+{
+  "recommendations": [
+    // Home Assistant / ESPHome
+    "esphome.esphome-vscode",
+    "keesschollaart.vscode-home-assistant",
+    "redhat.vscode-yaml",
+    "ms-python.python",
+
+    // Dashboard (TypeScript + Lit + Vite)
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "runem.lit-plugin",
+    "yoavbls.pretty-ts-errors",
+
+    // General
+    "editorconfig.editorconfig",
+    "streetsidesoftware.code-spell-checker",
+    "streetsidesoftware.code-spell-checker-spanish",
+    "eamodio.gitlens"
+  ]
+}

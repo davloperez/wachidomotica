@@ -1,0 +1,49 @@
+import { readFileSync } from "node:fs";
+import { defineConfig, loadEnv } from "vite";
+
+const pkg = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8")) as {
+  version: string;
+};
+
+/**
+ * - `npm run dev`   → sirve dev/index.html con un `hass` real (si hay HA_URL/HA_TOKEN en .env) o simulado.
+ * - `npm run build` → genera un único módulo ES autocontenido en dist/analytics-dashboard-v1.js
+ *                     (librerías y fuentes incluidas, sin dependencias externas).
+ */
+export default defineConfig(({ command, mode }) => {
+  const env = loadEnv(mode, process.cwd(), "");
+  const isServe = command === "serve";
+
+  return {
+    // Las credenciales solo se inyectan en el servidor de desarrollo, nunca en el bundle final.
+    define: {
+      __APP_VERSION__: JSON.stringify(pkg.version),
+      __DEV_HA_URL__: JSON.stringify(isServe ? (env.HA_URL ?? "") : ""),
+      __DEV_HA_TOKEN__: JSON.stringify(isServe ? (env.HA_TOKEN ?? "") : ""),
+      // En modo librería Vite no sustituye process.env.NODE_ENV (ECharts lo usa) y en el
+      // navegador `process` no existe. Lo fijamos para que el bundle sea autocontenido.
+      ...(isServe ? {} : { "process.env.NODE_ENV": JSON.stringify("production") }),
+    },
+    server: {
+      host: true,
+      port: 5173,
+      // Si el sistema agota los "file watchers" de inotify (ENOSPC), arrancar con VITE_USE_POLLING=1.
+      watch: env.VITE_USE_POLLING === "1" ? { usePolling: true, interval: 300 } : undefined,
+    },
+    build: {
+      target: "es2022",
+      outDir: "dist",
+      emptyOutDir: true,
+      sourcemap: false,
+      minify: true,
+      assetsInlineLimit: Number.MAX_SAFE_INTEGER,
+      // En modo librería ES Vite conserva los espacios; forzamos la minificación completa.
+      rolldownOptions: { output: { minify: true } },
+      lib: {
+        entry: "src/index.ts",
+        formats: ["es"],
+        fileName: () => "analytics-dashboard-v1.js",
+      },
+    },
+  };
+});

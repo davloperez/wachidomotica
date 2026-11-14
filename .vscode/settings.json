@@ -1,0 +1,74 @@
+{
+  /* ---------- General ---------- */
+  "editor.formatOnSave": true,
+  "files.eol": "\n",
+  "files.insertFinalNewline": true,
+  "files.trimTrailingWhitespace": true,
+
+  // Carpetas pesadas fuera del explorador de búsqueda y del vigilante de archivos
+  // (evita agotar el límite de inotify del sistema).
+  "files.watcherExclude": {
+    "**/venv/**": true,
+    "**/.esphome/**": true,
+    "**/node_modules/**": true,
+    "**/dist/**": true
+  },
+  "search.exclude": {
+    "**/venv": true,
+    "**/.esphome": true,
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/package-lock.json": true
+  },
+
+  /* ---------- ESPHome / Python ---------- */
+  "python.defaultInterpreterPath": "${workspaceFolder}/villawachitos/esphome/venv/bin/python",
+  "python.terminal.activateEnvironment": true,
+  "terminal.integrated.env.linux": {
+    "PATH": "${workspaceFolder}/villawachitos/esphome/venv/bin:${env:PATH}"
+  },
+  "yaml.customTags": [
+    "!secret scalar",
+    "!include scalar",
+    "!include mapping",
+    "!include sequence",
+    "!lambda scalar",
+    "!extend scalar",
+    "!remove scalar",
+    "!input scalar"
+  ],
+  "[yaml]": {
+    "editor.defaultFormatter": "redhat.vscode-yaml",
+    "editor.tabSize": 2,
+    "editor.formatOnSave": false
+  },
+
+  /* ---------- Dashboard (TypeScript / Lit) ---------- */
+  "typescript.tsdk": "villawachitos/dashboards/analytics-dashboard-v1/node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+  "eslint.workingDirectories": [{ "directory": "villawachitos/dashboards/analytics-dashboard-v1", "changeProcessCWD": true }],
+  "eslint.useFlatConfig": true,
+  "prettier.prettierPath": "villawachitos/dashboards/analytics-dashboard-v1/node_modules/prettier",
+  "[typescript]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "[javascript]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "[json]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "[jsonc]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "[html]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "[css]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "files.associations": {
+    ".env.example": "dotenv"
+  },
+
+  /* ---------- Ortografía ---------- */
+  "cSpell.language": "en,es",
+  "cSpell.words": [
+    "esphome",
+    "espnow",
+    "lovelace",
+    "persiana",
+    "persianas",
+    "villawachitos",
+    "wachidomotica",
+    "wallpanel"
+  ]
+}
