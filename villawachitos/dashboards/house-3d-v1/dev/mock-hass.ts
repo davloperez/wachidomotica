@@ -26,8 +26,19 @@ export function createMockHass(getDarkMode: () => boolean, onUpdate: (hass: Home
   const states: Record<string, HassEntity> = {};
   for (const l of LAMPS) {
     const on = Math.random() < 0.45;
+    // Capacidades parecidas a las reales: tiras WLED en RGBW con efectos, lámparas regulables, resto on/off.
+    const modes = l.kind === "strip" ? ["rgbw"] : l.kind === "lamp" ? ["color_temp", "hs"] : ["onoff"];
     states[l.entity] = entity(l.entity, on ? "on" : "off", {
-      brightness: Math.round(80 + Math.random() * 175),
+      friendly_name: l.entity.replace("light.", "").replaceAll("_", " "),
+      supported_color_modes: modes,
+      color_mode: on ? modes[modes.length - 1] : null,
+      ...(l.kind === "strip"
+        ? { effect_list: ["Solid", "Rainbow", "Breathe", "Fire 2012"], effect: "Solid" }
+        : {}),
+      ...(l.kind === "lamp"
+        ? { min_color_temp_kelvin: 2700, max_color_temp_kelvin: 6500, color_temp_kelvin: 3000 }
+        : {}),
+      brightness: modes[0] === "onoff" ? null : Math.round(80 + Math.random() * 175),
       rgb_color: l.kind === "strip" ? COLORS[Math.floor(Math.random() * COLORS.length)] : [255, 196, 137],
     });
   }
@@ -36,12 +47,16 @@ export function createMockHass(getDarkMode: () => boolean, onUpdate: (hass: Home
     .filter((c): c is string => !!c);
   for (const c of covers) {
     const pos = [0, 30, 60, 100][Math.floor(Math.random() * 4)];
-    states[c] = entity(c, pos === 0 ? "closed" : "open", { current_position: pos });
+    states[c] = entity(c, pos === 0 ? "closed" : "open", coverAttrs(c, pos));
   }
 
   for (const g of GATES) states[g.entity] = entity(g.entity, Math.random() < 0.5 ? "on" : "off");
   states["light.luz_piscina"] = entity("light.luz_piscina", "on", {
+    friendly_name: "Luz piscina",
+    supported_color_modes: ["hs", "white"],
+    color_mode: "hs",
     brightness: 230,
+    hs_color: [218, 84],
     rgb_color: [40, 120, 255],
   });
 
@@ -56,17 +71,15 @@ export function createMockHass(getDarkMode: () => boolean, onUpdate: (hass: Home
       callWS: async () => {
         throw new Error("mock");
       },
-      callService: async () => undefined,
+      callService: async (domain, service, data) => {
+        mockService(states, domain, service, data ?? {});
+        emit();
+      },
     });
   };
 
-  // Cada pocos segundos: mover una persiana y alternar una luz.
+  // Cada pocos segundos: abrir o cerrar una puerta de vehículos (las luces y persianas se tocan a mano).
   window.setInterval(() => {
-    const c = covers[Math.floor(Math.random() * covers.length)];
-    const pos = [0, 25, 50, 75, 100][Math.floor(Math.random() * 5)];
-    states[c] = entity(c, pos === 0 ? "closed" : "open", { current_position: pos });
-    const l = LAMPS[Math.floor(Math.random() * LAMPS.length)].entity;
-    states[l] = { ...states[l], state: states[l].state === "on" ? "off" : "on" };
     const g = GATES[Math.floor(Math.random() * GATES.length)].entity;
     states[g] = entity(g, states[g].state === "on" ? "off" : "on");
     emit();
@@ -74,4 +87,79 @@ export function createMockHass(getDarkMode: () => boolean, onUpdate: (hass: Home
 
   window.addEventListener("h3d-dev-refresh", emit);
   emit();
+}
+
+function coverAttrs(id: string, pos: number): HassEntity["attributes"] {
+  return {
+    friendly_name: id.replace("cover.", "").replaceAll("_", " "),
+    current_position: pos,
+    supported_features: 15,
+    device_class: "blind",
+  };
+}
+
+/** Aplica en el estado simulado lo que haría Home Assistant con cada servicio. */
+function mockService(
+  states: Record<string, HassEntity>,
+  domain: string,
+  service: string,
+  data: Record<string, unknown>,
+): void {
+  const id = data.entity_id as string;
+  const st = states[id];
+  if (!st) return;
+  const a = { ...st.attributes };
+  let state = st.state;
+  if (domain === "light") {
+    if (service === "toggle") state = state === "on" ? "off" : "on";
+    if (service === "turn_off") state = "off";
+    if (service === "turn_on") {
+      state = "on";
+      if (typeof data.brightness_pct === "number")
+        a.brightness = Math.round((data.brightness_pct / 100) * 255);
+      if (Array.isArray(data.hs_color)) {
+        const [h, s] = data.hs_color as [number, number];
+        a.hs_color = [h, s];
+        a.rgb_color = hsToRgb(h, s);
+        a.color_mode = "hs";
+      }
+      if (typeof data.color_temp_kelvin === "number") {
+        a.color_temp_kelvin = data.color_temp_kelvin;
+        a.color_mode = "color_temp";
+        a.rgb_color = [
+          255,
+          196 + Math.round((data.color_temp_kelvin - 2700) / 60),
+          137 + Math.round((data.color_temp_kelvin - 2700) / 32),
+        ].map((v) => Math.min(255, v)) as [number, number, number];
+      }
+      if (data.white) {
+        a.color_mode = "white";
+        a.rgb_color = [255, 255, 255];
+      }
+      if (typeof data.effect === "string") a.effect = data.effect;
+    }
+  }
+  if (domain === "cover") {
+    const pos =
+      service === "open_cover"
+        ? 100
+        : service === "close_cover"
+          ? 0
+          : service === "set_cover_position"
+            ? (data.position as number)
+            : undefined;
+    if (pos !== undefined) {
+      a.current_position = pos;
+      state = pos === 0 ? "closed" : "open";
+    }
+  }
+  states[id] = entity(id, state, a);
+}
+
+function hsToRgb(h: number, s: number): [number, number, number] {
+  const f = (n: number) => {
+    const k = (n + h / 60) % 6;
+    return Math.round(255 * (1 - (s / 100) * Math.max(0, Math.min(k, 4 - k, 1))));
+  };
+  return [f(5), f(3), f(1)];
 }

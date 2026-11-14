@@ -16,6 +16,12 @@ Plano 3D interactivo de la vivienda (una planta) con el **estado real** de Home 
   de `light.luz_piscina`.
 - **Puertas de los vehículos**: dos correderas que corren una sobre otra y se abren o cierran según los
   sensores de contacto `binary_sensor.sensor_puerta_garaje_1_contact` / `_2_contact` (`GATES` en el plano).
+- **Accionable**: toca una luz, una persiana o el agua de la piscina y se abre un panel con lo que admita ese
+  dispositivo en Home Assistant: encender/apagar, intensidad, temperatura de color, color (muestras y tono),
+  efectos (WLED); en persianas subir/parar/bajar, apertura exacta y atajos 0-25-50-75-100 %. El botón «···»
+  abre el diálogo nativo de Home Assistant. Tocar una zona vacía o pulsar Esc cierra el panel. Las zonas
+  táctiles son invisibles y algo mayores que el objeto (`addHitTarget` en `house-scene.ts`); el panel está en
+  [`src/ui/control-panel.ts`](src/ui/control-panel.ts). En `?mock` los servicios se simulan en local.
 - **Luz general** suave que deja ver la casa de noche y rellena las sombras de día.
 - Gestos táctiles: **1 dedo gira**, **2 dedos hacen zoom y desplazan**. Tras 90 s sin tocar vuelve a la vista
   inicial (también con el botón de diana).

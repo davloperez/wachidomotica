@@ -17,6 +17,7 @@ import { tokens } from "./styles/tokens";
 import { loadThemeMode, resolveTheme, saveThemeMode } from "./lib/theme";
 import { HouseScene, type SceneStats, type SunInfo } from "./scene/house-scene";
 import { compassPoint } from "./lib/solar";
+import "./ui/control-panel";
 
 /** Molina de Segura (Murcia), coordenadas de AEMET: 38° 3' 2'' N, 1° 12' 41'' O. */
 const DEFAULT_LOCATION = { latitude: 38.0506, longitude: -1.2114 };
@@ -36,6 +37,8 @@ export class HouseDashboard extends LitElement {
   @state() private stats?: SceneStats;
   @state() private error?: string;
   @state() private sun?: SunInfo;
+  /** Luz o persiana tocada en el plano, cuyo panel de control está abierto. */
+  @state() private selected?: string;
   /** Hora simulada para el sol (solo la usa la página de desarrollo). */
   @property({ attribute: false }) simulatedTime?: Date;
 
@@ -54,12 +57,14 @@ export class HouseDashboard extends LitElement {
 
   connectedCallback(): void {
     super.connectedCallback();
+    window.addEventListener("keydown", this.onKey);
     // Lovelace puede desconectar y volver a conectar la tarjeta: recrear la escena si hace falta.
     if (this.hasUpdated && !this.house) this.createScene();
   }
 
   disconnectedCallback(): void {
     super.disconnectedCallback();
+    window.removeEventListener("keydown", this.onKey);
     this.house?.dispose();
     this.house = undefined;
     window.clearInterval(this.sunTimer);
@@ -79,6 +84,8 @@ export class HouseDashboard extends LitElement {
         longitude: this.config.longitude ?? DEFAULT_LOCATION.longitude,
       });
       this.house.setTheme(this.resolvedTheme);
+      this.house.onPick = (pick) => this.selectEntity(pick?.entity);
+      this.house.select(this.selected);
       if (this.simulatedTime) this.house.setTime(this.simulatedTime);
       if (this.hass) this.stats = this.house.update(this.hass, this.config.weather);
       this.sun = this.house.sunState;
@@ -106,6 +113,15 @@ export class HouseDashboard extends LitElement {
     }
     if (this.house) this.sun = this.house.sunState;
   }
+
+  private selectEntity(entity: string | undefined): void {
+    this.selected = entity;
+    this.house?.select(entity);
+  }
+
+  private onKey = (e: KeyboardEvent): void => {
+    if (e.key === "Escape") this.selectEntity(undefined);
+  };
 
   private setTheme(mode: ThemeMode): void {
     this.themeMode = mode;
@@ -170,7 +186,21 @@ export class HouseDashboard extends LitElement {
         </div>
       </header>
 
-      <footer class="hud bottom"><span>1 dedo: girar</span><span>2 dedos: zoom y desplazar</span></footer>
+      ${
+        this.selected
+          ? html`<h3d-control-panel
+              class="panel"
+              .hass=${this.hass}
+              .entityId=${this.selected}
+              @close=${() => this.selectEntity(undefined)}
+            ></h3d-control-panel>`
+          : null
+      }
+
+      <footer class="hud bottom">
+        <span>Toca una luz o persiana para controlarla</span><span>1 dedo: girar</span
+        ><span>2 dedos: zoom y desplazar</span>
+      </footer>
     `;
   }
 
@@ -209,6 +239,9 @@ export class HouseDashboard extends LitElement {
       .stage {
         position: absolute;
         inset: 0;
+        /* Las etiquetas 3D llevan z-index propios: que no se salgan de la escena. */
+        isolation: isolate;
+        z-index: 0;
       }
       .stage canvas.webgl {
         display: block;
@@ -248,6 +281,24 @@ export class HouseDashboard extends LitElement {
         border: 1.5px solid var(--accent);
         background: var(--panel);
         box-shadow: var(--accent-glow);
+      }
+      .panel {
+        position: absolute;
+        right: var(--space-4);
+        bottom: calc(var(--space-4) + 28px);
+        z-index: 2;
+        max-height: calc(100% - 150px);
+        overflow-y: auto;
+        border-radius: var(--radius);
+      }
+      @media (max-width: 700px) {
+        .panel {
+          left: 16px;
+          right: 16px;
+          bottom: 16px;
+          display: flex;
+          justify-content: center;
+        }
       }
       .error {
         position: absolute;

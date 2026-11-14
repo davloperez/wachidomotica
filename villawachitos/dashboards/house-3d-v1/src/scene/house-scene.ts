@@ -23,6 +23,7 @@ import {
   PerspectiveCamera,
   PlaneGeometry,
   PointLight,
+  Raycaster,
   RepeatWrapping,
   Path,
   Shape,
@@ -147,6 +148,16 @@ interface ShutterRuntime {
   target: number;
 }
 
+/** Elemento accionable que se ha tocado en el plano. */
+export interface ScenePick {
+  kind: "light" | "cover";
+  entity: string;
+}
+
+/** Un toque es un clic si el dedo apenas se mueve y se levanta pronto (si no, es un giro). */
+const TAP_MAX_MOVE = 10;
+const TAP_MAX_MS = 600;
+
 export interface SceneStats {
   lightsOn: number;
   lightsTotal: number;
@@ -196,6 +207,22 @@ export class HouseScene {
   private lastInteraction = performance.now();
   private returningHome = false;
 
+  /** Zonas táctiles invisibles de luces y persianas (más grandes que el objeto que representan). */
+  private hitTargets: Mesh[] = [];
+  private hitMaterial = new MeshBasicMaterial({ visible: false });
+  private highlightMaterial = new MeshBasicMaterial({
+    transparent: true,
+    opacity: 0.32,
+    depthWrite: false,
+    toneMapped: false,
+  });
+  private selected: string | undefined;
+  private readonly raycaster = new Raycaster();
+  private pointerStart: { x: number; y: number; t: number; id: number } | undefined;
+  private activePointers = 0;
+  /** Se llama al tocar una luz o persiana (o con `null` al tocar una zona vacía). */
+  onPick?: (pick: ScenePick | null) => void;
+
   constructor(
     private readonly container: HTMLElement,
     private readonly opts: SceneOptions,
@@ -239,6 +266,12 @@ export class HouseScene {
       this.dirty = true;
     });
     this.controls.update();
+
+    const canvas = this.renderer.domElement;
+    canvas.addEventListener("pointerdown", this.onPointerDown);
+    canvas.addEventListener("pointerup", this.onPointerUp);
+    canvas.addEventListener("pointercancel", this.onPointerCancel);
+    canvas.addEventListener("pointermove", this.onPointerMove);
 
     this.build();
     this.applyPalette();
@@ -547,6 +580,10 @@ export class HouseScene {
           group.add(shutter);
           this.shutters.push({ entity: o.cover, opening: o, mesh: shutter, current: 0, target: 0 });
           this.placeShutter(this.shutters[this.shutters.length - 1]);
+
+          const hit = this.addHitTarget(new BoxGeometry(o.width, o.height, t + 0.16), "cover", o.cover);
+          hit.position.set(cx, o.sill + o.height / 2, cz);
+          hit.rotation.y = -angle;
         }
       }
     }
@@ -624,6 +661,23 @@ export class HouseScene {
     glow.scale.set(size, def.kind === "strip" ? 0.6 : size, 1);
     glow.visible = false;
     this.scene.add(glow);
+
+    // Zona táctil: esfera generosa (o caja a lo largo de la tira) para acertar con el dedo.
+    const hitGeometry =
+      def.kind === "strip" && def.strip
+        ? def.strip.axis === "x"
+          ? new BoxGeometry(def.strip.length, 0.45, 0.45)
+          : new BoxGeometry(0.45, 0.45, def.strip.length)
+        : new SphereGeometry(def.kind === "ceiling" ? 0.5 : 0.4, 16, 12);
+    const hit = this.addHitTarget(hitGeometry, "light", def.entity);
+    hit.position.set(x, y, z);
+    if (def.kind === "pool") {
+      // La luz de la piscina se acciona tocando cualquier punto del agua.
+      const [px1, pz1, px2, pz2] = POOL.rect;
+      hit.geometry.dispose();
+      hit.geometry = new BoxGeometry(px2 - px1, 0.3, pz2 - pz1);
+      hit.position.set((px1 + px2) / 2, -0.05, (pz1 + pz2) / 2);
+    }
 
     return { def, light, bulb, glow, on: false, level: 0 };
   }
@@ -809,6 +863,7 @@ export class HouseScene {
     this.furnitureMaterials.dark.color.set(p.furnitureDark);
     this.furnitureMaterials.light.color.set(p.furnitureLight);
     this.furnitureMaterials.accent.color.set(p.accent);
+    this.highlightMaterial.color.set(p.wallLine);
     this.outdoorMaterials.lawn.color.set(p.lawn);
     this.outdoorMaterials.paving.color.set(p.paving);
     this.outdoorMaterials.water.color.set(p.water);
@@ -889,8 +944,83 @@ export class HouseScene {
     }
   };
 
+  /* ================================================================== */
+  /* Interacción: tocar luces y persianas                                */
+  /* ================================================================== */
+
+  private addHitTarget(geometry: BufferGeometry, kind: ScenePick["kind"], entity: string): Mesh {
+    const mesh = new Mesh(geometry, this.hitMaterial);
+    mesh.userData = { kind, entity } satisfies ScenePick;
+    mesh.renderOrder = 10;
+    this.scene.add(mesh);
+    this.hitTargets.push(mesh);
+    return mesh;
+  }
+
+  /** Resalta la luz o persiana seleccionada (todas sus piezas si comparte entidad). */
+  select(entity: string | undefined): void {
+    if (entity === this.selected) return;
+    this.selected = entity;
+    for (const m of this.hitTargets) {
+      m.material = (m.userData as ScenePick).entity === entity ? this.highlightMaterial : this.hitMaterial;
+    }
+    this.dirty = true;
+  }
+
+  private pick(clientX: number, clientY: number): ScenePick | null {
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    const ndc = new Vector2(
+      ((clientX - rect.left) / rect.width) * 2 - 1,
+      -((clientY - rect.top) / rect.height) * 2 + 1,
+    );
+    this.raycaster.setFromCamera(ndc, this.camera);
+    const hits = this.raycaster.intersectObjects(this.hitTargets, false);
+    if (!hits.length) return null;
+    // Entre zonas solapadas gana la de centro más cercano al rayo (una lámpara junto a una ventana).
+    const ray = this.raycaster.ray;
+    const best = hits
+      .slice(0, 4)
+      .map((h) => ({ h, d: ray.distanceToPoint(h.object.getWorldPosition(new Vector3())) }))
+      .sort((a, b) => a.d - b.d)[0].h;
+    return { ...(best.object.userData as ScenePick) };
+  }
+
+  private onPointerDown = (e: PointerEvent): void => {
+    this.activePointers++;
+    this.pointerStart =
+      this.activePointers === 1
+        ? { x: e.clientX, y: e.clientY, t: performance.now(), id: e.pointerId }
+        : undefined;
+  };
+
+  private onPointerUp = (e: PointerEvent): void => {
+    this.activePointers = Math.max(0, this.activePointers - 1);
+    const start = this.pointerStart;
+    this.pointerStart = undefined;
+    if (!start || start.id !== e.pointerId || e.button > 0) return;
+    const moved = Math.hypot(e.clientX - start.x, e.clientY - start.y);
+    if (moved > TAP_MAX_MOVE || performance.now() - start.t > TAP_MAX_MS) return;
+    this.onPick?.(this.pick(e.clientX, e.clientY));
+  };
+
+  private onPointerCancel = (): void => {
+    this.activePointers = Math.max(0, this.activePointers - 1);
+    this.pointerStart = undefined;
+  };
+
+  /** Con ratón, el cursor indica qué se puede accionar. */
+  private onPointerMove = (e: PointerEvent): void => {
+    if (e.pointerType !== "mouse" || e.buttons) return;
+    this.renderer.domElement.style.cursor = this.pick(e.clientX, e.clientY) ? "pointer" : "";
+  };
+
   dispose(): void {
     cancelAnimationFrame(this.raf);
+    const canvas = this.renderer.domElement;
+    canvas.removeEventListener("pointerdown", this.onPointerDown);
+    canvas.removeEventListener("pointerup", this.onPointerUp);
+    canvas.removeEventListener("pointercancel", this.onPointerCancel);
+    canvas.removeEventListener("pointermove", this.onPointerMove);
     window.clearInterval(this.sunTimer);
     this.resizeObserver.disconnect();
     this.controls.dispose();
