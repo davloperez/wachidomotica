@@ -1,5 +1,5 @@
 import type { HassEntity, HomeAssistant } from "../src/types";
-import { ENERGY, GATES, LAMPS, PUMP, TV, WALLS } from "../src/scene/plan";
+import { ENERGY, FRIDGE, GATES, LAMPS, PUMP, TV, WALLS } from "../src/scene/plan";
 
 /**
  * `hass` simulado: usa las entidades del plano, enciende algunas luces al azar
@@ -59,6 +59,14 @@ export function createMockHass(getDarkMode: () => boolean, onUpdate: (hass: Home
     [ENERGY.sensors.grid]: "0.0",
   };
   for (const [id, v] of Object.entries(solar)) states[id] = entity(id, v);
+  const fridge: Record<string, string> = {
+    [FRIDGE.sensors.fridge]: "6",
+    [FRIDGE.sensors.fridgeTarget]: "5",
+    [FRIDGE.sensors.freezer]: "-23",
+    [FRIDGE.sensors.freezerTarget]: "-21",
+    [FRIDGE.sensors.door]: "off",
+  };
+  for (const [id, v] of Object.entries(fridge)) states[id] = entity(id, v);
   states[PUMP.power] = entity(PUMP.power, "742", { unit_of_measurement: "W" });
 
   states[TV.entity] = entity(TV.entity, "off", {

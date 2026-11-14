@@ -41,6 +41,7 @@ import {
 } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { CSS2DObject, CSS2DRenderer } from "three/examples/jsm/renderers/CSS2DRenderer.js";
+import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 
 import type { HassEntity, HomeAssistant } from "../types";
 import { sunLight, sunPosition } from "../lib/solar";
@@ -62,6 +63,8 @@ import {
   ENERGY,
   PEDESTRIAN_GATE,
   TV,
+  SOFA,
+  FRIDGE,
   ROOMS,
   WALLS,
   WALL_HEIGHT,
@@ -105,6 +108,7 @@ const WARM_WHITE = new Color(255 / 255, 196 / 255, 137 / 255);
 /* Intensidad máxima (candelas) por tipo de luminaria, con unidades físicas de three.js */
 const LAMP_POWER: Record<Lamp["kind"], number> = {
   ceiling: 26,
+  downlights: 30,
   pendant: 14,
   lamp: 4,
   strip: 6,
@@ -113,6 +117,7 @@ const LAMP_POWER: Record<Lamp["kind"], number> = {
 };
 const LAMP_RANGE: Record<Lamp["kind"], number> = {
   ceiling: 12,
+  downlights: 12,
   pendant: 7,
   lamp: 7,
   strip: 7,
@@ -137,11 +142,15 @@ export interface SunInfo {
 interface LampRuntime {
   def: Lamp;
   light: PointLight;
-  bulb: Mesh<BufferGeometry, MeshStandardMaterial>;
-  glow: Sprite;
+  /** Material compartido por todas las piezas de la luminaria (varios downlights = una luz) */
+  bulbMaterial: MeshStandardMaterial;
+  glowMaterial: SpriteMaterial;
+  glows: Sprite[];
+  waves: WaveEmitter[];
+  /** Centro de la luminaria (para el enfoque de la cámara) */
+  center: Vector3;
   on: boolean;
   level: number;
-  waves: WaveEmitter;
 }
 
 /** Ondas que se expanden y desvanecen en bucle mientras el elemento está encendido. */
@@ -241,6 +250,13 @@ export class HouseScene {
     label: HTMLDivElement;
     html: string;
     producing: boolean | undefined;
+  };
+  private fridge!: {
+    led: MeshStandardMaterial;
+    waves: WaveEmitter;
+    label: HTMLDivElement;
+    html: string;
+    open: boolean | undefined;
   };
   private tv!: {
     on: boolean | undefined;
@@ -507,6 +523,8 @@ export class HouseScene {
 
     this.buildEnergy();
     this.buildTv();
+    this.buildSofa();
+    this.buildFridge();
 
     // Luminarias
     const glowTexture = makeGlowTexture();
@@ -638,6 +656,162 @@ export class HouseScene {
     handle.position.set(to[0] - ux * 0.15 - uz * 0.06, 1.05, to[1] - uz * 0.15 + ux * 0.06);
     handle.rotation.y = -Math.atan2(dz, dx);
     this.scene.add(handle);
+  }
+
+  /**
+   * Sofá en U con forma reconocible: zócalo, cojines de asiento separados, respaldos con cojines
+   * y brazos en los extremos abiertos. Piezas redondeadas en el color beige del sofá.
+   */
+  private buildSofa(): void {
+    const [x1, z1, x2, z2] = SOFA.rect;
+    const d = SOFA.depth;
+    const fabric = this.furnitureMaterials.sofa;
+    const base = new MeshStandardMaterial({ color: 0xb9ab92, roughness: 0.9 });
+    const back = 0.2;
+    const seatTop = 0.44;
+    const add = (
+      cx: number,
+      cz: number,
+      y0: number,
+      w: number,
+      h: number,
+      dd: number,
+      mat: Material,
+      r = 0.05,
+    ) => {
+      const m = new Mesh(new RoundedBoxGeometry(w, h, dd, 3, Math.min(r, w / 2, h / 2, dd / 2)), mat);
+      m.position.set(cx, y0 + h / 2, cz);
+      m.castShadow = true;
+      m.receiveShadow = true;
+      this.scene.add(m);
+    };
+    // Zócalo bajo todo el sofá (algo metido hacia dentro)
+    const plinth = (ax: number, az: number, bx: number, bz: number) =>
+      add((ax + bx) / 2, (az + bz) / 2, 0.02, bx - ax - 0.06, 0.1, bz - az - 0.06, base, 0.02);
+    plinth(x1, z1, x1 + d, z2);
+    plinth(x1 + d, z1, x2, z1 + d);
+    plinth(x1 + d, z2 - d, x2, z2);
+
+    // Respaldos por el exterior de la U
+    add(x1 + back / 2, (z1 + z2) / 2, 0.12, back, 0.7, z2 - z1, fabric, 0.06);
+    add((x1 + x2) / 2, z1 + back / 2, 0.12, x2 - x1, 0.7, back, fabric, 0.06);
+    add((x1 + x2) / 2, z2 - back / 2, 0.12, x2 - x1, 0.7, back, fabric, 0.06);
+
+    // Brazos en los extremos abiertos (hacia la TV)
+    const arm = 0.2;
+    add(x2 - arm / 2, z1 + d / 2, 0.12, arm, 0.5, d, fabric, 0.06);
+    add(x2 - arm / 2, z2 - d / 2, 0.12, arm, 0.5, d, fabric, 0.06);
+
+    // Cojines de asiento con una pequeña separación entre ellos
+    const gap = 0.025;
+    const seatH = seatTop - 0.12;
+    const cushionsAlong = (ax: number, az: number, bx: number, bz: number, n: number, alongX: boolean) => {
+      for (let i = 0; i < n; i++) {
+        if (alongX) {
+          const len = (bx - ax) / n;
+          add(ax + len * (i + 0.5), (az + bz) / 2, 0.12, len - gap, seatH, bz - az - gap, fabric, 0.07);
+        } else {
+          const len = (bz - az) / n;
+          add((ax + bx) / 2, az + len * (i + 0.5), 0.12, bx - ax - gap, seatH, len - gap, fabric, 0.07);
+        }
+      }
+    };
+    cushionsAlong(x1 + back, z1 + back, x1 + d, z2 - back, 4, false);
+    cushionsAlong(x1 + d, z1 + back, x2 - arm, z1 + d, 2, true);
+    cushionsAlong(x1 + d, z2 - d, x2 - arm, z2 - back, 2, true);
+
+    // Cojines de respaldo apoyados (un poco inclinados hacia el asiento)
+    const backCushion = (cx: number, cz: number, w: number, dd: number, tiltX: number, tiltZ: number) => {
+      const m = new Mesh(new RoundedBoxGeometry(w, 0.38, dd, 3, 0.07), fabric);
+      m.position.set(cx, seatTop + 0.19, cz);
+      m.rotation.set(tiltZ, 0, tiltX);
+      m.castShadow = true;
+      this.scene.add(m);
+    };
+    const westLen = (z2 - z1 - 2 * back) / 4;
+    for (let i = 0; i < 4; i++)
+      backCushion(x1 + back + 0.08, z1 + back + westLen * (i + 0.5), 0.16, westLen - gap, -0.18, 0);
+    const armLen = (x2 - arm - (x1 + d)) / 2;
+    for (let i = 0; i < 2; i++) {
+      const cx = x1 + d + armLen * (i + 0.5);
+      backCushion(cx, z1 + back + 0.08, armLen - gap, 0.16, 0, 0.18);
+      backCushion(cx, z2 - back - 0.08, armLen - gap, 0.16, 0, -0.18);
+    }
+    // Un par de cojines decorativos en las esquinas
+    const pillow = new MeshStandardMaterial({ color: 0x9c8466, roughness: 0.95 });
+    add(x1 + back + 0.25, z1 + back + 0.25, seatTop, 0.42, 0.36, 0.14, pillow, 0.06);
+    add(x1 + back + 0.25, z2 - back - 0.25, seatTop, 0.42, 0.36, 0.14, pillow, 0.06);
+  }
+
+  /** Frigorífico integrado: columna con frente de madera, tirador y piloto de puerta, más sus datos. */
+  private buildFridge(): void {
+    const [fx, fz] = FRIDGE.at;
+    const [w, h, d] = FRIDGE.size;
+    const body = new Mesh(new BoxGeometry(w, h, d - 0.02), this.furnitureMaterials.wood);
+    body.position.set(fx, 0.02 + h / 2, fz);
+    body.castShadow = true;
+    body.receiveShadow = true;
+    this.scene.add(body);
+    // Juntas del frente (frigorífico arriba, congelador abajo) y tiradores, mirando a la cocina (+X)
+    const front = fx + w / 2 + 0.006;
+    const seam = new Mesh(new BoxGeometry(0.01, 0.012, d - 0.04), this.frameMaterial);
+    seam.position.set(front, 0.86, fz);
+    this.scene.add(seam);
+    const steel = this.furnitureMaterials.steel;
+    for (const [y, len] of [
+      [1.45, 0.6],
+      [0.6, 0.35],
+    ]) {
+      const handle = new Mesh(new BoxGeometry(0.03, len, 0.025), steel);
+      handle.position.set(front + 0.01, y, fz + d / 2 - 0.08);
+      this.scene.add(handle);
+    }
+    // Piloto: verde con la puerta cerrada, rojo si está abierta
+    const led = new MeshStandardMaterial({ color: 0x000000, emissive: 0x3dffa8, emissiveIntensity: 1.2 });
+    const ledMesh = new Mesh(new BoxGeometry(0.01, 0.03, 0.12), led);
+    ledMesh.position.set(front + 0.004, 1.95, fz);
+    this.scene.add(ledMesh);
+    const waves = this.makeEmitter(new Vector3(front + 0.2, 1.4, fz), [1.6, 1.6], 0.83);
+
+    const label = document.createElement("div");
+    label.className = "fridge-label";
+    const tag = new CSS2DObject(label);
+    // Fuera del muro oeste, como el resto de indicadores, para no tapar la cocina
+    tag.position.set(-8.4, 0.2, fz);
+    this.scene.add(tag);
+    this.fridge = { led, waves, label, html: "", open: undefined };
+  }
+
+  private updateFridge(hass: HomeAssistant, changed: Vector3[]): void {
+    const S = FRIDGE.sensors;
+    const num = (id: string) => {
+      const v = Number(hass.states[id]?.state);
+      return Number.isFinite(v) ? v : undefined;
+    };
+    const deg = (v: number | undefined) => (v === undefined ? "—" : `${Math.round(v)} °C`);
+    const fridge = num(S.fridge);
+    const freezer = num(S.freezer);
+    const fridgeTarget = num(S.fridgeTarget);
+    const freezerTarget = num(S.freezerTarget);
+    const open = hass.states[S.door]?.state === "on";
+    const f = this.fridge;
+    if (open !== f.open) {
+      if (f.open !== undefined) changed.push(new Vector3(FRIDGE.at[0], 1.4, FRIDGE.at[1]));
+      f.open = open;
+      f.led.emissive.set(open ? 0xff5c7a : 0x3dffa8);
+      this.setEmitter(f.waves, open, new Color(0xff5c7a), 0.9);
+      this.dirty = true;
+    }
+    const target = (v: number | undefined) => (v === undefined ? "" : `<span>obj. ${Math.round(v)}°</span>`);
+    const html =
+      `<div class="row"><i class="cold"></i>Frigorífico<b>${deg(fridge)}</b>${target(fridgeTarget)}</div>` +
+      `<div class="row"><i class="ice"></i>Congelador<b>${deg(freezer)}</b>${target(freezerTarget)}</div>` +
+      `<div class="row door ${open ? "open" : ""}"><i></i>Puerta<b>${open ? "ABIERTA" : "cerrada"}</b></div>`;
+    if (html !== f.html) {
+      f.html = html;
+      f.label.innerHTML = html;
+      f.label.classList.toggle("alert", open);
+    }
   }
 
   /** TV de 85" en la pared este del salón: pantalla animada cuando está encendida y accionable. */
@@ -832,11 +1006,16 @@ export class HouseScene {
       batt === undefined || Math.abs(batt) < 0.05
         ? ""
         : `<span class="${batt > 0 ? "in" : "out"}">${batt > 0 ? "▲" : "▼"} ${kw(Math.abs(batt))}</span>`;
+    // Sigenergy: red positiva = vertiendo excedentes, negativa = comprando
+    const gridFlow =
+      grid === undefined || Math.abs(grid) < 0.05
+        ? ""
+        : `<span class="${grid > 0 ? "in" : "out"}">${grid > 0 ? "exportando" : "importando"}</span>`;
     const html =
       `<div class="row sun"><i></i>Solar<b>${kw(pv)}</b></div>` +
       `<div class="row bat"><i></i>Batería<b>${soc === undefined ? "—" : `${Math.round(soc)} %`}</b>${battFlow}</div>` +
       `<div class="row load"><i></i>Casa<b>${kw(load)}</b></div>` +
-      `<div class="row grid"><i></i>Red<b>${kw(grid)}</b></div>`;
+      `<div class="row grid"><i></i>Red<b>${kw(grid === undefined ? undefined : Math.abs(grid))}</b>${gridFlow}</div>`;
     if (html !== e.html) {
       e.html = html;
       e.label.innerHTML = html;
@@ -944,8 +1123,8 @@ export class HouseScene {
     }
     for (const l of this.lamps) {
       if (!l.on) continue;
-      const breath = 0.88 + 0.12 * Math.sin(time * 2.4 + l.waves.offset * Math.PI * 2);
-      l.glow.material.opacity = (0.35 + 0.65 * l.level) * breath;
+      const breath = 0.88 + 0.12 * Math.sin(time * 2.4 + l.waves[0].offset * Math.PI * 2);
+      l.glowMaterial.opacity = (0.35 + 0.65 * l.level) * breath;
     }
     return any;
   }
@@ -1051,8 +1230,9 @@ export class HouseScene {
 
   private buildLamp(def: Lamp, glowTexture: CanvasTexture): LampRuntime {
     const [x, y, z] = def.pos;
+    const center = new Vector3(x, y, z);
     const light = new PointLight(WARM_WHITE, 0, LAMP_RANGE[def.kind], 2);
-    light.position.set(x, def.kind === "ceiling" ? y - 0.15 : y, z);
+    light.position.set(x, def.kind === "ceiling" || def.kind === "downlights" ? y - 0.2 : y, z);
     light.shadow.mapSize.set(512, 512);
     light.shadow.camera.near = 0.1;
     light.shadow.bias = -0.003;
@@ -1068,52 +1248,29 @@ export class HouseScene {
           : new BoxGeometry(0.03, 0.03, def.strip.length);
     } else if (def.kind === "ceiling") {
       geometry = new CylinderGeometry(0.22, 0.22, 0.04, 24);
+    } else if (def.kind === "downlights") {
+      geometry = new CylinderGeometry(0.07, 0.07, 0.025, 20);
     } else if (def.kind === "wall") {
       geometry = new BoxGeometry(0.16, 0.16, 0.16);
     } else {
       geometry = new SphereGeometry(def.kind === "pendant" ? 0.14 : 0.08, 16, 12);
     }
-    const bulb = new Mesh(geometry, new MeshStandardMaterial({ color: 0x222831, roughness: 0.4 }));
-    bulb.position.set(x, y, z);
-    this.scene.add(bulb);
-
-    const glow = new Sprite(
-      new SpriteMaterial({
-        map: glowTexture,
-        color: WARM_WHITE,
-        blending: AdditiveBlending,
-        transparent: true,
-        depthWrite: false,
-      }),
-    );
-    glow.position.copy(bulb.position);
+    const bulbMaterial = new MeshStandardMaterial({ color: 0x222831, roughness: 0.4 });
+    const glowMaterial = new SpriteMaterial({
+      map: glowTexture,
+      color: WARM_WHITE,
+      blending: AdditiveBlending,
+      transparent: true,
+      depthWrite: false,
+    });
     const size =
       def.kind === "ceiling" || def.kind === "pool"
         ? 1.6
-        : def.kind === "strip"
-          ? (def.strip?.length ?? 1) * 0.9
-          : 0.9;
-    glow.scale.set(size, def.kind === "strip" ? 0.6 : size, 1);
-    glow.visible = false;
-    this.scene.add(glow);
-
-    // Zona táctil: esfera generosa (o caja a lo largo de la tira) para acertar con el dedo.
-    const hitGeometry =
-      def.kind === "strip" && def.strip
-        ? def.strip.axis === "x"
-          ? new BoxGeometry(def.strip.length, 0.45, 0.45)
-          : new BoxGeometry(0.45, 0.45, def.strip.length)
-        : new SphereGeometry(def.kind === "ceiling" ? 0.5 : 0.4, 16, 12);
-    const hit = this.addHitTarget(hitGeometry, "light", def.entity);
-    hit.position.set(x, y, z);
-    if (def.kind === "pool") {
-      // La luz de la piscina se acciona tocando cualquier punto del agua.
-      const [px1, pz1, px2, pz2] = POOL.rect;
-      hit.geometry.dispose();
-      hit.geometry = new BoxGeometry(px2 - px1, 0.3, pz2 - pz1);
-      hit.position.set((px1 + px2) / 2, -0.05, (pz1 + pz2) / 2);
-    }
-
+        : def.kind === "downlights"
+          ? 0.9
+          : def.kind === "strip"
+            ? (def.strip?.length ?? 1) * 0.9
+            : 0.9;
     // Ondas: anillos en torno a la luz (alargados en las tiras; sobre el agua en la piscina).
     const waveSize: [number, number] =
       def.kind === "strip"
@@ -1122,14 +1279,52 @@ export class HouseScene {
           ? [4.2, 4.2]
           : def.kind === "ceiling"
             ? [2.2, 2.2]
-            : [1.4, 1.4];
-    const waveAt =
-      def.kind === "pool"
-        ? new Vector3((POOL.rect[0] + POOL.rect[2]) / 2, 0.1, (POOL.rect[1] + POOL.rect[3]) / 2)
-        : bulb.position.clone();
-    const waves = this.makeEmitter(waveAt, waveSize, (this.lamps.length * 0.137) % 1);
+            : def.kind === "downlights"
+              ? [1.2, 1.2]
+              : [1.4, 1.4];
+    const offset = (this.lamps.length * 0.137) % 1;
 
-    return { def, light, bulb, glow, on: false, level: 0, waves };
+    // Una luminaria normal tiene un punto; los downlights, uno por foco (todos la misma entidad).
+    const points: Vector3[] = def.spots ? def.spots.map(([sx, sz]) => new Vector3(sx, y, sz)) : [center];
+    const glows: Sprite[] = [];
+    const waves: WaveEmitter[] = [];
+    points.forEach((p, i) => {
+      const bulb = new Mesh(geometry, bulbMaterial);
+      bulb.position.copy(p);
+      this.scene.add(bulb);
+
+      const glow = new Sprite(glowMaterial);
+      glow.position.copy(p);
+      glow.scale.set(size, def.kind === "strip" ? 0.6 : size, 1);
+      glow.visible = false;
+      this.scene.add(glow);
+      glows.push(glow);
+
+      // Zona táctil: esfera generosa (o caja a lo largo de la tira) para acertar con el dedo.
+      const hitGeometry =
+        def.kind === "strip" && def.strip
+          ? def.strip.axis === "x"
+            ? new BoxGeometry(def.strip.length, 0.45, 0.45)
+            : new BoxGeometry(0.45, 0.45, def.strip.length)
+          : new SphereGeometry(def.kind === "ceiling" ? 0.5 : 0.4, 16, 12);
+      const hit = this.addHitTarget(hitGeometry, "light", def.entity);
+      hit.position.copy(p);
+      if (def.kind === "pool") {
+        // La luz de la piscina se acciona tocando cualquier punto del agua.
+        const [px1, pz1, px2, pz2] = POOL.rect;
+        hit.geometry.dispose();
+        hit.geometry = new BoxGeometry(px2 - px1, 0.3, pz2 - pz1);
+        hit.position.set((px1 + px2) / 2, -0.05, (pz1 + pz2) / 2);
+      }
+
+      const waveAt =
+        def.kind === "pool"
+          ? new Vector3((POOL.rect[0] + POOL.rect[2]) / 2, 0.1, (POOL.rect[1] + POOL.rect[3]) / 2)
+          : p.clone();
+      waves.push(this.makeEmitter(waveAt, waveSize, (offset + i * 0.25) % 1));
+    });
+
+    return { def, light, bulbMaterial, glowMaterial, glows, waves, center, on: false, level: 0 };
   }
 
   private placeShutter(sh: ShutterRuntime): void {
@@ -1164,16 +1359,16 @@ export class HouseScene {
         lamp.light.intensity = LAMP_POWER[lamp.def.kind] * level;
         if (lamp.def.kind === "pool") this.tintPool(on, color, level);
         lamp.light.visible = on;
-        lamp.glow.visible = on;
-        lamp.glow.material.color.copy(color);
-        lamp.glow.material.opacity = 0.35 + 0.65 * level;
-        const m = lamp.bulb.material;
+        for (const g of lamp.glows) g.visible = on;
+        lamp.glowMaterial.color.copy(color);
+        lamp.glowMaterial.opacity = 0.35 + 0.65 * level;
+        const m = lamp.bulbMaterial;
         m.emissive.copy(on ? color : new Color(0x000000));
         m.emissiveIntensity = on ? 1.5 + 2 * level : 0;
         m.color.set(on ? 0xffffff : this.palette.fixture);
-        this.setEmitter(lamp.waves, on, color, 0.45 + 0.55 * level);
+        for (const w of lamp.waves) this.setEmitter(w, on, color, 0.45 + 0.55 * level);
         this.dirty = true;
-        changed.push(lamp.bulb.position.clone());
+        changed.push(lamp.center.clone());
       }
     }
     this.assignShadows();
@@ -1208,6 +1403,7 @@ export class HouseScene {
 
     this.updateEnergy(hass);
     this.updateTv(hass, changed);
+    this.updateFridge(hass, changed);
 
     const pumpState = hass.states[PUMP.entity];
     const pumpOn = pumpState?.state === "on";
@@ -1256,7 +1452,9 @@ export class HouseScene {
   /** Las luces de techo encendidas más intensas proyectan sombra; el resto no (límite de la GPU). */
   private assignShadows(): void {
     const candidates = this.lamps
-      .filter((l) => l.on && (l.def.kind === "ceiling" || l.def.kind === "pendant"))
+      .filter(
+        (l) => l.on && (l.def.kind === "ceiling" || l.def.kind === "downlights" || l.def.kind === "pendant"),
+      )
       .sort((a, b) => b.level - a.level)
       .slice(0, MAX_SHADOW_LIGHTS);
     for (const l of this.lamps) {
@@ -1351,7 +1549,7 @@ export class HouseScene {
     this.outdoorMaterials.stone.color.set(p.floor);
     for (const m of this.fenceClones) m.color.set(p.fence);
     for (const sh of this.shutters) sh.mesh.material.color.set(p.shutter);
-    for (const l of this.lamps) if (!l.on) l.bulb.material.color.set(p.fixture);
+    for (const l of this.lamps) if (!l.on) l.bulbMaterial.color.set(p.fixture);
     this.dirty = true;
   }
 

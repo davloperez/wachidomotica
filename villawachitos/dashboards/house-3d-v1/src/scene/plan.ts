@@ -49,7 +49,7 @@ export interface Wall {
   openings?: Opening[];
 }
 
-export type LampKind = "ceiling" | "pendant" | "lamp" | "strip" | "wall" | "pool";
+export type LampKind = "ceiling" | "downlights" | "pendant" | "lamp" | "strip" | "wall" | "pool";
 
 export interface Lamp {
   entity: string;
@@ -57,6 +57,20 @@ export interface Lamp {
   pos: [x: number, y: number, z: number];
   /** Longitud de las tiras LED (en el eje indicado) */
   strip?: { length: number; axis: "x" | "z" };
+  /** Downlights empotrados que forman la misma luz (se encienden juntos) */
+  spots?: Point[];
+}
+
+/** 4 downlights repartidos 2 × 2 por el techo de una estancia, como luz de techo. */
+function downlights(entity: string, [x1, z1, x2, z2]: Rect): Lamp {
+  const xs = [x1 + (x2 - x1) / 4, x1 + ((x2 - x1) * 3) / 4];
+  const zs = [z1 + (z2 - z1) / 4, z1 + ((z2 - z1) * 3) / 4];
+  return {
+    entity,
+    kind: "downlights",
+    pos: [(x1 + x2) / 2, 2.62, (z1 + z2) / 2],
+    spots: xs.flatMap((x) => zs.map((z): Point => [x, z])),
+  };
 }
 
 export type FurnitureTone =
@@ -178,11 +192,11 @@ export const WALLS: Wall[] = [
     ],
   },
   {
-    // Lateral izquierdo de la cocina
+    // Lateral izquierdo de la cocina: ventana de 1,8 m sobre la encimera del fregadero
     from: [-6.54, 0.79],
     to: [-6.54, 4.48],
     exterior: true,
-    openings: [win(1.33, 1.4, 1.05, 1.0)],
+    openings: [win(1.33, 1.8, 1.05, 1.0)],
   },
   { from: [-7.68, 0.79], to: [-6.54, 0.79], exterior: true },
   {
@@ -259,7 +273,7 @@ export const LAMPS: Lamp[] = [
   },
   { entity: "light.luz_fregadero_cocina", kind: "lamp", pos: [-6.05, 2.0, 2.1] },
   /* Oficina 1 */
-  { entity: "light.oficina_1_persiana_oficina_1_luz_techo", kind: "ceiling", pos: [-2.6, 2.55, -4.05] },
+  downlights("light.oficina_1_persiana_oficina_1_luz_techo", [-3.85, -5.7, -1.33, -2.41]),
   { entity: "light.oficina_1_lampara_mueble_oficina_1", kind: "lamp", pos: [-3.5, 1.1, -2.85] },
   {
     entity: "light.oficina_1_wled_cortinero_oficina_1",
@@ -268,7 +282,7 @@ export const LAMPS: Lamp[] = [
     strip: { length: 1.9, axis: "x" },
   },
   /* Oficina 2 */
-  { entity: "light.persiana_oficina_2_luz_techo", kind: "ceiling", pos: [-0.12, 2.55, -4.05] },
+  downlights("light.persiana_oficina_2_luz_techo", [-1.33, -5.7, 1.09, -2.41]),
   { entity: "light.oficina_2_lampara_pro_mi_1", kind: "lamp", pos: [-1.0, 1.15, -5.0] },
   { entity: "light.oficina_2_lampara_pro_mi_2_mijia_desk_lamp_sw", kind: "lamp", pos: [-1.0, 1.15, -3.4] },
   {
@@ -290,19 +304,19 @@ export const LAMPS: Lamp[] = [
   { entity: "light.bano_2_esp_bano_2_luz_techo_pasillo", kind: "ceiling", pos: [2.9, 2.55, -1.8] },
   { entity: "light.bano_2_esp_bano_2_luz_aplique_pasillo", kind: "lamp", pos: [3.6, 1.9, -2.33] },
   /* Dormitorio 3 (esquina de la calle) */
-  { entity: "light.dormitorio_3_persiana_dormitorio_3_luz_techo", kind: "ceiling", pos: [5.3, 2.55, -3.3] },
-  { entity: "light.dormitorio_3_persiana_dormitorio_3_luz_techo_2", kind: "ceiling", pos: [5.3, 2.55, -4.9] },
+  downlights("light.dormitorio_3_persiana_dormitorio_3_luz_techo", [2.88, -5.7, 7.7, -2.41]),
+  {
+    entity: "light.dormitorio_3_persiana_dormitorio_3_luz_techo_2",
+    kind: "ceiling",
+    pos: [5.3, 2.55, -4.05],
+  },
   { entity: "light.dormitorio_3_persiana_dormitorio_3_luz_mesita", kind: "lamp", pos: [4.1, 0.75, -5.3] },
   { entity: "light.dormitorio_3_persiana_dormitorio_3_luz_mesita_2", kind: "lamp", pos: [6.05, 0.75, -5.3] },
   /* Dormitorio 2 */
-  { entity: "light.dormitorio_2_persiana_dormitorio_2_luz_techo", kind: "ceiling", pos: [6.2, 2.55, -0.2] },
+  downlights("light.dormitorio_2_persiana_dormitorio_2_luz_techo", [4.57, -2.41, 7.7, 2.18]),
   { entity: "light.luz_wifi_mesita_noche_dorm_2", kind: "lamp", pos: [4.85, 0.75, -0.95] },
   /* Vestidor */
-  {
-    entity: "light.dormitorio_1_persiana_dormitorio_1_luz_techo_vestidor",
-    kind: "ceiling",
-    pos: [2.9, 2.55, 0.5],
-  },
+  downlights("light.dormitorio_1_persiana_dormitorio_1_luz_techo_vestidor", [1.25, -1.22, 4.57, 2.18]),
   {
     entity: "light.luz_armarios_altos",
     kind: "strip",
@@ -317,11 +331,7 @@ export const LAMPS: Lamp[] = [
   },
   { entity: "light.luz_cajones", kind: "strip", pos: [1.88, 0.8, 1.0], strip: { length: 2.6, axis: "z" } },
   /* Dormitorio 1 */
-  {
-    entity: "light.dormitorio_1_persiana_dormitorio_1_luz_techo_dormitorio_1",
-    kind: "ceiling",
-    pos: [3.6, 2.55, 4.0],
-  },
+  downlights("light.dormitorio_1_persiana_dormitorio_1_luz_techo_dormitorio_1", [1.15, 2.18, 5.92, 5.7]),
   { entity: "light.luz_mesita_noche_dorm_1", kind: "lamp", pos: [2.95, 0.75, 2.5] },
   { entity: "light.enchufe_luz_nube_infantil", kind: "lamp", pos: [5.5, 1.3, 2.5] },
   /* Baño 1 */
@@ -359,19 +369,16 @@ export const LAMPS: Lamp[] = [
 /* ------------------------------------------------------------------ */
 
 export const FURNITURE: Furniture[] = [
-  // Cocina: muebles bajos con encimera en la pared oeste, fregadero bajo la ventana,
-  // muebles altos en toda la pared rodeando el hueco de la ventana, e isla
-  { at: [-6.1, 2.1], size: [0.6, 0.9, 4.4], tone: "wood", top: "beige" },
+  // Cocina, pared oeste: encimera con fregadero solo bajo la ventana (1,8 m); el resto, columnas
+  // de suelo a techo (con el frigorífico integrado al sur de la ventana, en `FRIDGE`), e isla
+  { at: [-6.1, 2.12], size: [0.6, 0.9, 1.8], tone: "wood", top: "beige" },
   { at: [-6.12, 2.12], size: [0.42, 0.03, 0.62], tone: "steel", lift: 0.9 },
   { at: [-6.33, 2.12], size: [0.04, 0.32, 0.04], tone: "steel", lift: 0.92 },
-  { at: [-6.21, 0.66], size: [0.35, 0.8, 1.52], tone: "wood", lift: 1.45 },
-  { at: [-6.21, 3.56], size: [0.35, 0.8, 1.48], tone: "wood", lift: 1.45 },
-  { at: [-6.21, 2.12], size: [0.35, 0.2, 1.4], tone: "wood", lift: 2.05 },
+  { at: [-6.1, 0.56], size: [0.6, 2.6, 1.32], tone: "wood" },
+  { at: [-6.1, 4.01], size: [0.6, 2.6, 0.78], tone: "wood" },
+  { at: [-6.21, 2.12], size: [0.35, 0.55, 1.8], tone: "wood", lift: 2.05 },
   { at: [-4.21, 1.77], size: [0.98, 0.92, 2.98], tone: "wood", top: "beige" },
-  // Salón: sofá en U y mueble bajo de la TV (la TV, en `TV`)
-  { at: [-1.82, 1.61], size: [0.82, 0.8, 3.8], tone: "sofa" },
-  { at: [-1.33, -0.08], size: [1.8, 0.8, 0.76], tone: "sofa" },
-  { at: [-1.33, 3.13], size: [1.8, 0.8, 0.76], tone: "sofa" },
+  // Salón: mueble bajo de la TV (el sofá, en `SOFA`; la TV, en `TV`)
   { at: [1.03, 1.15], size: [0.3, 0.5, 4.4], tone: "dark" },
   // Lavadero (las baterías y el inversor, en la parte norte, van en `ENERGY`)
   { at: [-6.35, -2.35], size: [0.6, 0.9, 1.6], tone: "light" },
@@ -534,4 +541,20 @@ export const TV = {
   height: 1.06,
   /** Altura del borde inferior */
   lift: 0.95,
+};
+
+/** Sofá en U del salón, abierto hacia la TV (este): huella exterior y fondo de asiento. */
+export const SOFA = { rect: [-2.23, -0.46, -0.43, 3.51] as Rect, depth: 0.8 };
+
+/** Frigorífico integrado (columna de 60 cm a la izquierda de la ventana) y sus sensores. */
+export const FRIDGE = {
+  at: [-6.1, 3.32] as Point,
+  size: [0.6, 2.6, 0.6] as [number, number, number],
+  sensors: {
+    fridge: "sensor.cocina_frigo_de_60_temperatura_real_refrigerador",
+    fridgeTarget: "number.cocina_frigo_de_60_temperatura_frigorifico",
+    freezer: "sensor.cocina_frigo_de_60_temperatura_real_congelador",
+    freezerTarget: "number.cocina_frigo_de_60_temperatura_congelador",
+    door: "binary_sensor.cocina_frigo_de_60_puerta_abierta_refrigerador",
+  },
 };

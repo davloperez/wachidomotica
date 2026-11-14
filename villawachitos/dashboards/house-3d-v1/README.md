@@ -40,6 +40,10 @@ Plano 3D interactivo de la vivienda (una planta) con el **estado real** de Home 
 - **TV del salón** (85", pared este, `TV` en el plano): con `media_player.salon_tv_samsung_salon_85` encendida
   la pantalla muestra una animación esquemática con el título o la fuente y tiñe el salón. Al tocarla: encender
   (por `remote.*` si el media_player no lo admite), apagar, reproducción, volumen, silencio y fuente.
+- **Frigorífico** integrado en la cocina (`FRIDGE`): columna con frente de madera, piloto verde (rojo y ondas si la
+  puerta está abierta) y etiqueta con temperatura real y objetivo del frigorífico y del congelador y estado de la puerta.
+- **Downlights**: las luces de techo de oficinas, dormitorios y vestidor son 4 focos repartidos 2 × 2 (`downlights()`
+  en el plano) que se encienden y se tocan como una sola luz.
 - **Luz general** suave que deja ver la casa de noche y rellena las sombras de día.
 - Gestos táctiles: **1 dedo gira**, **2 dedos hacen zoom y desplazan**. Tras 90 s sin tocar vuelve a la vista
   inicial (también con el botón de diana).

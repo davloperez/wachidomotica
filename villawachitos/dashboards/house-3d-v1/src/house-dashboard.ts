@@ -320,6 +320,59 @@ export class HouseDashboard extends LitElement {
         font-size: 0.9em;
       }
 
+      /* Datos del frigorífico, junto al muro oeste de la cocina */
+      .fridge-label {
+        display: grid;
+        gap: 2px;
+        font-size: clamp(10px, 0.72vw, 13px);
+        color: var(--text-muted);
+        background: var(--panel-strong);
+        border: 1px solid rgba(120, 200, 255, 0.4);
+        padding: 6px 10px;
+        border-radius: 12px;
+        white-space: nowrap;
+      }
+      .fridge-label .row {
+        display: grid;
+        grid-template-columns: 10px auto auto auto;
+        align-items: center;
+        column-gap: 6px;
+      }
+      .fridge-label b {
+        color: var(--text);
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+        text-align: right;
+        min-width: 4em;
+      }
+      .fridge-label span {
+        color: var(--text-faint);
+        font-size: 0.9em;
+      }
+      .fridge-label i {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #3dffa8;
+      }
+      .fridge-label i.cold {
+        background: #7cc8ff;
+      }
+      .fridge-label i.ice {
+        background: #c9e8ff;
+      }
+      .fridge-label.alert {
+        border-color: var(--danger);
+        box-shadow: 0 0 18px -6px var(--danger);
+      }
+      .fridge-label .door.open i {
+        background: var(--danger);
+        animation: pump-pulse 1.2s ease-out infinite;
+      }
+      .fridge-label .door.open b {
+        color: var(--danger);
+      }
+
       /* Indicador de la depuradora sobre su caseta */
       .pump-label {
         display: inline-flex;
