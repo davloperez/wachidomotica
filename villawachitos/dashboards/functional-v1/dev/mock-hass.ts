@@ -66,9 +66,17 @@ export function createMockHass(getDarkMode: () => boolean, onUpdate: (hass: Home
   set(
     "alarm_control_panel.alarma_vivienda",
     "disarmed",
-    { friendly_name: "Alarma vivienda", supported_features: 10 },
+    {
+      friendly_name: "Alarmo Alarma vivienda",
+      supported_features: 46,
+      code_format: null,
+      code_arm_required: false,
+    },
     ago(190),
   );
+  set("input_boolean.alarma_modo_silencioso", "on", { friendly_name: "Alarma modo silencioso" });
+  set("input_datetime.alarma_noche_conectar", "23:30:00", { has_time: true, has_date: false });
+  set("input_datetime.alarma_noche_desconectar", "07:00:00", { has_time: true, has_date: false });
   set("climate.aidoo_28_cc_ff_82_82_6f", "cool", {
     friendly_name: "Climatizador",
     current_temperature: 24.5,
@@ -96,6 +104,16 @@ export function createMockHass(getDarkMode: () => boolean, onUpdate: (hass: Home
     "sensor.david_lopez_perez_grid_import_today": "0.3",
     "sensor.david_lopez_perez_battery_stored_energy": "14.1",
     "sensor.david_lopez_perez_battery_total_capacity": "18.08",
+    "sensor.david_lopez_perez_battery_charging_today": "11.7",
+    "sensor.david_lopez_perez_battery_discharging_today": "10.9",
+    "sensor.david_lopez_perez_lifetime_pv_generation": "283",
+    "sensor.david_lopez_perez_home_consumption_total": "240",
+    "sensor.david_lopez_perez_grid_export_total": "45.5",
+    "sensor.david_lopez_perez_grid_import_total": "19.2",
+    "sensor.david_lopez_perez_battery_discharging_total": "139.9",
+    "sensor.david_lopez_perez_inverter_0080_internal_temperature": "46.2",
+    "sensor.david_lopez_perez_inverter_0080_phase_a_voltage": "227.6",
+    "sensor.david_lopez_perez_inverter_0080_grid_frequency": "50.02",
   };
   for (const [id, v] of Object.entries(solar)) set(id, v);
   const f = FRIDGE.sensors;
@@ -137,6 +155,8 @@ export function createMockHass(getDarkMode: () => boolean, onUpdate: (hass: Home
   set("sensor.cocina_air_fryer_time_remaining", "0");
   set("switch.enchufe_lavadora", "on");
   set("sensor.enchufe_lavadora_power", "412");
+  set("sensor.lavadora_estado", "Centrifugando");
+  set("binary_sensor.lavadora_en_marcha", "on", { device_class: "running" });
   set("sensor.lavadero_arenero_neakasa_m1_status", "idle");
   set("sensor.lavadero_arenero_neakasa_m1_visits_today", "7");
   set("sensor.lavadero_arenero_neakasa_m1_sand_level", "80");
@@ -206,6 +226,7 @@ function mockWS(msg: Record<string, unknown>, states: Record<string, HassEntity>
         if (day) v = id.includes("pv") ? 18 + Math.random() * 10 : 9 + Math.random() * 6;
         else if (id.includes("state_of_charge")) v = 40 + 45 * sun + i * 0.3;
         else if (id.includes("pv")) v = 5.2 * sun;
+        else if (id.includes("load_power")) v = 0.45 + 0.6 * Math.abs(Math.sin(i / 3));
         else if (id.includes("humedad")) v = 50 + 6 * Math.cos(i / 4);
         else if (id.includes("congelador")) v = -19 + Math.sin(i) * 0.8;
         else if (id.includes("refrigerador")) v = 4 + Math.sin(i / 2) * 0.6;
@@ -275,7 +296,13 @@ function mockService(
         state = pos === 0 ? "closed" : "open";
       }
     }
-    if (domain === "alarm_control_panel") state = service === "alarm_disarm" ? "disarmed" : "armed_away";
+    if (domain === "alarm_control_panel")
+      state =
+        service === "alarm_disarm"
+          ? "disarmed"
+          : service === "alarm_arm_night"
+            ? "armed_night"
+            : "armed_away";
     if (domain === "climate") {
       if (service === "set_temperature") a.temperature = data.temperature;
       if (service === "set_hvac_mode") state = String(data.hvac_mode);

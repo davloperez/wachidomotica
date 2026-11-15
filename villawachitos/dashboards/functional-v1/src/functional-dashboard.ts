@@ -26,11 +26,12 @@ import type { RoomView } from "./views/room-view";
 import { DEVICE_ICONS, deviceBrief } from "./widgets/devices";
 import { causticUrl } from "./house/materials";
 import { lightIcon } from "./widgets/lights";
-import { CUT3D, CalmScene, Vector3 } from "./scene3d/calm-scene";
-import { FOOTPRINT, POOL, POOL_DECK, PORCH, PUMP, type Rect } from "../../house-3d-v1/src/scene/plan";
+import { BASE_VIEW, CUT3D, CalmScene, Vector2, Vector3, type ViewAngle } from "./scene3d/calm-scene";
+import { FOOTPRINT, PLOT, POOL, POOL_DECK, type Rect } from "../../house-3d-v1/src/scene/plan";
 import "./views/home-view";
 import "./views/room-view";
 import "./widgets/lights";
+import "./widgets/solar-sheet";
 
 interface View {
   s: number;
@@ -51,7 +52,9 @@ const CAUSTICS = [causticUrl(1.6, 1, 0.035), causticUrl(1.1, 3, 0.022)];
 const DEFAULT_LOCATION = { latitude: 38.0506, longitude: -1.2114 };
 const ZOOM_MS = 1400;
 /** Texturas: en desarrollo las sirve Vite desde `public/`; en HA van junto al bundle. */
-const TEXTURES = import.meta.env.DEV ? "/textures/" : new URL(/* @vite-ignore */ "textures/", import.meta.url).href;
+const TEXTURES = import.meta.env.DEV
+  ? "/textures/"
+  : new URL(/* @vite-ignore */ "textures/", import.meta.url).href;
 
 type Box3 = [Vector3, Vector3];
 const boxOf = (rects: Rect[], y1 = CUT3D): Box3 => [
@@ -59,7 +62,36 @@ const boxOf = (rects: Rect[], y1 = CUT3D): Box3 => [
   new Vector3(Math.max(...rects.map((r) => r[2])), y1, Math.max(...rects.map((r) => r[3]))),
 ];
 const HOME_BOX = boxOf([...FOOTPRINT, POOL_DECK]);
-const EXTERIOR_BOX = boxOf([PORCH, POOL_DECK, PUMP.rect], 0.5);
+/** Suma de los bordes norte y sur de la casa (sin la piscina), para hallar su centro */
+const FOOT_Z = Math.min(...FOOTPRINT.map((r) => r[1])) + Math.max(...FOOTPRINT.map((r) => r[3]));
+/** El exterior se ve entero (calle, jardín norte, porche y piscina), casi al mismo zoom que la casa */
+const EXTERIOR_BOX = boxOf(
+  [
+    [
+      Math.min(...PLOT.map((p) => p[0])),
+      Math.min(...PLOT.map((p) => p[1])),
+      Math.max(...PLOT.map((p) => p[0])),
+      Math.max(...PLOT.map((p) => p[1])),
+    ],
+  ],
+  0.5,
+);
+/** Vista del exterior: desde el suroeste y más baja, para diferenciarla de la general */
+const EXTERIOR_VIEW: ViewAngle = { yaw: BASE_VIEW.yaw - (18 * Math.PI) / 180, elev: (45 * Math.PI) / 180 };
+/** Puntos que la cámara debe ver de una estancia: una rejilla de su suelo y sus dispositivos. */
+function roomPoints(room: RoomDef): Vector3[] {
+  const pts: Vector3[] = [];
+  for (const [x1, z1, x2, z2] of room.rects)
+    for (const fx of [0.2, 0.5, 0.8])
+      for (const fz of [0.2, 0.5, 0.8]) pts.push(new Vector3(x1 + (x2 - x1) * fx, 0.35, z1 + (z2 - z1) * fz));
+  // Los dispositivos cuentan doble: que se vean importa más que un trozo de suelo
+  for (const d of room.devices) {
+    const p = DEVICE_SPOTS[d.type];
+    if (p)
+      pts.push(new Vector3(p[0], Math.min(p[1], 0.9), p[2]), new Vector3(p[0], Math.min(p[1], 0.9), p[2]));
+  }
+  return pts;
+}
 const area3 = ([x1, z1, x2, z2]: Rect) => Math.abs((x2 - x1) * (z2 - z1));
 
 /** Punto de cada acceso en la maqueta 3D (centro de su estancia más grande, o la piscina). */
@@ -69,6 +101,7 @@ function anchor3(id: string): Vector3 {
     const [x1, z1, x2, z2] = POOL.rect;
     return new Vector3((x1 + x2) / 2, 0.2, (z1 + z2) / 2);
   }
+  if (room.anchor) return new Vector3(room.anchor[0], 0.6, room.anchor[1]);
   const [x1, z1, x2, z2] = [...room.rects].sort((a, b) => area3(b) - area3(a))[0];
   return new Vector3((x1 + x2) / 2, 0.6, (z1 + z2) / 2);
 }
@@ -93,6 +126,7 @@ export class FunctionalDashboard extends LitElement {
   /** La primera medida coloca la imagen sin animación; después se activan las transiciones. */
   @state() private ready = false;
   @state() private sheet?: { entity: string; name: string };
+  @state() private solarOpen = false;
   /** Tamaño natural de las imágenes reales (cuando se configuran) */
   @state() private natural: Record<string, [number, number]> = {};
 
@@ -148,7 +182,6 @@ export class FunctionalDashboard extends LitElement {
     const secs = this.config.idle_return_seconds ?? 180;
     if (!secs || this.view === HOME) return;
     if (Date.now() - this.lastTouch > secs * 1000) {
-      this.sheet = undefined;
       this.go(HOME);
     }
   }
@@ -157,6 +190,7 @@ export class FunctionalDashboard extends LitElement {
     this.lastTouch = Date.now();
     if (view !== HOME && !ROOM_BY_ID.has(view)) return;
     this.sheet = undefined;
+    this.solarOpen = false;
     this.view = view;
   }
 
@@ -199,16 +233,47 @@ export class FunctionalDashboard extends LitElement {
     this.placePins();
   }
 
+  /** Mejor ángulo de cada estancia (se calcula una vez por estancia y forma de pantalla). */
+  private bestViews = new Map<string, ViewAngle>();
+
   /** Mueve la cámara a la vista general o a la estancia actual. */
   private frame3d(animate: boolean): void {
     const scene = this.scene;
     if (!scene) return;
     const ms = animate ? ZOOM_MS : 0;
     this.homeDistance = scene.distanceFor(HOME_BOX, this.area(false), 0.96);
-    if (this.view === HOME) return scene.frame(HOME_BOX, this.area(false), { fill: 0.96, ms });
+    scene.setDrift(this.view === HOME);
+    // La vista general deja algo de margen para el balanceo lento
+    if (this.view === HOME) return scene.frame(HOME_BOX, this.area(false), { fill: 0.92, ms });
     const room = ROOM_BY_ID.get(this.view);
-    const box = room && room.rects.length ? boxOf(room.rects) : EXTERIOR_BOX;
-    scene.frame(box, this.area(true), { fill: 0.82, ms, minDistance: this.homeDistance / 2.8 });
+    if (!room || !room.rects.length)
+      // Casi el mismo zoom que la vista general: la parcela ocupa todo el ancho y asoma bajo los paneles
+      return scene.frame(
+        EXTERIOR_BOX,
+        this.narrow ? this.area(true) : { x: 16, y: 90, w: this.size.w - 32, h: this.size.h - 186 },
+        {
+          fill: 0.96,
+          ms: ms && ms * 1.6,
+          view: EXTERIOR_VIEW,
+        },
+      );
+    const box = boxOf(room.rects);
+    const area = this.area(true);
+    const key = `${room.id}|${Math.round((area.w / area.h) * 8)}`;
+    let view = this.bestViews.get(key);
+    if (!view)
+      this.bestViews.set(
+        key,
+        (view = scene.bestView(box, roomPoints(room), area, {
+          minDistance: this.homeDistance / 2.8,
+          // De la casa hacia la estancia, en el plano (x, z)
+          outward: new Vector2(
+            (box[0].x + box[1].x - HOME_BOX[0].x - HOME_BOX[1].x) / 2,
+            (box[0].z + box[1].z - FOOT_Z) / 2,
+          ),
+        })),
+      );
+    scene.frame(box, area, { fill: 0.82, ms: ms && ms * 1.3, minDistance: this.homeDistance / 2.8, view });
   }
 
   /** Coloca los accesos y las luces sobre la maqueta 3D (cada fotograma mientras se mueve la cámara). */
@@ -373,6 +438,7 @@ export class FunctionalDashboard extends LitElement {
               .room=${room}
               @go=${(e: CustomEvent<string>) => this.go(e.detail)}
               @open-light=${(e: CustomEvent<{ entity: string; name: string }>) => (this.sheet = e.detail)}
+              @open-solar=${() => (this.solarOpen = true)}
             ></fv1-room>`
           : html`<fv1-home
               .hass=${this.hass}
@@ -389,6 +455,14 @@ export class FunctionalDashboard extends LitElement {
               .name=${this.sheet.name}
               @close=${() => (this.sheet = undefined)}
             ></fv1-light-sheet>`
+          : nothing
+      }
+      ${
+        this.solarOpen
+          ? html`<fv1-solar-sheet
+              .hass=${this.hass}
+              @close=${() => (this.solarOpen = false)}
+            ></fv1-solar-sheet>`
           : nothing
       }
       ${this.hass && !this.hass.connected ? html`<div class="offline">Sin conexión con Home Assistant…</div>` : nothing}
@@ -445,8 +519,12 @@ export class FunctionalDashboard extends LitElement {
             (d.type === "presence" && isOn(this.hass, d.occupancy)) ||
             (d.type === "cameras" && d.cameras.some((c) => isOn(this.hass, c.person))),
         );
+        // Lavadora terminada: la estancia lo anuncia con un distintivo hasta que se apaga o pasan 3 h
+        const washerDone = r.devices.some(
+          (d) => d.type === "washer" && st(this.hass, d.status)?.state === "Terminada",
+        );
         return html`<button
-          class="spot ${on ? "lit" : ""}"
+          class="spot ${on ? "lit" : ""} ${washerDone ? "notify" : ""}"
           data-anchor=${this.use3d ? `room|${r.id}` : nothing}
           style=${styleMap({ "--i": String(i), ...(pos ? { transform: `translate(${pos[0]}px, ${pos[1]}px)` } : {}) })}
           @click=${() => this.go(r.id)}
@@ -458,6 +536,7 @@ export class FunctionalDashboard extends LitElement {
             ${t !== undefined ? html`<span class="num">${fmt(t, 1)}°</span>` : nothing}
             ${on ? html`<span class="lights num">● ${on}</span>` : nothing}
             ${motion ? html`<span class="motion">◉</span>` : nothing}
+            ${washerDone ? html`<span class="badge">${icon(DEVICE_ICONS.washer)} Lavadora lista</span>` : nothing}
           </span>
         </button>`;
       })}
@@ -538,7 +617,10 @@ export class FunctionalDashboard extends LitElement {
           data-anchor="dev|${d.type}"
           style=${styleMap({ "--i": String(offset + i) })}
           aria-label=${d.name}
-          @click=${() => this.renderRoot.querySelector<RoomView>("fv1-room")?.focusDevice(d.type)}
+          @click=${() =>
+            d.type === "energy"
+              ? (this.solarOpen = true)
+              : this.renderRoot.querySelector<RoomView>("fv1-room")?.focusDevice(d.type)}
         >
           <span class="m-dot">${icon(DEVICE_ICONS[d.type])}</span>
           <span class="m-name">${deviceBrief(this.hass, d)}</span>
@@ -870,6 +952,28 @@ export class FunctionalDashboard extends LitElement {
       }
       .spot.lit .pin::after {
         --ripple: color-mix(in srgb, var(--amber) 60%, transparent);
+      }
+      .spot.notify .pin {
+        background: var(--sage);
+        color: #fff;
+      }
+      .spot.notify .pin::after {
+        --ripple: color-mix(in srgb, var(--sage) 75%, transparent);
+        animation-duration: 1.6s;
+      }
+      .spot .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        padding: 1px 7px 1px 4px;
+        border-radius: 999px;
+        background: var(--sage);
+        color: #fff;
+        font-weight: 700;
+      }
+      .spot .badge svg {
+        width: 13px;
+        height: 13px;
       }
       .spot:active .label {
         transform: scale(0.95);

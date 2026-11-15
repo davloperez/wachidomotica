@@ -9,6 +9,7 @@ import {
   mdiChartTimelineVariant,
   mdiLightbulbGroupOutline,
   mdiThermometer,
+  mdiWashingMachine,
   mdiWaterPercent,
   mdiWeatherPartlyCloudy,
   mdiWindowShutterOpen,
@@ -74,7 +75,11 @@ export class RoomView extends LitElement {
       hourlyMeans(this.hass, climateIds, 24)
         .then((d) => (this.climate = d))
         .catch((err) => console.warn("[functional-v1] clima", err));
-    const ids = [...r.lights.map((l) => l.entity), ...r.covers.map((c) => c.entity)];
+    const ids = [
+      ...r.lights.map((l) => l.entity),
+      ...r.covers.map((c) => c.entity),
+      ...r.devices.flatMap((d) => (d.type === "washer" ? [d.running] : [])),
+    ];
     if (ids.length)
       stateSpans(this.hass, ids, startOfToday())
         .then((d) => (this.spans = d))
@@ -164,7 +169,7 @@ export class RoomView extends LitElement {
         ${r.lights.length ? this.lightsCard(lightsOn) : nothing} ${this.activityCard()}
       </aside>
       <aside class="col right scroll">
-        ${this.climateCard()} ${r.covers.length ? this.coversCard(avg) : nothing}
+        ${this.washerDone()} ${this.climateCard()} ${r.covers.length ? this.coversCard(avg) : nothing}
         ${repeat(
           r.devices,
           (d) => `${d.type}:${d.name}`,
@@ -332,6 +337,41 @@ export class RoomView extends LitElement {
     `;
   }
 
+  /** Aviso destacado cuando la lavadora ha terminado: hora, duración del ciclo y lavados de hoy. */
+  private washerDone() {
+    const d = this.room!.devices.find((x) => x.type === "washer");
+    if (!d || d.type !== "washer" || st(this.hass, d.status)?.state !== "Terminada") return nothing;
+    // El sensor «en marcha» tarda 10 min en apagarse (delay_off, para no cortar el ciclo en las pausas)
+    const OFF_DELAY = 10 * 60_000;
+    const end = new Date(
+      new Date(st(this.hass, d.running)?.last_changed ?? Date.now()).getTime() - OFF_DELAY,
+    );
+    const cycles = (this.spans[d.running] ?? []).filter((x) => x.state === "on");
+    const last = cycles.at(-1);
+    const mins = last ? Math.max(1, Math.round((last.to - last.from - OFF_DELAY) / 60_000)) : undefined;
+    const ago = Math.max(0, Math.round((Date.now() - end.getTime()) / 60_000));
+    const hm = (m: number) =>
+      m >= 60 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, "0")} min` : `${m} min`;
+    return html`<section class="glass card done" style="--d:0">
+      <header class="card-head">
+        <span class="ico ok">${icon(mdiWashingMachine)}</span>
+        <div class="grow ttl">
+          <b>Lavadora terminada</b>
+          <span>Tender la ropa · hace ${hm(ago)}</span>
+        </div>
+      </header>
+      <div class="done-grid">
+        <div>
+          <span class="faint">Terminó</span
+          ><b>${end.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}</b>
+        </div>
+        <div><span class="faint">Duración</span><b>${mins !== undefined ? hm(mins) : "—"}</b></div>
+        <div><span class="faint">Lavados hoy</span><b>${cycles.length || 1}</b></div>
+      </div>
+      <p class="faint done-note">Avisado por Telegram en Notificaciones.</p>
+    </section>`;
+  }
+
   private activityCard() {
     const r = this.room!;
     const rows = [
@@ -342,6 +382,11 @@ export class RoomView extends LitElement {
         color: "var(--sky)",
         active: ["open", "opening"],
       })),
+      ...r.devices.flatMap((d) =>
+        d.type === "washer"
+          ? [{ label: d.name, spans: this.spans[d.running] ?? [], color: "var(--sage)" }]
+          : [],
+      ),
     ];
     if (!rows.length) return nothing;
     const onMs = r.lights.reduce(
@@ -367,6 +412,52 @@ export class RoomView extends LitElement {
   static styles = [
     shared,
     css`
+      .done {
+        border: 1.5px solid var(--sage);
+        box-shadow:
+          0 0 0 4px var(--sage-soft),
+          var(--glass-shadow);
+      }
+      .done .ico {
+        background: var(--sage);
+        color: #fff;
+        animation: nudge 2.4s var(--ease-soft) infinite;
+      }
+      @keyframes nudge {
+        0%,
+        100% {
+          transform: rotate(0);
+        }
+        8% {
+          transform: rotate(-12deg);
+        }
+        16% {
+          transform: rotate(10deg);
+        }
+        24% {
+          transform: rotate(0);
+        }
+      }
+      .done-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+      }
+      .done-grid div {
+        display: grid;
+        gap: 2px;
+        padding: 8px 10px;
+        border-radius: 12px;
+        background: var(--sage-soft);
+        font-size: var(--fs-label);
+      }
+      .done-grid b {
+        font-size: var(--fs-body);
+      }
+      .done-note {
+        margin: 0;
+        font-size: var(--fs-label);
+      }
       :host {
         position: absolute;
         inset: var(--space-3) var(--space-4) var(--dock-gap) var(--space-4);

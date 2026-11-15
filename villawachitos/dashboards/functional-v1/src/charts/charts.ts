@@ -85,7 +85,9 @@ export class AreaChart extends Sized {
       const m = (hi - lo) * 0.15;
       return [lo - m, hi + m];
     };
-    const sharedRange = range(all);
+    // La escala común solo cuenta las series sin eje propio (si no, un % aplasta a los kW)
+    const shared = this.series.filter((s) => !s.own).flatMap((s) => s.data);
+    const sharedRange = range(shared.length > 1 ? shared : all);
     const x = (t: number) => pad.l + ((t - t0) / Math.max(1, t1 - t0)) * (W - pad.l - pad.r);
     const ticks = [0, 0.5, 1].map((f) => t0 + (t1 - t0) * f);
     // Etiquetas del último valor de cada serie, separadas para que no se pisen

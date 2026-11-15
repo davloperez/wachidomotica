@@ -28,13 +28,14 @@ import {
   mdiWeatherWindy,
   mdiAlertOutline,
 } from "@mdi/js";
-import type { DashboardConfig, HomeAssistant } from "../types";
+import type { DashboardConfig, HassEntity, HomeAssistant } from "../types";
 import { shared } from "../styles/tokens";
 import { ALARM_ES, HVAC_ES, WEATHER_ES, call, fmt, icon, isOn, num, relTime, st } from "../lib/ha";
 import { dailyTotals, hourlyMeans, type Point } from "../lib/data";
 import { computeAlerts, roomName } from "../lib/alerts";
 import { ALL_OFF_SCRIPT, ENERGY, PEOPLE, ROOMS_DEF } from "../house/rooms";
 import "../charts/charts";
+import "../widgets/alarm-keypad";
 
 export const WEATHER_ICON: Record<string, string> = {
   "clear-night": mdiWeatherNight,
@@ -55,6 +56,12 @@ const LOAD_TOTAL = "sensor.david_lopez_perez_home_consumption_today";
 const INDOOR_T = "sensor.shelly_salon_sur_temperatura";
 const INDOOR_H = "sensor.shelly_salon_sur_humedad";
 const HVAC = "climate.aidoo_28_cc_ff_82_82_6f";
+/** Modo silencioso de la alarma: sin sirenas ni avisos sonoros, solo Telegram. */
+const SILENT_MODE = "input_boolean.alarma_modo_silencioso";
+/** Horario de la conexión automática en modo Noche (automatización «Alarma: horario de noche»). */
+const NIGHT_ON = "input_datetime.alarma_noche_conectar";
+const NIGHT_OFF = "input_datetime.alarma_noche_desconectar";
+const hhmm = (v?: string) => (v && /^\d{2}:\d{2}/.test(v) ? v.slice(0, 5) : "—");
 
 const cap = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
 const DAYS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
@@ -68,12 +75,18 @@ export class HomeView extends LitElement {
   @state() private hours: Record<string, Point[]> = {};
   @state() private armed?: string;
   @state() private now = new Date();
+  @state() private keypad = false;
   private timers: number[] = [];
 
   connectedCallback(): void {
     super.connectedCallback();
     this.timers = [
       window.setInterval(() => (this.now = new Date()), 20_000),
+      // Cuenta atrás de la alarma (conectando / prealarma): refresco cada segundo solo mientras dura.
+      window.setInterval(() => {
+        const s = st(this.hass, this.config?.alarm)?.state;
+        if (s === "arming" || s === "pending") this.now = new Date();
+      }, 1_000),
       window.setInterval(() => this.load(), 10 * 60_000),
     ];
   }
@@ -257,47 +270,101 @@ export class HomeView extends LitElement {
     `;
   }
 
+  /** Botones de la alarma: conectar (Noche / Ausente) sin código; desconectar con PIN si Alarmo lo pide. */
+  private alarmActions(id: string, a: HassEntity) {
+    const state = a.state;
+    const svc = (service: string) => call(this.hass, "alarm_control_panel", service, { entity_id: id });
+    if (state === "disarmed")
+      return html`<div class="alarm-btns">
+        <button
+          class="btn ${this.armed === "night" ? "armed" : "primary"}"
+          @click=${() => this.confirm("night", () => svc("alarm_arm_night"))}
+        >
+          ${icon(mdiWeatherNight)} ${this.armed === "night" ? "¿Seguro?" : "Noche"}
+        </button>
+        <button
+          class="btn ${this.armed === "away" ? "armed" : "primary"}"
+          @click=${() => this.confirm("away", () => svc("alarm_arm_away"))}
+        >
+          ${icon(mdiShieldHomeOutline)} ${this.armed === "away" ? "¿Seguro?" : "Ausente"}
+        </button>
+      </div>`;
+    if (state === "unavailable" || state === "unknown") return nothing;
+    // Con código configurado en Alarmo (`code_format`), se abre el teclado; sin código, se confirma con un toque.
+    const needsCode = !!a.attributes.code_format;
+    return html`<button
+      class="btn ${this.armed === "alarm" ? "armed" : "danger"}"
+      @click=${() => (needsCode ? (this.keypad = true) : this.confirm("alarm", () => svc("alarm_disarm")))}
+    >
+      ${icon(mdiShieldOffOutline)}
+      ${this.armed === "alarm" ? "¿Seguro?" : state === "arming" ? "Cancelar" : "Desconectar"}
+    </button>`;
+  }
+
+  /** Segundos que quedan de la cuenta atrás de Alarmo (salida o entrada), o undefined. */
+  private countdown(a: HassEntity): number | undefined {
+    const delay = Number(a.attributes.delay);
+    if (!delay || (a.state !== "arming" && a.state !== "pending")) return undefined;
+    const left = delay - (this.now.getTime() - new Date(a.last_changed).getTime()) / 1000;
+    return Math.max(0, Math.round(left));
+  }
+
   private security() {
     const id = this.config?.alarm;
     const a = st(this.hass, id);
     const state = a?.state ?? "unavailable";
     const armed = state.startsWith("armed");
     const triggered = state === "triggered";
+    const pending = state === "pending";
+    const left = a ? this.countdown(a) : undefined;
+    const silent = isOn(this.hass, SILENT_MODE);
+    const names = (v: unknown): string[] =>
+      (Array.isArray(v) ? v : v && typeof v === "object" ? Object.keys(v) : []).map((e) =>
+        String(st(this.hass, String(e))?.attributes.friendly_name ?? e),
+      );
+    const openNames = names(a?.attributes.open_sensors);
+    const bypassed = names(a?.attributes.bypassed_sensors);
     const gates = ROOMS_DEF.flatMap((r) => r.devices).flatMap((d) => (d.type === "gates" ? d.gates : []));
     const openGates = gates.filter((g) => isOn(this.hass, g.entity));
     const door = st(this.hass, "binary_sensor.sensor_puerta_principal_contact");
     const cams = ROOMS_DEF.flatMap((r) => r.devices).flatMap((d) => (d.type === "cameras" ? d.cameras : []));
     const motion = cams.filter((c) => isOn(this.hass, c.person) || isOn(this.hass, c.motion));
     return html`
-      <section class="glass card sec ${triggered ? "alarm" : armed ? "armed" : ""}" style="--d:0">
+      <section class="glass card sec ${triggered || pending ? "alarm" : armed ? "armed" : ""}" style="--d:0">
         <header class="card-head">
           <span class="ico"
-            >${icon(triggered ? mdiAlertOutline : armed ? mdiShieldLockOutline : mdiShieldOffOutline)}</span
+            >${icon(triggered || pending ? mdiAlertOutline : armed ? mdiShieldLockOutline : mdiShieldOffOutline)}</span
           >
           <div class="grow ttl">
             <b>Alarma</b>
-            <span>${ALARM_ES[state] ?? state}${a ? ` · ${relTime(a.last_changed)}` : ""}</span>
+            <span
+              >${ALARM_ES[state] ?? state}${left !== undefined ? ` · ${left} s` : a ? ` · ${relTime(a.last_changed)}` : ""}</span
+            >
           </div>
-          ${
-            a
-              ? html`<button
-                  class="btn ${this.armed === "alarm" ? "armed" : armed || triggered ? "danger" : "primary"}"
-                  @click=${() =>
-                    this.confirm("alarm", () =>
-                      call(
-                        this.hass,
-                        "alarm_control_panel",
-                        armed || triggered ? "alarm_disarm" : "alarm_arm_away",
-                        { entity_id: id },
-                      ),
-                    )}
-                >
-                  ${icon(armed ? mdiShieldOffOutline : mdiShieldHomeOutline)}
-                  ${this.armed === "alarm" ? "¿Seguro?" : armed || triggered ? "Desconectar" : "Conectar"}
-                </button>`
-              : nothing
-          }
+          ${a && id ? this.alarmActions(id, a) : nothing}
         </header>
+        ${
+          pending
+            ? html`<p class="alarm-note">
+                Prealarma: desconecta antes de ${left ?? 0} s si es una falsa alarma.
+              </p>`
+            : nothing
+        }
+        ${
+          (pending || triggered) && openNames.length
+            ? html`<p class="alarm-note">Detectado: ${openNames.join(", ")}</p>`
+            : nothing
+        }
+        ${armed && bypassed.length ? html`<p class="alarm-note muted">Sin vigilar: ${bypassed.join(", ")}</p>` : nothing}
+        ${
+          this.keypad && id
+            ? html`<fv1-alarm-keypad
+                .hass=${this.hass}
+                .entity=${id}
+                @close=${() => (this.keypad = false)}
+              ></fv1-alarm-keypad>`
+            : nothing
+        }
         <div class="sec-grid">
           <div class="mini-stat ${openGates.length ? "warn" : ""}" @click=${() => this.go("exterior")}>
             <span class="faint">Puertas calle</span>
@@ -315,6 +382,19 @@ export class HomeView extends LitElement {
             <span class="faint">Cámaras</span>
             <b>${motion.length ? `${motion.length} con movimiento` : "Tranquilo"}</b>
           </div>
+        </div>
+        <div class="sec-foot">
+          <span class="faint"
+            >${icon(mdiWeatherNight)} Noche automática ${hhmm(st(this.hass, NIGHT_ON)?.state)} →
+            ${hhmm(st(this.hass, NIGHT_OFF)?.state)}</span
+          >
+          <button
+            class="chip ${silent ? "on" : ""}"
+            title="Sin sirenas ni avisos sonoros; solo Telegram"
+            @click=${() => call(this.hass, "input_boolean", "toggle", { entity_id: SILENT_MODE })}
+          >
+            ${silent ? "Silenciosa" : "Con sirena"}
+          </button>
         </div>
       </section>
     `;
@@ -622,6 +702,51 @@ export class HomeView extends LitElement {
         50% {
           box-shadow: 0 0 0 6px var(--danger-soft);
         }
+      }
+      .sec .card-head {
+        flex-wrap: wrap;
+        row-gap: 10px;
+      }
+      .alarm-btns {
+        display: flex;
+        gap: 6px;
+        margin-left: auto;
+      }
+      .alarm-note {
+        margin: 0;
+        font-size: var(--fs-small);
+        font-weight: 600;
+      }
+      .alarm-note.muted {
+        font-weight: 400;
+      }
+      .sec-foot {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        font-size: var(--fs-label);
+      }
+      .sec-foot .faint {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+      .sec-foot svg {
+        width: 14px;
+        height: 14px;
+      }
+      .sec-foot .chip {
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: var(--chip);
+        color: var(--text);
+        font-size: var(--fs-label);
+        font-weight: 600;
+      }
+      .sec-foot .chip.on {
+        background: var(--sky-soft);
+        color: var(--sky);
       }
       .sec-grid {
         display: grid;

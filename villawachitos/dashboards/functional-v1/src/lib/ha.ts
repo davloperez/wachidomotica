@@ -105,11 +105,11 @@ export const WEATHER_ES: Record<string, string> = {
 export const ALARM_ES: Record<string, string> = {
   disarmed: "Desconectada",
   armed_home: "En casa",
-  armed_away: "Conectada",
+  armed_away: "Ausente",
   armed_night: "Noche",
   armed_vacation: "Vacaciones",
   armed_custom_bypass: "Personalizada",
-  pending: "Pendiente",
+  pending: "Prealarma",
   arming: "Conectando…",
   disarming: "Desconectando…",
   triggered: "¡Disparada!",

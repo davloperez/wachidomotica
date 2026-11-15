@@ -29,6 +29,7 @@ import {
   PCFSoftShadowMap,
   PerspectiveCamera,
   PlaneGeometry,
+  Raycaster,
   PointLight,
   RepeatWrapping,
   Path,
@@ -61,6 +62,7 @@ import {
   INTERIOR_THICKNESS,
   LAMPS,
   NORTH_ANGLE,
+  PAINTING,
   PARKING_CONCRETE,
   PAVING,
   PEDESTRIAN_GATE,
@@ -76,6 +78,7 @@ import {
   TV,
   VACUUM,
   WALLS,
+  WASHER,
   YARD_FENCE,
   type FurnitureTone,
   type Gate,
@@ -93,8 +96,16 @@ const SLAB = 0.7;
 const SHUTTER_SPEED = 0.35;
 const GATE_SPEED = 0.3;
 const PLOT_CENTER = new Vector3(-0.4, 0, 2.6);
-/** Dirección fija de la cámara (desde el sur, algo girada, unos 58° de elevación). */
-const VIEW_DIR = new Vector3(-0.12, 31, 17).normalize();
+/** Vista de siempre: desde el sur, casi de frente, unos 61° de elevación (ángulos en radianes). */
+export const BASE_VIEW = { yaw: Math.atan2(-0.12, 17), elev: Math.atan2(31, Math.hypot(0.12, 17)) };
+/** Dirección desde el objetivo hacia la cámara (yaw 0 = desde el sur, π/2 = desde el este). */
+const viewDir = (yaw: number, elev: number) =>
+  new Vector3(Math.sin(yaw) * Math.cos(elev), Math.sin(elev), Math.cos(yaw) * Math.cos(elev));
+/** Balanceo de la vista general: ±9° de giro en un ciclo de 4 minutos, casi imperceptible. */
+const DRIFT_AMP = (9 * Math.PI) / 180;
+const DRIFT_PERIOD = 240_000;
+const DRIFT_FPS = 24;
+const wrapAngle = (a: number) => Math.atan2(Math.sin(a), Math.cos(a));
 const WARM_WHITE = new Color(255 / 255, 196 / 255, 137 / 255);
 /** El agua se anima a pocos fotogramas: suficiente para que "respire" sin gastar la tablet. */
 const WATER_FPS = 20;
@@ -241,6 +252,15 @@ interface CameraPose {
   /** Desplazamiento del centro de la imagen (px) para centrar en la zona libre */
   ox: number;
   oy: number;
+  /** Giro alrededor del eje vertical y elevación de la cámara (radianes) */
+  yaw: number;
+  elev: number;
+}
+
+/** Ángulo de cámara para `frame()` */
+export interface ViewAngle {
+  yaw: number;
+  elev: number;
 }
 
 export class CalmScene {
@@ -273,13 +293,20 @@ export class CalmScene {
   private towels: { entity: string; material: MeshStandardMaterial; on: boolean | undefined }[] = [];
   private pumpEdge!: MeshStandardMaterial;
   private robot!: Group;
+  private washerDoor!: MeshStandardMaterial;
+  private inverterLed!: MeshStandardMaterial;
 
   private lamps: LampRuntime[] = [];
   private shutters: ShutterRuntime[] = [];
   private gates: GateRuntime[] = [];
 
   private size = { w: 1, h: 1 };
-  private pose: CameraPose = { target: PLOT_CENTER.clone(), distance: 40, ox: 0, oy: 0 };
+  private pose: CameraPose = { target: PLOT_CENTER.clone(), distance: 40, ox: 0, oy: 0, ...BASE_VIEW };
+  /** Peso del balanceo (0 → 1 en unos segundos al volver a la vista general) */
+  private drift = 0;
+  private driftOn = false;
+  private lastDrift = 0;
+  private walls?: Group;
   private anim?: { from: CameraPose; to: CameraPose; start: number; ms: number };
   private raf = 0;
   private dirty = true;
@@ -463,7 +490,7 @@ export class CalmScene {
     deck.holes.push(rectPath(POOL.rect));
     flat(deck, this.m.outdoor, 0.03);
     flat(rectShape(PORCH), this.m.outdoor, 0.014);
-    for (const r of PAVING) flat(rectShape(r), this.m.outdoor, 0.012);
+    for (const r of PAVING) if (r !== PARKING_CONCRETE) flat(rectShape(r), this.m.outdoor, 0.012);
     flat(rectShape(PARKING_CONCRETE), this.m.concrete, 0.018);
 
     // Vaso y lámina de agua con oleaje suave
@@ -582,6 +609,7 @@ export class CalmScene {
     const group = new Group();
     for (const wall of WALLS) this.buildWall(wall, group);
     this.scene.add(group);
+    this.walls = group;
   }
 
   private buildWall(wall: Wall, group: Group): void {
@@ -738,9 +766,63 @@ export class CalmScene {
       if (f.top && base + h - top < CUT3D + 0.25)
         this.block(f.at[0], f.at[1], base + hh, [w + 0.03, top, d + 0.03], this.toneMaterial(f.top));
     }
-    // Baterías (torre blanca) e inversor del lavadero
-    const [bw, bh, bd] = ENERGY.battery.size;
-    this.block(ENERGY.battery.at[0], ENERGY.battery.at[1], 0.02, [bw, Math.min(bh, CUT3D), bd], this.m.white);
+    // Baterías (módulos blancos apilados) con el inversor encima, contra la pared norte del lavadero
+    const { battery, inverter } = ENERGY;
+    const [bw, bh, bd] = battery.size;
+    const [bx, bz] = battery.at;
+    const moduleH = bh / battery.modules;
+    for (let i = 0; i < battery.modules; i++)
+      this.block(bx, bz, 0.02 + i * moduleH, [bw, moduleH - 0.015, bd], this.m.deviceLight);
+    const [iw, ih, id] = inverter.size;
+    this.block(
+      inverter.at[0],
+      inverter.at[1],
+      inverter.lift,
+      [iw, Math.min(ih, CUT3D + 0.2 - inverter.lift), id],
+      this.m.device,
+    );
+    // Franja de luz del inversor (frente sur): se ilumina mientras hay producción solar
+    this.inverterLed = new MeshStandardMaterial({ color: "#3a3d40", roughness: 0.4 });
+    const led = new Mesh(new BoxGeometry(iw * 0.6, 0.025, 0.01), this.inverterLed);
+    led.position.set(inverter.at[0], inverter.lift + 0.1, inverter.at[1] + id / 2 + 0.006);
+    this.scene.add(led);
+
+    // Lavadora: cuerpo blanco y ojo de buey hacia el oeste (brilla mientras lava)
+    const [wx, wz] = WASHER.at;
+    const [ww, wh, wd] = WASHER.size;
+    this.block(wx, wz, 0.02, [ww - 0.02, wh - 0.02, wd - 0.02], this.m.deviceLight);
+    // Tapa gris claro con el panel de mandos oscuro en el frente (oeste), para distinguirla de la encimera
+    this.block(wx, wz, wh, [ww - 0.02, 0.02, wd - 0.02], this.m.steel);
+    this.block(wx - ww / 2 + 0.06, wz, wh + 0.02, [0.1, 0.012, wd - 0.06], this.m.device);
+    this.washerDoor = new MeshStandardMaterial({ color: "#2b3036", roughness: 0.15, metalness: 0.3 });
+    const ring = new Mesh(new CylinderGeometry(0.2, 0.2, 0.03, 32), this.m.steel);
+    ring.rotation.z = Math.PI / 2;
+    ring.position.set(wx - ww / 2 - 0.01, 0.47, wz);
+    const glass = new Mesh(new CylinderGeometry(0.16, 0.16, 0.035, 32), this.washerDoor);
+    glass.rotation.z = Math.PI / 2;
+    glass.position.set(wx - ww / 2 - 0.015, 0.47, wz);
+    this.scene.add(ring, glass);
+
+    // Cuadro del recibidor: marco de madera oscura y lienzo abstracto en tonos de la casa
+    const [cx, cz] = PAINTING.at;
+    const top = Math.min(PAINTING.lift + PAINTING.height, CUT3D + 0.2);
+    const frame = this.block(
+      cx,
+      cz,
+      PAINTING.lift,
+      [0.04, top - PAINTING.lift, PAINTING.width],
+      this.m.darkwood,
+    );
+    frame.castShadow = false;
+    const canvasTex = makePaintingTexture();
+    canvasTex.repeat.set(1, (top - PAINTING.lift) / PAINTING.height);
+    const canvas = new Mesh(
+      new PlaneGeometry(PAINTING.width - 0.08, top - PAINTING.lift - 0.06),
+      new MeshStandardMaterial({ map: canvasTex, roughness: 0.9 }),
+    );
+    canvas.rotation.y = Math.PI / 2;
+    canvas.position.set(cx + 0.025, (PAINTING.lift + top) / 2 + 0.01, cz);
+    this.scene.add(canvas);
   }
 
   /** Sofá en U de lino: zócalo, respaldos, brazos y cojines redondeados. */
@@ -1068,6 +1150,20 @@ export class CalmScene {
       this.robot.visible = docked;
       this.dirty = this.shadowsDirty = true;
     }
+    const washing = hass.states[WASHER.running]?.state === "on";
+    const washHex = washing ? 0x5f9fc4 : 0x000000;
+    if (this.washerDoor.emissive.getHex() !== washHex) {
+      this.washerDoor.emissive.set(washHex);
+      this.washerDoor.emissiveIntensity = washing ? 0.8 : 0;
+      this.dirty = true;
+    }
+    const pv = Number(hass.states[ENERGY.sensors.pv]?.state);
+    const ledHex = pv > 0.05 ? 0xf2b04a : 0x000000;
+    if (this.inverterLed.emissive.getHex() !== ledHex) {
+      this.inverterLed.emissive.set(ledHex);
+      this.inverterLed.emissiveIntensity = pv > 0.05 ? 1.4 : 0;
+      this.dirty = true;
+    }
     const pumpOn = hass.states[PUMP.entity]?.state === "on";
     const edge = pumpOn ? 0x74937b : 0x000000;
     if (this.pumpEdge.emissive.getHex() !== edge) {
@@ -1147,9 +1243,9 @@ export class CalmScene {
   frame(
     box: [Vector3, Vector3],
     area: Area,
-    opts: { fill?: number; minDistance?: number; ms?: number } = {},
+    opts: { fill?: number; minDistance?: number; ms?: number; view?: ViewAngle } = {},
   ): void {
-    const to = this.compute(box, area, opts.fill ?? 0.9);
+    const to = this.compute(box, area, opts.fill ?? 0.9, opts.view ?? BASE_VIEW);
     to.distance = Math.max(to.distance, opts.minDistance ?? 0);
     const ms = opts.ms ?? 0;
     if (ms > 0)
@@ -1169,11 +1265,72 @@ export class CalmScene {
   }
 
   /** Distancia de cámara con la que `box` llena la zona `area` (para limitar el zoom). */
-  distanceFor(box: [Vector3, Vector3], area: Area, fill = 0.9): number {
-    return this.compute(box, area, fill).distance;
+  distanceFor(box: [Vector3, Vector3], area: Area, fill = 0.9, view: ViewAngle = BASE_VIEW): number {
+    return this.compute(box, area, fill, view).distance;
   }
 
-  private compute(box: [Vector3, Vector3], area: Area, fill: number): CameraPose {
+  /** Activa el balanceo lento de la cámara (vista general); entra y sale suavemente. */
+  setDrift(on: boolean): void {
+    this.driftOn = on && !reducedMotion();
+  }
+
+  /**
+   * Busca el ángulo que mejor enseña una estancia: prueba giros alrededor de la casa y varias
+   * elevaciones, y puntúa cuántos de `points` (suelo y dispositivos) se ven sin que los tapen
+   * los muros, lo grande que sale la estancia y lo cerca que queda de la vista de siempre.
+   */
+  bestView(
+    box: [Vector3, Vector3],
+    points: Vector3[],
+    area: Area,
+    opts: { fill?: number; minDistance?: number; outward?: Vector2 } = {},
+  ): ViewAngle {
+    const { fill = 0.82, minDistance = 0, outward } = opts;
+    const walls = this.walls;
+    if (!walls) return BASE_VIEW;
+    const ray = new Raycaster();
+    const cands: (ViewAngle & { vis: number; dist: number })[] = [];
+    for (let i = 0; i < 16; i++) {
+      const yaw = BASE_VIEW.yaw + (i * Math.PI) / 8;
+      for (const deg of [46, 56, 66, 76]) {
+        const elev = (deg * Math.PI) / 180;
+        const pose = this.compute(box, area, fill, { yaw, elev });
+        const eye = pose.target
+          .clone()
+          .addScaledVector(viewDir(yaw, elev), Math.max(pose.distance, minDistance));
+        let vis = 0;
+        for (const p of points) {
+          const dir = p.clone().sub(eye);
+          const len = dir.length();
+          ray.set(eye, dir.normalize());
+          ray.far = len - 0.08;
+          if (ray.intersectObject(walls, true).length === 0) vis++;
+        }
+        cands.push({
+          yaw: wrapAngle(yaw),
+          elev,
+          vis: vis / Math.max(1, points.length),
+          dist: Math.max(pose.distance, minDistance),
+        });
+      }
+    }
+    const dMin = Math.min(...cands.map((c) => c.dist));
+    // Mirar desde fuera de la casa hacia la estancia: nada se interpone y la escena cambia con cada estancia
+    const out = outward && outward.length() > 0.05 ? outward.clone().normalize() : undefined;
+    const score = (c: (typeof cands)[number]) =>
+      c.vis * 100 -
+      (c.dist / dMin - 1) * 40 +
+      (out
+        ? (Math.sin(c.yaw) * out.x + Math.cos(c.yaw) * out.y) * 14 * Math.min(1, outward!.length() / 3)
+        : 0) -
+      ((1 - Math.cos(c.yaw - BASE_VIEW.yaw)) / 2) * 3 -
+      Math.abs(c.elev - (60 * Math.PI) / 180) * 12;
+    const best = cands.reduce((a, b) => (score(b) > score(a) ? b : a));
+    return { yaw: best.yaw, elev: best.elev };
+  }
+
+  private compute(box: [Vector3, Vector3], area: Area, fill: number, view: ViewAngle): CameraPose {
+    const dirV = viewDir(view.yaw, view.elev);
     const { w, h } = this.size;
     const [lo, hi] = box;
     const corners = [0, 1, 2, 3, 4, 5, 6, 7].map(
@@ -1187,7 +1344,7 @@ export class CalmScene {
     let distance = 40;
     // Ajuste iterativo: distancia para que quepa y recentrado del encuadre en perspectiva
     for (let it = 0; it < 6; it++) {
-      cam.position.copy(target).addScaledVector(VIEW_DIR, distance);
+      cam.position.copy(target).addScaledVector(dirV, distance);
       cam.lookAt(target);
       cam.updateMatrixWorld();
       let minX = Infinity;
@@ -1213,13 +1370,23 @@ export class CalmScene {
       target.addScaledVector(right, cx * halfH * cam.aspect).addScaledVector(up, cy * halfH);
       distance *= ratio;
     }
-    return { target, distance, ox: area.x + area.w / 2 - w / 2, oy: area.y + area.h / 2 - h / 2 };
+    return {
+      target,
+      distance,
+      ox: area.x + area.w / 2 - w / 2,
+      oy: area.y + area.h / 2 - h / 2,
+      yaw: view.yaw,
+      elev: view.elev,
+    };
   }
 
   private applyPose(): void {
-    const { target, distance, ox, oy } = this.pose;
+    const { target, distance, ox, oy, yaw, elev } = this.pose;
     const { w, h } = this.size;
-    this.camera.position.copy(target).addScaledVector(VIEW_DIR, distance);
+    // Balanceo suave: seno lento, con entrada y salida en «smoothstep» para no dar tirones
+    const k = this.drift * this.drift * (3 - 2 * this.drift);
+    const sway = k * DRIFT_AMP * Math.sin((2 * Math.PI * performance.now()) / DRIFT_PERIOD);
+    this.camera.position.copy(target).addScaledVector(viewDir(yaw + sway, elev), distance);
     this.camera.lookAt(target);
     // Desplaza la imagen para que el centro quede en la zona libre entre los paneles
     this.camera.setViewOffset(w, h, -ox, -oy, w, h);
@@ -1261,11 +1428,27 @@ export class CalmScene {
         distance: Math.exp(Math.log(from.distance) + (Math.log(to.distance) - Math.log(from.distance)) * e),
         ox: from.ox + (to.ox - from.ox) * e,
         oy: from.oy + (to.oy - from.oy) * e,
+        // El giro va por el camino más corto
+        yaw: from.yaw + wrapAngle(to.yaw - from.yaw) * e,
+        elev: from.elev + (to.elev - from.elev) * e,
       };
       this.applyPose();
       if (k >= 1) this.anim = undefined;
       cameraMoved = true;
       this.dirty = true;
+    }
+
+    // Balanceo de la vista general (a pocos fotogramas: se mueve muy despacio)
+    const driftTo = this.driftOn ? 1 : 0;
+    if (this.drift !== driftTo || this.drift > 0) {
+      this.drift =
+        driftTo > this.drift ? Math.min(1, this.drift + dt / 4) : Math.max(0, this.drift - dt / 1.2);
+      if (now - this.lastDrift > 1000 / DRIFT_FPS || this.anim) {
+        this.lastDrift = now;
+        this.applyPose();
+        cameraMoved = true;
+        this.dirty = true;
+      }
     }
 
     for (const g of this.gates) {
@@ -1478,6 +1661,37 @@ function makeWaterNormal(): CanvasTexture {
   return t;
 }
 
+/** Lienzo abstracto y tranquilo para el cuadro (manchas suaves en tonos lino, salvia y terracota). */
+function makePaintingTexture(): CanvasTexture {
+  const c = document.createElement("canvas");
+  c.width = 256;
+  c.height = 180;
+  const g = c.getContext("2d")!;
+  g.fillStyle = "#efe6d6";
+  g.fillRect(0, 0, 256, 180);
+  const blobs: [number, number, number, string][] = [
+    [70, 70, 62, "rgba(201,130,90,0.85)"],
+    [170, 105, 70, "rgba(143,168,133,0.85)"],
+    [125, 40, 34, "rgba(224,183,110,0.9)"],
+    [205, 40, 26, "rgba(60,66,74,0.75)"],
+  ];
+  for (const [x, y, r, col] of blobs) {
+    g.fillStyle = col;
+    g.beginPath();
+    g.ellipse(x, y, r, r * 0.8, 0.4, 0, Math.PI * 2);
+    g.fill();
+  }
+  g.strokeStyle = "rgba(40,36,32,0.55)";
+  g.lineWidth = 3;
+  g.beginPath();
+  g.moveTo(20, 150);
+  g.bezierCurveTo(90, 110, 150, 175, 240, 120);
+  g.stroke();
+  const tex = new CanvasTexture(c);
+  tex.colorSpace = SRGBColorSpace;
+  return tex;
+}
+
 function makeBarTexture(): CanvasTexture {
   const c = document.createElement("canvas");
   c.width = 16;
@@ -1513,4 +1727,4 @@ function makeSlatTexture(): CanvasTexture {
   return tex;
 }
 
-export { Vector3 };
+export { Vector2, Vector3 };

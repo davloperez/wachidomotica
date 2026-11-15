@@ -5,6 +5,7 @@ import {
   mdiAirFilter,
   mdiCameraOutline,
   mdiCat,
+  mdiChartBar,
   mdiDishwasher,
   mdiDotsHorizontal,
   mdiFridgeOutline,
@@ -81,6 +82,13 @@ export function deviceBrief(h: HomeAssistant | undefined, d: DeviceDef): string 
       const s = st(h, d.entity)?.state ?? "unavailable";
       const low = Math.min(...Object.values(d.inks).map((id) => num(h, id) ?? 100));
       return low < 15 ? `Tinta ${fmt(low, 0)} %` : (PRINTER_ES[s] ?? s);
+    }
+    case "washer":
+      return st(h, d.status)?.state ?? d.name;
+    case "energy": {
+      const pv = num(h, ENERGY.sensors.pv) ?? 0;
+      const soc = num(h, ENERGY.sensors.soc);
+      return `${pv > 0.05 ? `☀ ${fmt(pv, 1)} kW · ` : ""}${fmt(soc, 0)} %`;
     }
     default:
       return d.name;
@@ -317,18 +325,35 @@ export class DeviceCard extends LitElement {
       case "washer": {
         const p = num(h, d.power) ?? 0;
         const on = isOn(h, d.entity);
-        const running = p > 5;
+        const run = st(h, d.running);
+        const running = run?.state === "on";
+        const status = st(h, d.status)?.state;
+        const since = run?.last_changed ? new Date(run.last_changed) : undefined;
+        const mins = since ? Math.round((Date.now() - since.getTime()) / 60_000) : undefined;
+        const at = since?.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
         return {
-          entity: d.entity,
+          entity: d.status,
           active: running,
-          status: running ? `Lavando · ${fmt(p, 0)} W` : on ? "En espera" : "Enchufe apagado",
-          body: html`<div class="line-ctl">
-            <span class="muted">Enchufe</span>
-            <button
-              class="toggle ${on ? "on" : ""}"
-              @click=${() => call(h, "switch", "toggle", { entity_id: d.entity })}
-            ></button>
-          </div>`,
+          status: `${status && !isUnavailable(st(h, d.status)) ? status : on ? "En espera" : "Enchufe apagado"}${running ? ` · ${fmt(p, 0)} W` : ""}`,
+          body: html`${
+              running && mins !== undefined
+                ? html`<div class="chips">
+                    <span class="pill info">En marcha desde las ${at}</span>
+                    <span class="pill"
+                      >${mins < 60 ? `${mins} min` : `${Math.floor(mins / 60)} h ${mins % 60} min`}</span
+                    >
+                  </div>`
+                : status === "Terminada" && at
+                  ? html`<div class="chips"><span class="pill ok">Terminó a las ${at}</span></div>`
+                  : nothing
+            }
+            <div class="line-ctl">
+              <span class="muted">Enchufe</span>
+              <button
+                class="toggle ${on ? "on" : ""}"
+                @click=${() => call(h, "switch", "toggle", { entity_id: d.entity })}
+              ></button>
+            </div>`,
         };
       }
       case "litter": {
@@ -661,6 +686,12 @@ export class DeviceCard extends LitElement {
           ${this.stat("Vertido", `${fmt(today("grid_export_today"), 1)}`, "kWh", "var(--lilac)")}
           ${this.stat("Comprado", `${fmt(today("grid_import_today"), 1)}`, "kWh", "var(--sky)")}
         </div>
+        <button
+          class="btn wide"
+          @click=${() => this.dispatchEvent(new CustomEvent("open-solar", { bubbles: true, composed: true }))}
+        >
+          ${icon(mdiChartBar)} Ver el resumen de la instalación
+        </button>
         <span class="sub">Batería y producción · últimas 24 h</span>
         <fv1-area-chart
           .height=${90}

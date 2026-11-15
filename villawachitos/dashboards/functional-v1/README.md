@@ -7,20 +7,27 @@ paneles de cristal esmerilado y animaciones suaves. Tema claro, oscuro o auto (b
 
 En el centro, la **maqueta 3D de toda la casa** (interior y exterior). Sobre cada estancia hay un acceso con su nombre,
 temperatura (si tiene sensor), luces encendidas y presencia; las estancias con luces encendidas brillan en la imagen
-y la piscina se ilumina con su luz. Alrededor:
+y la piscina se ilumina con su luz. Cuando la lavadora termina, el acceso del lavadero se pone verde con el aviso
+«Lavadora lista». La cámara se balancea muy despacio sobre la parcela (±9° en 4 minutos), sin estorbar al tocar.
+Alrededor:
 
 - **Saludo**, fecha, hora, tiempo y quién está en casa.
 - **Energía hoy**: producción y consumo, barras de los últimos 7 días (hoy rayado) y autosuficiencia.
 - **Batería**: % de carga, energía almacenada, autonomía estimada y curva de 24 h.
-- **Alarma**: estado y botón conectar/desconectar (pide confirmación), puertas de la calle, puerta de casa y cámaras.
-- **Avisos** calculados en el panel: alarma, fugas de agua, puertas abiertas, frigorífico, lavavajillas, arenero,
+- **Alarma** (Alarmo, `alarm_control_panel.alarma_vivienda`): estado con cuenta atrás de salida y de prealarma,
+  conectar en _Noche_ o _Ausente_ (con confirmación), desconectar (con teclado de PIN si Alarmo pide código), sensores
+  abiertos o sin vigilar, horario de la conexión automática de noche (`input_datetime.alarma_noche_*`), interruptor del
+  modo silencioso (`input_boolean.alarma_modo_silencioso`), puertas de la calle, puerta de casa y cámaras.
+- **Avisos** calculados en el panel: alarma, fugas de agua, puertas abiertas, frigorífico, lavavajillas, lavadora
+  terminada, arenero,
   batería baja, averías (`binary_sensor` de clase `problem`) y dispositivos sin conexión. Tocar uno lleva a su estancia.
 - **Clima interior** (salón, humedad, exterior y aire acondicionado) con curva de 24 h.
 - **Toda la casa**: luces encendidas, apertura media de persianas, apagar todo y subir/bajar todas (con confirmación).
 
 ## Vista de estancia
 
-Al tocar una estancia (o su botón en la barra inferior), la cámara **se acerca suavemente** a ella y aparecen:
+Al tocar una estancia (o su botón en la barra inferior), la cámara **viaja suavemente** hasta el mejor ángulo para
+esa estancia (ver [Maqueta 3D](#maqueta-3d)) y aparecen:
 
 - Cabecera con el nombre y resumen (temperatura, humedad, luces, persianas).
 - **Iluminación**: interruptor general, escenas (_Todo_, _Relax_, _Noche_, _Apagar_, según el tipo de cada luminaria
@@ -32,7 +39,13 @@ Al tocar una estancia (o su botón en la barra inferior), la cámara **se acerca
 - **Dispositivos** de la estancia: climatización, TV, robot, frigorífico (con curva de temperaturas), lavavajillas,
   freidora, lavadora, arenero, toalleros, ventilación, instalación solar (flujo de energía animado), depuradora,
   puertas de la calle, portero (abrir con confirmación), cámaras y presencia.
-- **Actividad de hoy**: línea de tiempo con cuándo ha estado encendida cada luz y abierta cada persiana.
+- **Actividad de hoy**: línea de tiempo con cuándo ha estado encendida cada luz, abierta cada persiana y en marcha la
+  lavadora.
+- **Lavadora terminada** (lavadero): aviso destacado con la hora de fin, la duración del ciclo y los lavados de hoy. La
+  automatización «Lavadora: aviso de fin de lavado» manda además un Telegram al grupo de notificaciones.
+
+Las dos oficinas comparten una sola vista (_Oficinas_), igual que el dormitorio 1 y su vestidor. El portero de la
+calle está en el exterior (jardín norte), con su marcador junto a la puerta peatonal.
 
 Tras `idle_return_seconds` (180 s por defecto) sin tocar la pantalla vuelve a la vista general.
 
@@ -48,8 +61,13 @@ La casa es el modelo 3D de House 3D v1 adaptado al estilo del panel
 ([`src/scene3d/calm-scene.ts`](src/scene3d/calm-scene.ts), three.js): muros cortados a media altura, muebles, camas,
 sofá, cocina, valla con portones y piscina, con la paleta tranquila del tema (claro u oscuro).
 
-- **Sin control manual**: no se puede girar ni hacer zoom con el dedo. La cámara solo se mueve al elegir una estancia
-  (acercamiento animado) o al volver a la vista general, y encuadra la casa en el hueco libre entre los paneles.
+- **Sin control manual**: no se puede girar ni hacer zoom con el dedo. La cámara se mueve sola:
+  - **Vista general**: casa y piscina en el hueco libre entre los paneles, con un balanceo lento y continuo.
+  - **Estancias**: para cada una se prueban 64 ángulos (16 giros alrededor de la casa × 4 elevaciones) y se elige el
+    que deja ver más suelo y dispositivos sin que los tapen los muros, mirando desde fuera de la casa hacia la
+    estancia. Puede cambiar mucho de posición; el viaje interpola giro, elevación, objetivo y zoom.
+  - **Exterior**: toda la parcela (también el jardín norte), casi al zoom de la vista general, desde el suroeste y
+    más baja, con una transición más larga para distinguirla.
 - **Materiales** con textura y relieve (normal map) en metros reales, con los acabados de la casa: el mismo suelo de
   baldosa marfil de 60 × 60 dentro, en el porche, en los pasos y en la piscina (coronación y vaso), muros blancos por
   dentro y por fuera, hormigón gris en el aparcamiento (sin llegar a la puerta principal), césped, lino en el sofá y
@@ -57,13 +75,14 @@ sofá, cocina, valla con portones y piscina, con la paleta tranquila del tema (c
   patio del lavadero en negro (cerradas). Son texturas **CC0 de [ambientCG](https://ambientcg.com)**, en
   [`public/textures/`](public/textures/) (~0,8 MB, créditos en `CREDITS.md`).
 - **Dispositivos en su sitio**: frigorífico (al sur del fregadero), robot aspirador en su base (al norte del mueble de
-  la TV; desaparece mientras limpia) e impresora (oficina 1). Al entrar en su estancia llevan un marcador con su estado;
+  la TV; desaparece mientras limpia), impresora (oficina 1), lavadora, baterías e inversor, y portero de la calle. Al entrar en su estancia llevan un marcador con su estado;
   tocarlo lleva a su tarjeta y la resalta.
 - **Sol real** según la hora y la ubicación (`latitude`/`longitude` de la tarjeta, o las de la casa por defecto):
   sombras suaves que se recalculan solo cuando cambia algo.
 - **Estado en vivo**: luces encendidas iluminan su estancia, la piscina se ilumina, persianas y portones se mueven,
   la TV brilla, los toalleros se calientan y el agua se mueve (se para con "reducir movimiento").
-- Solo se renderiza cuando hay cambios o animaciones, para no gastar la tablet.
+- Solo se renderiza cuando hay cambios o animaciones (el balanceo de la vista general, a 24 fotogramas por segundo y sin
+  recalcular sombras), para no gastar la tablet.
 - Si el navegador no tiene WebGL se usa la maqueta isométrica SVG de abajo.
 
 ## Imágenes

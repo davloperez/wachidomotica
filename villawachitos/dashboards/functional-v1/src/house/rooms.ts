@@ -9,9 +9,7 @@ import {
   mdiBathtubOutline,
   mdiBedDoubleOutline,
   mdiBedOutline,
-  mdiDeskLamp,
   mdiDoorOpen,
-  mdiHanger,
   mdiPineTree,
   mdiSofaOutline,
   mdiStove,
@@ -24,16 +22,18 @@ import {
   ENERGY,
   FRIDGE,
   LAMPS,
+  PEDESTRIAN_GATE,
   PRINTER,
   PUMP,
   ROOMS,
   TV,
   VACUUM,
+  WASHER,
   type Rect,
   type LampKind,
 } from "../../../house-3d-v1/src/scene/plan";
 
-export { ENERGY, FRIDGE, PRINTER, PUMP, TV, VACUUM };
+export { ENERGY, FRIDGE, PRINTER, PUMP, TV, VACUUM, WASHER };
 
 export interface LightDef {
   entity: string;
@@ -68,7 +68,7 @@ export type DeviceDef =
       rinse: string;
     }
   | { type: "airfryer"; name: string; status: string; temperature: string; remaining: string }
-  | { type: "washer"; name: string; entity: string; power: string }
+  | { type: "washer"; name: string; entity: string; power: string; status: string; running: string }
   | {
       type: "litter";
       name: string;
@@ -95,6 +95,8 @@ export interface RoomDef {
   icon: string;
   /** Rectángulos del plano que forman la estancia (vacío = espacio exterior) */
   rects: Rect[];
+  /** Punto [x, z] del acceso en la maqueta 3D cuando la estancia une varias (por defecto, centro del rectángulo mayor) */
+  anchor?: [x: number, z: number];
   lights: LightDef[];
   covers: CoverDef[];
   /** Sensores de clima de la estancia */
@@ -182,19 +184,14 @@ export const ROOMS_DEF: RoomDef[] = [
     id: "entrada",
     name: "Entrada",
     icon: mdiDoorOpen,
-    rects: rectOf("Entrada"),
+    // El recibidor sigue hacia el sur por el pasillo del cuadro (dentro del rectángulo de la cocina)
+    rects: [...rectOf("Entrada"), [-5.76, -2.41, -4.6, -1.2]],
     lights: [
       { entity: "light.salon_esp_entrada_luz_techo_entrada", name: "Techo" },
       { entity: "light.salon_esp_entrada_luz_cuadro_entrada", name: "Cuadro" },
     ],
     covers: [],
-    devices: [
-      {
-        type: "lock",
-        name: "Portero de la calle",
-        entity: "lock.jardin_norte_portero_automatico_exterior_duox_zero",
-      },
-    ],
+    devices: [],
     doors: [{ entity: "binary_sensor.sensor_puerta_principal_contact", name: "Puerta principal" }],
   },
   {
@@ -209,8 +206,10 @@ export const ROOMS_DEF: RoomDef[] = [
       {
         type: "washer",
         name: "Lavadora",
-        entity: "switch.enchufe_lavadora",
-        power: "sensor.enchufe_lavadora_power",
+        entity: WASHER.switch,
+        power: WASHER.power,
+        status: WASHER.status,
+        running: WASHER.running,
       },
       {
         type: "litter",
@@ -230,44 +229,36 @@ export const ROOMS_DEF: RoomDef[] = [
     ],
   },
   {
-    id: "oficina_1",
-    name: "Oficina 1",
-    short: "Ofi. 1",
+    // Las dos oficinas comparten vista: se ven y se controlan juntas
+    id: "oficinas",
+    name: "Oficinas",
     icon: mdiMonitor,
-    rects: rectOf("Oficina 1"),
+    rects: [...rectOf("Oficina 1"), ...rectOf("Oficina 2")],
+    anchor: [-1.33, -4.05],
     lights: [
-      { entity: "light.oficina_1_persiana_oficina_1_luz_techo", name: "Downlights" },
+      { entity: "light.oficina_1_persiana_oficina_1_luz_techo", name: "Downlights ofi. 1" },
       { entity: "light.oficina_1_lampara_mueble_oficina_1", name: "Lámpara mueble" },
-      { entity: "light.oficina_1_wled_cortinero_oficina_1", name: "Cortinero LED" },
+      { entity: "light.oficina_1_wled_cortinero_oficina_1", name: "Cortinero ofi. 1" },
+      { entity: "light.persiana_oficina_2_luz_techo", name: "Downlights ofi. 2" },
+      { entity: "light.oficina_2_lampara_pro_mi_1", name: "Flexo 1" },
+      { entity: "light.oficina_2_lampara_pro_mi_2_mijia_desk_lamp_sw", name: "Flexo 2" },
+      { entity: "light.oficina_2_wled_cortinero_oficina_2", name: "Cortinero ofi. 2" },
     ],
-    covers: [{ entity: "cover.persiana_oficina_1_persiana", name: "Corredera" }],
+    covers: [
+      { entity: "cover.persiana_oficina_1_persiana", name: "Corredera ofi. 1" },
+      { entity: "cover.persiana_oficina_2_persiana", name: "Corredera ofi. 2" },
+    ],
     devices: [
       { type: "printer", name: "Impresora", entity: PRINTER.entity, inks: PRINTER.inks },
       {
         type: "presence",
-        name: "Panel de la oficina",
+        name: "Panel oficina 1",
         occupancy: "binary_sensor.oficina_1_shellywalldisplay_oficina1_ocupacion",
         illuminance: "sensor.oficina_1_shellywalldisplay_oficina1_iluminancia",
       },
-    ],
-  },
-  {
-    id: "oficina_2",
-    name: "Oficina 2",
-    short: "Ofi. 2",
-    icon: mdiDeskLamp,
-    rects: rectOf("Oficina 2"),
-    lights: [
-      { entity: "light.persiana_oficina_2_luz_techo", name: "Downlights" },
-      { entity: "light.oficina_2_lampara_pro_mi_1", name: "Flexo 1" },
-      { entity: "light.oficina_2_lampara_pro_mi_2_mijia_desk_lamp_sw", name: "Flexo 2" },
-      { entity: "light.oficina_2_wled_cortinero_oficina_2", name: "Cortinero LED" },
-    ],
-    covers: [{ entity: "cover.persiana_oficina_2_persiana", name: "Corredera" }],
-    devices: [
       {
         type: "presence",
-        name: "Panel de la oficina",
+        name: "Panel oficina 2",
         occupancy: "binary_sensor.oficina_2_shellywalldisplay_oficina2_ocupacion",
         illuminance: "sensor.oficina_2_shellywalldisplay_oficina2_iluminancia",
       },
@@ -321,26 +312,6 @@ export const ROOMS_DEF: RoomDef[] = [
     devices: [{ type: "switch", name: "Limpiafondos piscina", entity: "switch.enchufe_limpiador_piscina" }],
   },
   {
-    id: "vestidor",
-    name: "Vestidor",
-    icon: mdiHanger,
-    rects: rectOf("Vestidor"),
-    lights: [
-      { entity: "light.dormitorio_1_persiana_dormitorio_1_luz_techo_vestidor", name: "Downlights" },
-      { entity: "light.luz_armarios_altos", name: "Armarios altos" },
-      { entity: "light.luz_armarios_bajos", name: "Armarios bajos" },
-      { entity: "light.luz_cajones", name: "Cajones" },
-    ],
-    covers: [],
-    devices: [
-      {
-        type: "presence",
-        name: "Movimiento",
-        occupancy: "binary_sensor.sensor_movimiento_vestidor_occupancy",
-      },
-    ],
-  },
-  {
     id: "dormitorio_2",
     name: "Dormitorio 2",
     short: "Dorm. 2",
@@ -354,18 +325,30 @@ export const ROOMS_DEF: RoomDef[] = [
     devices: [],
   },
   {
+    // Dormitorio principal y su vestidor en una sola vista
     id: "dormitorio_1",
-    name: "Dormitorio 1",
+    name: "Dormitorio 1 y vestidor",
     short: "Dorm. 1",
     icon: mdiBedDoubleOutline,
-    rects: rectOf("Dormitorio 1"),
+    rects: [...rectOf("Dormitorio 1"), ...rectOf("Vestidor")],
+    anchor: [3.3, 2.18],
     lights: [
       { entity: "light.dormitorio_1_persiana_dormitorio_1_luz_techo_dormitorio_1", name: "Downlights" },
       { entity: "light.luz_mesita_noche_dorm_1", name: "Mesita" },
       { entity: "light.enchufe_luz_nube_infantil", name: "Nube infantil" },
+      { entity: "light.dormitorio_1_persiana_dormitorio_1_luz_techo_vestidor", name: "Downlights vestidor" },
+      { entity: "light.luz_armarios_altos", name: "Armarios altos" },
+      { entity: "light.luz_armarios_bajos", name: "Armarios bajos" },
+      { entity: "light.luz_cajones", name: "Cajones" },
     ],
     covers: [{ entity: "cover.persiana_dormitorio_1_persiana", name: "Balconera" }],
-    devices: [],
+    devices: [
+      {
+        type: "presence",
+        name: "Movimiento vestidor",
+        occupancy: "binary_sensor.sensor_movimiento_vestidor_occupancy",
+      },
+    ],
   },
   {
     id: "bano_1",
@@ -414,6 +397,12 @@ export const ROOMS_DEF: RoomDef[] = [
     temperature: "sensor.interruptor_depuradora_temperature",
     devices: [
       { type: "pump", name: "Depuradora", entity: PUMP.entity, power: PUMP.power },
+      // Portero automático en la puerta peatonal del jardín norte
+      {
+        type: "lock",
+        name: "Portero de la calle",
+        entity: "lock.jardin_norte_portero_automatico_exterior_duox_zero",
+      },
       {
         type: "gates",
         name: "Puertas de la calle",
@@ -485,4 +474,11 @@ export const DEVICE_SPOTS: Partial<Record<DeviceDef["type"], [x: number, y: numb
   fridge: [FRIDGE.at[0], 1.35, FRIDGE.at[1]],
   vacuum: [VACUUM.dock[0] - 0.2, 0.7, VACUUM.dock[1]],
   printer: [PRINTER.at[0], 1.15, PRINTER.at[1]],
+  washer: [WASHER.at[0], 1.15, WASHER.at[1]],
+  energy: [ENERGY.battery.at[0], 1.65, ENERGY.battery.at[1]],
+  lock: [
+    (PEDESTRIAN_GATE.from[0] + PEDESTRIAN_GATE.to[0]) / 2,
+    1.6,
+    (PEDESTRIAN_GATE.from[1] + PEDESTRIAN_GATE.to[1]) / 2 + 0.3,
+  ],
 };

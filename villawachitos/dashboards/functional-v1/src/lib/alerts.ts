@@ -26,7 +26,7 @@ export function computeAlerts(hass: HomeAssistant | undefined, alarm?: string): 
   const a = st(hass, alarm);
   if (a?.state === "triggered") out.push({ level: "bad", title: "Alarma disparada", since: a.last_changed });
   else if (a?.state === "pending")
-    out.push({ level: "warn", title: "Alarma pendiente de desconectar", since: a.last_changed });
+    out.push({ level: "bad", title: "Prealarma: desconecta si es una falsa alarma", since: a.last_changed });
 
   // Fugas de agua
   const leaks = [
@@ -95,6 +95,13 @@ export function computeAlerts(hass: HomeAssistant | undefined, alarm?: string): 
             since: st(hass, dev.state)?.last_changed,
           });
       }
+      if (dev.type === "washer" && st(hass, dev.status)?.state === "Terminada")
+        out.push({
+          level: "info",
+          title: "Lavadora terminada: tender la ropa",
+          room: r.id,
+          since: st(hass, dev.running)?.last_changed,
+        });
       if (dev.type === "litter") {
         if (isOn(hass, dev.full)) out.push({ level: "warn", title: "Arenero: cubo lleno", room: r.id });
         else if (isOn(hass, dev.clean))

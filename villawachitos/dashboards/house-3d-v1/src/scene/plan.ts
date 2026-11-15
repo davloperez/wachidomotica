@@ -218,8 +218,15 @@ export const WALLS: Wall[] = [
   { from: [-3.85, -5.7], to: [-3.85, -4.04], exterior: true },
 
   /* ---------- Interiores ---------- */
-  // Lavadero
-  { from: [-5.76, -4.04], to: [-5.76, -0.13], openings: [door(3.53, 0.75)] },
+  // Lavadero. En su esquina noreste hay un armario que no es del lavadero: se abre al recibidor
+  // (puertas en el muro del recibidor) y lo cierran dos tabiques por el oeste y el sur.
+  {
+    from: [-5.76, -4.04],
+    to: [-5.76, -0.13],
+    openings: [{ ...door(0.49, 0.66, 2.2), leaf: "#efebe4" }, door(3.53, 0.75)],
+  },
+  { from: [-6.42, -4.04], to: [-6.42, -3.15] },
+  { from: [-6.42, -3.15], to: [-5.76, -3.15] },
   { from: [-6.54, -0.13], to: [-5.76, -0.13] },
   { from: [-6.54, -0.13], to: [-6.54, 0.79] },
   // Entrada / despacho 1
@@ -262,7 +269,8 @@ export const LAMPS: Lamp[] = [
   },
   /* Entrada y lavadero */
   { entity: "light.salon_esp_entrada_luz_techo_entrada", kind: "ceiling", pos: [-4.8, 2.55, -3.2] },
-  { entity: "light.salon_esp_entrada_luz_cuadro_entrada", kind: "lamp", pos: [-3.95, 1.8, -3.2] },
+  // Foco de techo delante del cuadro del recibidor (ver `PAINTING`)
+  { entity: "light.salon_esp_entrada_luz_cuadro_entrada", kind: "ceiling", pos: [-5.25, 2.6, -1.7] },
   { entity: "light.salon_esp_entrada_luz_techo_lavadero", kind: "ceiling", pos: [-6.7, 2.55, -2.0] },
   /* Cocina */
   { entity: "light.cocina_esp_cocina_luz_techo_cocina", kind: "ceiling", pos: [-5.2, 2.55, 0.4] },
@@ -383,8 +391,9 @@ export const FURNITURE: Furniture[] = [
   { at: [-4.21, 1.77], size: [0.98, 0.92, 2.98], tone: "wood", top: "beige" },
   // Salón: mueble bajo de la TV (el sofá, en `SOFA`; la TV, en `TV`)
   { at: [1.03, 1.15], size: [0.3, 0.5, 4.4], tone: "dark" },
-  // Lavadero (las baterías y el inversor, en la parte norte, van en `ENERGY`)
-  { at: [-6.35, -2.35], size: [0.6, 0.9, 1.6], tone: "light" },
+  // Lavadero: encimera con la lavadora en su extremo norte (en `WASHER`); las baterías y el
+  // inversor, junto al armario, van en `ENERGY`
+  { at: [-6.35, -2.0], size: [0.6, 0.9, 0.95], tone: "light" },
   // Oficina 1: escritorio contra la pared oeste con su pantalla, armario de madera oscura
   { at: [-3.44, -4.2], size: [0.7, 0.75, 1.6], tone: "light" },
   { at: [-3.66, -4.2], size: [0.04, 0.42, 0.72], tone: "screen", lift: 0.86 },
@@ -494,15 +503,14 @@ export const POOL_DECK: Rect = [
 /** Porche del salón: mismo suelo que la casa, llega hasta ~1 m de la piscina */
 export const PORCH: Rect = [-6.69, 4.63, 1.0, POOL_DECK[1] - 1.0];
 
-/** Zonas pavimentadas: aparcamiento, acceso y paso lateral (del mismo suelo que la casa, salvo el hormigón) */
+/** Hormigón gris del aparcamiento (2 coches): delante de la puerta principal ya es césped. */
+export const PARKING_CONCRETE: Rect = [-11.4, -9.2, -7.0, -4.3];
+
+/** Zonas pavimentadas: aparcamiento y paso lateral (el paso, del mismo suelo que la casa) */
 export const PAVING: Rect[] = [
-  [-11.4, -9.2, -6.0, -4.3], // aparcamiento (2 coches)
-  [-6.0, -8.9, -4.4, -4.19], // acceso a la puerta principal
+  PARKING_CONCRETE,
   [-8.6, -4.19, -7.83, 0.94], // paso junto al lavadero
 ];
-
-/** Hormigón gris del aparcamiento: acaba 1,5 m antes por el este, sin llegar a la puerta principal. */
-export const PARKING_CONCRETE: Rect = [-11.4, -9.2, -7.5, -4.3];
 
 /** Punto de la linde oeste (último lado de `PLOT`) a la altura `z`. */
 export function westAt(z: number): Point {
@@ -539,9 +547,9 @@ export const PUMP = {
  */
 export const ENERGY = {
   /** Torre de baterías (centro en planta, tamaño [ancho X, alto Y, fondo Z]) y número de módulos */
-  battery: { at: [-7.25, -3.86] as Point, size: [0.7, 1.35, 0.3] as [number, number, number], modules: 3 },
-  /** Inversor colgado en la pared norte */
-  inverter: { at: [-6.35, -3.93] as Point, size: [0.6, 0.62, 0.2] as [number, number, number], lift: 1.25 },
+  battery: { at: [-6.85, -3.86] as Point, size: [0.7, 1.0, 0.3] as [number, number, number], modules: 3 },
+  /** Inversor apilado encima de las baterías (contra la pared norte, junto al armario) */
+  inverter: { at: [-6.85, -3.86] as Point, size: [0.7, 0.34, 0.3] as [number, number, number], lift: 1.02 },
   sensors: {
     /** Producción de las placas (kW) */
     pv: "sensor.david_lopez_perez_pv_power",
@@ -582,6 +590,20 @@ export const FRIDGE = {
     door: "binary_sensor.cocina_frigo_de_60_puerta_abierta_refrigerador",
   },
 };
+
+/** Lavadora: en el extremo norte de la encimera del lavadero, con la puerta hacia el oeste. */
+export const WASHER = {
+  switch: "switch.enchufe_lavadora",
+  power: "sensor.enchufe_lavadora_power",
+  /** Estado en español calculado a partir del consumo (helpers de plantilla de Home Assistant) */
+  status: "sensor.lavadora_estado",
+  running: "binary_sensor.lavadora_en_marcha",
+  at: [-6.35, -2.78] as Point,
+  size: [0.6, 0.85, 0.6] as [number, number, number],
+};
+
+/** Cuadro del recibidor, colgado en la cara este del tabique del lavadero (con su foco delante). */
+export const PAINTING = { at: [-5.69, -1.7] as Point, width: 1.0, height: 0.7, lift: 1.0 };
 
 /** Robot aspirador (Dreame X40 Master): base contra la pared este, al norte del mueble de la TV. */
 export const VACUUM = {
