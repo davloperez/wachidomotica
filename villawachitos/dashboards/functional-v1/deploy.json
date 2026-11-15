@@ -7,6 +7,15 @@
     "title": "Functional v1",
     "icon": "mdi:home-heart"
   },
-  "view": { "title": "Casa", "path": "main" },
-  "kiosk": true
+  "view": {
+    "title": "Casa",
+    "path": "main"
+  },
+  "kiosk": true,
+  "assets": [
+    {
+      "from": "public/textures",
+      "to": "textures"
+    }
+  ]
 }

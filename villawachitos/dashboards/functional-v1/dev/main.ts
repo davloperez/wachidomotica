@@ -35,3 +35,18 @@ if (__DEV_HA_URL__ && __DEV_HA_TOKEN__ && !params.has("mock")) {
   modeLabel.textContent = "● MOCK";
   startMock();
 }
+
+// ?time=11:30 → hora simulada para el sol de la maqueta 3D
+const simulated = new URLSearchParams(location.search).get("time");
+if (simulated) {
+  const [hh, mm] = simulated.split(":").map(Number);
+  const d = new Date();
+  d.setHours(hh, mm || 0, 0, 0);
+  const apply = () => {
+    const scene = (document.querySelector("functional-v1") as unknown as { scene?: { setTime(d: Date): void } })
+      ?.scene;
+    if (scene) scene.setTime(d);
+    else setTimeout(apply, 200);
+  };
+  apply();
+}

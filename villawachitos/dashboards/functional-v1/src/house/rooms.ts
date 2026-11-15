@@ -24,14 +24,16 @@ import {
   ENERGY,
   FRIDGE,
   LAMPS,
+  PRINTER,
   PUMP,
   ROOMS,
   TV,
+  VACUUM,
   type Rect,
   type LampKind,
 } from "../../../house-3d-v1/src/scene/plan";
 
-export { ENERGY, FRIDGE, PUMP, TV };
+export { ENERGY, FRIDGE, PRINTER, PUMP, TV, VACUUM };
 
 export interface LightDef {
   entity: string;
@@ -49,6 +51,12 @@ export type DeviceDef =
   | { type: "tv"; entity: string; name: string }
   | { type: "vacuum"; entity: string; name: string; battery?: string }
   | { type: "fridge"; name: string }
+  | {
+      type: "printer";
+      name: string;
+      entity: string;
+      inks: Record<"black" | "cyan" | "magenta" | "yellow", string>;
+    }
   | {
       type: "dishwasher";
       name: string;
@@ -124,9 +132,9 @@ export const ROOMS_DEF: RoomDef[] = [
       { type: "tv", entity: TV.entity, name: 'TV 85"' },
       {
         type: "vacuum",
-        entity: "vacuum.limpiasuelos",
+        entity: VACUUM.entity,
         name: "Robot aspirador",
-        battery: "sensor.limpiasuelos_battery_level",
+        battery: VACUUM.battery,
       },
       {
         type: "presence",
@@ -234,6 +242,7 @@ export const ROOMS_DEF: RoomDef[] = [
     ],
     covers: [{ entity: "cover.persiana_oficina_1_persiana", name: "Corredera" }],
     devices: [
+      { type: "printer", name: "Impresora", entity: PRINTER.entity, inks: PRINTER.inks },
       {
         type: "presence",
         name: "Panel de la oficina",
@@ -470,3 +479,10 @@ export const PEOPLE = ["person.david_lopez_perez", "person.inmaculada_perez_mayo
 
 /** Script de Home Assistant que lo apaga todo (botón de la vista general). */
 export const ALL_OFF_SCRIPT = "script.apagar_todo";
+
+/** Dispositivos con sitio en la maqueta 3D (marcador sobre la imagen al entrar en su estancia). */
+export const DEVICE_SPOTS: Partial<Record<DeviceDef["type"], [x: number, y: number, z: number]>> = {
+  fridge: [FRIDGE.at[0], 1.35, FRIDGE.at[1]],
+  vacuum: [VACUUM.dock[0] - 0.2, 0.7, VACUUM.dock[1]],
+  printer: [PRINTER.at[0], 1.15, PRINTER.at[1]],
+};

@@ -9,10 +9,12 @@
  *     "card": "dashboard.config.json",               // configuración de la tarjeta
  *     "dashboard": { "url_path": "mi-dash", "title": "Mi dash", "icon": "mdi:…" },
  *     "view": { "title": "Main", "path": "main" },
- *     "kiosk": true                                  // kiosk-mode: sin cabecera ni barra lateral
+ *     "kiosk": true,                                 // kiosk-mode: sin cabecera ni barra lateral
+ *     "assets": [{ "from": "public/textures", "to": "textures" }]  // opcional: carpetas extra
  *   }
  *
- *  1. Sube el bundle por SSH (app "Terminal & SSH"; solo necesita `ssh`), con escritura atómica.
+ *  1. Sube el bundle por SSH (app "Terminal & SSH"; solo necesita `ssh`), con escritura atómica,
+ *     y las carpetas de `assets` (texturas, imágenes…) junto a él, con `tar` por la misma conexión.
  *  2. Registra/actualiza el recurso de Lovelace con `?v=<hash>` (HA cachea /local 31 días).
  *  3. Crea el dashboard si no existe y publica su configuración (el repositorio es la fuente de verdad).
  *
@@ -38,16 +40,25 @@ const c = {
 /* ---------- Configuración ---------- */
 
 const deployFile = resolve(ROOT, "deploy.json");
-if (!existsSync(deployFile)) c.fail(`No existe ${deployFile}. Ejecuta el deploy desde la carpeta del dashboard.`);
+if (!existsSync(deployFile))
+  c.fail(
+    `No existe ${deployFile}. Ejecuta el deploy desde la carpeta del dashboard.`,
+  );
 const deploy = JSON.parse(readFileSync(deployFile, "utf8"));
 
-const envFile = [resolve(ROOT, ".env"), resolve(ROOT, "../.env")].find((f) => existsSync(f));
-if (!envFile) c.fail("No hay .env (ni en la carpeta del dashboard ni en villawachitos/dashboards/). Copia .env.example.");
+const envFile = [resolve(ROOT, ".env"), resolve(ROOT, "../.env")].find((f) =>
+  existsSync(f),
+);
+if (!envFile)
+  c.fail(
+    "No hay .env (ni en la carpeta del dashboard ni en villawachitos/dashboards/). Copia .env.example.",
+  );
 process.loadEnvFile(envFile);
 
 const env = (name, fallback) => {
   const v = process.env[name] ?? fallback;
-  if (v === undefined || v === "") c.fail(`Falta la variable ${name} en ${envFile}`);
+  if (v === undefined || v === "")
+    c.fail(`Falta la variable ${name} en ${envFile}`);
   return v;
 };
 
@@ -61,15 +72,22 @@ const SSH_KEY = process.env.HA_SSH_KEY?.replace(/^~/, homedir());
 const BUNDLE = resolve(ROOT, deploy.bundle);
 const FILE_NAME = basename(BUNDLE);
 const WWW_DIR = String(deploy.wwwDir).replace(/\/$/, "");
-if (!WWW_DIR.startsWith("/config/www/")) c.fail("wwwDir debe estar dentro de /config/www/");
-if (!existsSync(BUNDLE)) c.fail("No hay bundle. Ejecuta antes `npm run build`.");
+if (!WWW_DIR.startsWith("/config/www/"))
+  c.fail("wwwDir debe estar dentro de /config/www/");
+if (!existsSync(BUNDLE))
+  c.fail("No hay bundle. Ejecuta antes `npm run build`.");
 
 const cardConfig = JSON.parse(readFileSync(resolve(ROOT, deploy.card), "utf8"));
 const bundle = readFileSync(BUNDLE);
 const hash = createHash("sha256").update(bundle).digest("hex").slice(0, 12);
 const localUrlBase = `/local/${WWW_DIR.slice("/config/www/".length)}/${FILE_NAME}`;
 const resourceUrl = `${localUrlBase}?v=${hash}`;
-const DASHBOARD = { show_in_sidebar: true, require_admin: false, mode: "storage", ...deploy.dashboard };
+const DASHBOARD = {
+  show_in_sidebar: true,
+  require_admin: false,
+  mode: "storage",
+  ...deploy.dashboard,
+};
 const VIEW = { title: "Main", path: "main", ...deploy.view };
 
 /* ---------- 1. Subida por SSH ---------- */
@@ -99,10 +117,50 @@ function upload() {
       if (code !== 0) return ko(new Error(`ssh terminó con código ${code}`));
       const remoteSize = Number.parseInt(out.trim(), 10);
       if (remoteSize !== bundle.length)
-        return ko(new Error(`tamaño remoto ${remoteSize} ≠ local ${bundle.length}`));
+        return ko(
+          new Error(`tamaño remoto ${remoteSize} ≠ local ${bundle.length}`),
+        );
       ok();
     });
     createReadStream(BUNDLE).pipe(ssh.stdin);
+  });
+}
+
+/** Sube una carpeta local a `${WWW_DIR}/${to}` (se reemplaza entera). */
+function uploadDir(from, to) {
+  return new Promise((ok, ko) => {
+    if (!/^[\w./-]+$/.test(to) || to.includes(".."))
+      return ko(new Error(`Destino de assets no válido: ${to}`));
+    const src = resolve(ROOT, from);
+    if (!existsSync(src))
+      return ko(new Error(`No existe la carpeta de assets ${src}`));
+    const dest = `${WWW_DIR}/${to}`;
+    const sshArgs = [
+      "-p",
+      SSH_PORT,
+      "-o",
+      "BatchMode=yes",
+      "-o",
+      "ConnectTimeout=10",
+      "-o",
+      "StrictHostKeyChecking=accept-new",
+      ...(SSH_KEY ? ["-i", SSH_KEY] : []),
+      `${SSH_USER}@${SSH_HOST}`,
+      `rm -rf '${dest}.tmp' && mkdir -p '${dest}.tmp' && tar -x -C '${dest}.tmp' && rm -rf '${dest}' && mv '${dest}.tmp' '${dest}' && ls '${dest}' | wc -l`,
+    ];
+    const tar = spawn("tar", ["-c", "-C", src, "."], {
+      stdio: ["ignore", "pipe", "inherit"],
+    });
+    const ssh = spawn("ssh", sshArgs, { stdio: ["pipe", "pipe", "inherit"] });
+    tar.stdout.pipe(ssh.stdin);
+    let out = "";
+    ssh.stdout.on("data", (d) => (out += d));
+    tar.on("error", ko);
+    ssh.on("error", ko);
+    ssh.on("close", (code) => {
+      if (code !== 0) return ko(new Error(`ssh terminó con código ${code}`));
+      ok(Number.parseInt(out.trim(), 10));
+    });
   });
 }
 
@@ -117,13 +175,18 @@ class HaSocket {
     const wsUrl = `${HA_URL.replace(/^http/, "ws")}/api/websocket`;
     this.#ws = new WebSocket(wsUrl);
     await new Promise((ok, ko) => {
-      this.#ws.addEventListener("error", () => ko(new Error(`No se pudo conectar a ${wsUrl}`)));
+      this.#ws.addEventListener("error", () =>
+        ko(new Error(`No se pudo conectar a ${wsUrl}`)),
+      );
       this.#ws.addEventListener("message", (ev) => {
         const msg = JSON.parse(ev.data);
         if (msg.type === "auth_required")
-          this.#ws.send(JSON.stringify({ type: "auth", access_token: HA_TOKEN }));
+          this.#ws.send(
+            JSON.stringify({ type: "auth", access_token: HA_TOKEN }),
+          );
         else if (msg.type === "auth_ok") ok();
-        else if (msg.type === "auth_invalid") ko(new Error("Token de Home Assistant no válido"));
+        else if (msg.type === "auth_invalid")
+          ko(new Error("Token de Home Assistant no válido"));
         else if (msg.type === "result") {
           const p = this.#pending.get(msg.id);
           this.#pending.delete(msg.id);
@@ -149,9 +212,15 @@ class HaSocket {
 
 async function registerResource(ha) {
   const resources = await ha.call({ type: "lovelace/resources" });
-  const existing = resources.filter((r) => r.url.split("?")[0] === localUrlBase);
+  const existing = resources.filter(
+    (r) => r.url.split("?")[0] === localUrlBase,
+  );
   if (existing.length === 0) {
-    await ha.call({ type: "lovelace/resources/create", res_type: "module", url: resourceUrl });
+    await ha.call({
+      type: "lovelace/resources/create",
+      res_type: "module",
+      url: resourceUrl,
+    });
     return "creado";
   }
   const [first, ...dupes] = existing;
@@ -161,7 +230,8 @@ async function registerResource(ha) {
     res_type: "module",
     url: resourceUrl,
   });
-  for (const d of dupes) await ha.call({ type: "lovelace/resources/delete", resource_id: d.id });
+  for (const d of dupes)
+    await ha.call({ type: "lovelace/resources/delete", resource_id: d.id });
   return first.url === resourceUrl ? "sin cambios" : "actualizado";
 }
 
@@ -187,18 +257,28 @@ async function publishDashboard(ha) {
 /* ---------- Main ---------- */
 
 try {
-  c.step(`Subiendo ${FILE_NAME} (${(bundle.length / 1024).toFixed(0)} KB) a ${SSH_USER}@${SSH_HOST}:${WWW_DIR}`);
+  c.step(
+    `Subiendo ${FILE_NAME} (${(bundle.length / 1024).toFixed(0)} KB) a ${SSH_USER}@${SSH_HOST}:${WWW_DIR}`,
+  );
   await upload();
   c.ok("Archivo subido");
+  for (const { from, to } of deploy.assets ?? []) {
+    c.step(`Subiendo ${from} → ${WWW_DIR}/${to}`);
+    c.ok(`${await uploadDir(from, to)} archivos en ${to}`);
+  }
 
   const ha = new HaSocket();
   c.step(`Conectando con ${HA_URL}`);
   await ha.open();
   c.ok(`Recurso Lovelace ${await registerResource(ha)} → ${resourceUrl}`);
-  c.ok(`Dashboard ${await publishDashboard(ha)} → ${HA_URL}/${DASHBOARD.url_path}/${VIEW.path}`);
+  c.ok(
+    `Dashboard ${await publishDashboard(ha)} → ${HA_URL}/${DASHBOARD.url_path}/${VIEW.path}`,
+  );
   ha.close();
 
-  console.log("\nEn la tablet: recarga la página (o Fully Kiosk → Reload) para cargar la nueva versión.");
+  console.log(
+    "\nEn la tablet: recarga la página (o Fully Kiosk → Reload) para cargar la nueva versión.",
+  );
 } catch (err) {
   c.fail(err instanceof Error ? err.message : String(err));
 }

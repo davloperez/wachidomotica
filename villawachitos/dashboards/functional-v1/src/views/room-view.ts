@@ -47,6 +47,16 @@ export class RoomView extends LitElement {
     window.clearInterval(this.timer);
   }
 
+  /** Lleva a la vista la tarjeta del dispositivo (al tocar su marcador en la maqueta) y la resalta. */
+  focusDevice(type: string): void {
+    const card = this.renderRoot.querySelector<HTMLElement>(`fv1-device[data-type="${type}"]`);
+    if (!card) return;
+    card.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    card.classList.remove("flash");
+    void card.offsetWidth;
+    card.classList.add("flash");
+  }
+
   protected willUpdate(changed: PropertyValues<this>): void {
     if (changed.has("room")) {
       this.climate = {};
@@ -159,7 +169,13 @@ export class RoomView extends LitElement {
           r.devices,
           (d) => `${d.type}:${d.name}`,
           (d, i) =>
-            html`<fv1-device class="glass dev" style="--d:${i + 2}" .hass=${h} .def=${d}></fv1-device>`,
+            html`<fv1-device
+              class="glass dev"
+              data-type=${d.type}
+              style="--d:${i + 2}"
+              .hass=${h}
+              .def=${d}
+            ></fv1-device>`,
         )}
       </aside>
     `;
@@ -429,6 +445,18 @@ export class RoomView extends LitElement {
       }
       .dev {
         background: var(--glass);
+      }
+      .dev.flash {
+        animation: flash 1.6s var(--ease);
+      }
+      @keyframes flash {
+        0%,
+        100% {
+          box-shadow: none;
+        }
+        25% {
+          box-shadow: 0 0 0 3px color-mix(in srgb, var(--amber) 55%, transparent);
+        }
       }
       .ttl {
         display: grid;

@@ -1,4 +1,4 @@
-import { LitElement, css, html, nothing, unsafeCSS } from "lit";
+import { LitElement, css, html, nothing, unsafeCSS, type PropertyValues } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { repeat } from "lit/directives/repeat.js";
 import { unsafeSVG } from "lit/directives/unsafe-svg.js";
@@ -21,12 +21,13 @@ import {
   roomBounds,
   type Box2,
 } from "./house/iso";
-import { ROOMS_DEF, ROOM_BY_ID, lampPos } from "./house/rooms";
+import { DEVICE_SPOTS, ROOMS_DEF, ROOM_BY_ID, lampPos, type RoomDef } from "./house/rooms";
+import type { RoomView } from "./views/room-view";
+import { DEVICE_ICONS, deviceBrief } from "./widgets/devices";
 import { causticUrl } from "./house/materials";
-
-const POOL_LAYER = poolLayer();
-const CAUSTICS = [causticUrl(1.6, 1, 0.035), causticUrl(1.1, 3, 0.022)];
 import { lightIcon } from "./widgets/lights";
+import { CUT3D, CalmScene, Vector3 } from "./scene3d/calm-scene";
+import { FOOTPRINT, POOL, POOL_DECK, PORCH, PUMP, type Rect } from "../../house-3d-v1/src/scene/plan";
 import "./views/home-view";
 import "./views/room-view";
 import "./widgets/lights";
@@ -45,6 +46,32 @@ interface Area {
 }
 
 const HOME = "home";
+const POOL_LAYER = poolLayer();
+const CAUSTICS = [causticUrl(1.6, 1, 0.035), causticUrl(1.1, 3, 0.022)];
+const DEFAULT_LOCATION = { latitude: 38.0506, longitude: -1.2114 };
+const ZOOM_MS = 1400;
+/** Texturas: en desarrollo las sirve Vite desde `public/`; en HA van junto al bundle. */
+const TEXTURES = import.meta.env.DEV ? "/textures/" : new URL(/* @vite-ignore */ "textures/", import.meta.url).href;
+
+type Box3 = [Vector3, Vector3];
+const boxOf = (rects: Rect[], y1 = CUT3D): Box3 => [
+  new Vector3(Math.min(...rects.map((r) => r[0])), 0, Math.min(...rects.map((r) => r[1]))),
+  new Vector3(Math.max(...rects.map((r) => r[2])), y1, Math.max(...rects.map((r) => r[3]))),
+];
+const HOME_BOX = boxOf([...FOOTPRINT, POOL_DECK]);
+const EXTERIOR_BOX = boxOf([PORCH, POOL_DECK, PUMP.rect], 0.5);
+const area3 = ([x1, z1, x2, z2]: Rect) => Math.abs((x2 - x1) * (z2 - z1));
+
+/** Punto de cada acceso en la maqueta 3D (centro de su estancia más grande, o la piscina). */
+function anchor3(id: string): Vector3 {
+  const room = ROOM_BY_ID.get(id);
+  if (!room || room.rects.length === 0) {
+    const [x1, z1, x2, z2] = POOL.rect;
+    return new Vector3((x1 + x2) / 2, 0.2, (z1 + z2) / 2);
+  }
+  const [x1, z1, x2, z2] = [...room.rects].sort((a, b) => area3(b) - area3(a))[0];
+  return new Vector3((x1 + x2) / 2, 0.6, (z1 + z2) / 2);
+}
 
 function fit(b: Box2, a: Area, fill: number, maxS = Infinity): View {
   const s = Math.min((a.w / b.w) * fill, (a.h / b.h) * fill, maxS);
@@ -68,6 +95,11 @@ export class FunctionalDashboard extends LitElement {
   @state() private sheet?: { entity: string; name: string };
   /** Tamaño natural de las imágenes reales (cuando se configuran) */
   @state() private natural: Record<string, [number, number]> = {};
+
+  /** La maqueta 3D (si el navegador no tiene WebGL se usa el dibujo isométrico) */
+  @state() private no3d = false;
+  private scene?: CalmScene;
+  private homeDistance = 0;
 
   private ro?: ResizeObserver;
   private lastTouch = Date.now();
@@ -100,6 +132,8 @@ export class FunctionalDashboard extends LitElement {
     this.ro?.disconnect();
     window.removeEventListener("keydown", this.onKey);
     window.clearInterval(this.idleTimer);
+    this.scene?.dispose();
+    this.scene = undefined;
   }
 
   private onKey = (e: KeyboardEvent) => {
@@ -129,6 +163,72 @@ export class FunctionalDashboard extends LitElement {
   protected willUpdate(): void {
     const theme = resolveTheme(this.themeMode, this.hass?.themes?.darkMode);
     if (this.getAttribute("data-theme") !== theme) this.setAttribute("data-theme", theme);
+  }
+
+  private get use3d(): boolean {
+    return !this.homeImage && !this.no3d;
+  }
+
+  protected updated(changed: PropertyValues): void {
+    if (!this.use3d) return;
+    const theme = this.getAttribute("data-theme") === "dark" ? "dark" : "light";
+    if (!this.scene) {
+      const el = this.renderRoot.querySelector<HTMLElement>(".three");
+      if (!el) return;
+      try {
+        this.scene = new CalmScene(el, {
+          latitude: this.config.latitude ?? DEFAULT_LOCATION.latitude,
+          longitude: this.config.longitude ?? DEFAULT_LOCATION.longitude,
+          textures: TEXTURES,
+        });
+      } catch (err) {
+        console.warn("[functional-v1] Sin WebGL, se usa el dibujo isométrico", err);
+        this.no3d = true;
+        return;
+      }
+      this.scene.onCamera = () => this.placePins();
+      this.scene.setTheme(theme);
+      if (this.hass) this.scene.update(this.hass, this.config.weather);
+      this.frame3d(false);
+      return;
+    }
+    if (theme !== this.scene.currentTheme) this.scene.setTheme(theme);
+    if (changed.has("hass") && this.hass) this.scene.update(this.hass, this.config.weather);
+    if (changed.has("view") || changed.has("size")) this.frame3d(changed.has("view") && this.ready);
+    // Los accesos recién pintados necesitan su posición
+    this.placePins();
+  }
+
+  /** Mueve la cámara a la vista general o a la estancia actual. */
+  private frame3d(animate: boolean): void {
+    const scene = this.scene;
+    if (!scene) return;
+    const ms = animate ? ZOOM_MS : 0;
+    this.homeDistance = scene.distanceFor(HOME_BOX, this.area(false), 0.96);
+    if (this.view === HOME) return scene.frame(HOME_BOX, this.area(false), { fill: 0.96, ms });
+    const room = ROOM_BY_ID.get(this.view);
+    const box = room && room.rects.length ? boxOf(room.rects) : EXTERIOR_BOX;
+    scene.frame(box, this.area(true), { fill: 0.82, ms, minDistance: this.homeDistance / 2.8 });
+  }
+
+  /** Coloca los accesos y las luces sobre la maqueta 3D (cada fotograma mientras se mueve la cámara). */
+  private placePins(): void {
+    const scene = this.scene;
+    if (!scene) return;
+    for (const el of this.renderRoot.querySelectorAll<HTMLElement>("[data-anchor]")) {
+      const [kind, id] = el.dataset.anchor!.split("|");
+      let p: Vector3 | undefined;
+      if (kind === "room") p = anchor3(id);
+      else if (kind === "dev") {
+        const pos = DEVICE_SPOTS[id as keyof typeof DEVICE_SPOTS];
+        if (pos) p = new Vector3(...pos);
+      } else {
+        const pos = lampPos(id);
+        if (pos) p = new Vector3(pos[0], Math.min(pos[1], CUT3D + 0.3), pos[2]);
+      }
+      const xy = p && scene.project(p);
+      if (xy) el.style.transform = `translate(${xy[0].toFixed(1)}px, ${xy[1].toFixed(1)}px)`;
+    }
   }
 
   private setTheme(): void {
@@ -226,38 +326,43 @@ export class FunctionalDashboard extends LitElement {
         <div class="sky" aria-hidden="true">
           <i class="blob b1"></i><i class="blob b2"></i><i class="blob b3"></i>
         </div>
+        ${this.use3d ? html`<div class="three" aria-hidden="true"></div>` : nothing}
         <div
-          class="world"
+          class="world ${this.use3d ? "off" : ""}"
           style=${styleMap({ transform: `translate(${base.tx}px, ${base.ty}px) scale(${base.s})`, ...glow })}
         >
           ${
-            this.homeImage
-              ? html`<img
-                  src=${this.homeImage}
-                  alt=""
-                  @load=${(e: Event) => this.onImg(e, this.homeImage!)}
-                />`
-              : html`<svg
-                  class="iso"
-                  width=${ISO_WIDTH}
-                  height=${ISO_HEIGHT}
-                  viewBox="0 0 ${ISO_WIDTH} ${ISO_HEIGHT}"
-                >
-                  ${unsafeSVG(isoSvg())}
-                </svg>
-                <div
-                  class="pool"
-                  aria-hidden="true"
-                  style="width:${POOL_LAYER.width}px;height:${POOL_LAYER.height}px;transform:${POOL_LAYER.matrix}"
-                >
-                  <i class="c1" style="background-image:${CAUSTICS[0]}"></i>
-                  <i class="c2" style="background-image:${CAUSTICS[1]}"></i>
-                </div>`
+            this.use3d
+              ? nothing
+              : this.homeImage
+                ? html`<img
+                    src=${this.homeImage}
+                    alt=""
+                    @load=${(e: Event) => this.onImg(e, this.homeImage!)}
+                  />`
+                : html`<svg
+                      class="iso"
+                      width=${ISO_WIDTH}
+                      height=${ISO_HEIGHT}
+                      viewBox="0 0 ${ISO_WIDTH} ${ISO_HEIGHT}"
+                    >
+                      ${unsafeSVG(isoSvg())}
+                    </svg>
+                    <div
+                      class="pool"
+                      aria-hidden="true"
+                      style="width:${POOL_LAYER.width}px;height:${POOL_LAYER.height}px;transform:${POOL_LAYER.matrix}"
+                    >
+                      <i class="c1" style="background-image:${CAUSTICS[0]}"></i>
+                      <i class="c2" style="background-image:${CAUSTICS[1]}"></i>
+                    </div>`
           }
         </div>
         ${this.renderRoomImages(room?.id)}
         <div class="vignette" aria-hidden="true"></div>
-        ${this.renderHotspots(base)} ${room ? this.renderMarkers(room.id, base) : nothing}
+        <div class="pins ${this.use3d ? "live" : ""}">
+          ${this.renderHotspots(base)} ${room ? this.renderMarkers(room.id, base) : nothing}
+        </div>
       </div>
 
       ${
@@ -330,9 +435,9 @@ export class FunctionalDashboard extends LitElement {
     const home = this.view === HOME;
     return html`<div class="hotspots ${home ? "" : "hidden"}">
       ${ROOMS_DEF.map((r, i) => {
-        const p = this.hotspotPoint(r.id);
-        if (!p) return nothing;
-        const [x, y] = this.toScreen(base, p);
+        const p = this.use3d ? undefined : this.hotspotPoint(r.id);
+        if (!this.use3d && !p) return nothing;
+        const pos = p ? this.toScreen(base, p) : undefined;
         const on = r.lights.filter((l) => isOn(this.hass, l.entity)).length;
         const t = num(this.hass, r.temperature);
         const motion = r.devices.some(
@@ -342,7 +447,8 @@ export class FunctionalDashboard extends LitElement {
         );
         return html`<button
           class="spot ${on ? "lit" : ""}"
-          style="transform: translate(${x}px, ${y}px); --i:${i}"
+          data-anchor=${this.use3d ? `room|${r.id}` : nothing}
+          style=${styleMap({ "--i": String(i), ...(pos ? { transform: `translate(${pos[0]}px, ${pos[1]}px)` } : {}) })}
           @click=${() => this.go(r.id)}
           aria-label=${r.name}
         >
@@ -372,6 +478,8 @@ export class FunctionalDashboard extends LitElement {
             const [iw, ih] = this.dims(roomImg);
             p = this.toScreen(this.cover(roomImg), [(m[0] / 100) * iw, (m[1] / 100) * ih]);
           }
+        } else if (this.use3d) {
+          p = lampPos(l.entity) ? [0, 0] : undefined;
         } else if (!this.homeImage) {
           const pos = lampPos(l.entity);
           if (pos) p = this.toScreen(base, lampPoint(pos));
@@ -388,7 +496,12 @@ export class FunctionalDashboard extends LitElement {
           const on = e?.state === "on";
           return html`<button
             class="marker ${on ? "on" : ""}"
-            style="transform: translate(${p[0]}px, ${p[1]}px); --lamp:${lightColor(e)}; --i:${i}"
+            data-anchor=${this.use3d ? `lamp|${l.entity}` : nothing}
+            style=${styleMap({
+              "--lamp": lightColor(e),
+              "--i": String(i),
+              ...(this.use3d ? {} : { transform: `translate(${p[0]}px, ${p[1]}px)` }),
+            })}
             aria-label=${l.name}
             @pointerdown=${() => {
               window.clearTimeout(this.press);
@@ -411,7 +524,26 @@ export class FunctionalDashboard extends LitElement {
           </button>`;
         },
       )}
+      ${this.use3d ? this.renderDevicePins(room, pts.length) : nothing}
     </div>`;
+  }
+
+  /** Dispositivos con sitio en la maqueta (frigorífico, robot, impresora): tocar lleva a su tarjeta. */
+  private renderDevicePins(room: RoomDef, offset: number) {
+    const devices = room.devices.filter((d) => DEVICE_SPOTS[d.type]);
+    return devices.map(
+      (d, i) =>
+        html`<button
+          class="marker device"
+          data-anchor="dev|${d.type}"
+          style=${styleMap({ "--i": String(offset + i) })}
+          aria-label=${d.name}
+          @click=${() => this.renderRoot.querySelector<RoomView>("fv1-room")?.focusDevice(d.type)}
+        >
+          <span class="m-dot">${icon(DEVICE_ICONS[d.type])}</span>
+          <span class="m-name">${deviceBrief(this.hass, d)}</span>
+        </button>`,
+    );
   }
 
   private renderDock() {
@@ -507,6 +639,35 @@ export class FunctionalDashboard extends LitElement {
         to {
           transform: translate(8vmax, 5vmax) scale(1.12);
         }
+      }
+      .three {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        transition: opacity 1.4s ease;
+      }
+      .ready .three {
+        opacity: 1;
+      }
+      .three canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+      }
+      .world.off {
+        display: none;
+      }
+      .pins {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+      }
+      /* Con la maqueta 3D la posición la pone cada fotograma: sin transiciones de transform */
+      .pins.live .spot,
+      .pins.live .marker,
+      .pins.live .hotspots.hidden .spot {
+        transition: opacity 400ms ease;
       }
       .world {
         position: absolute;
@@ -743,6 +904,10 @@ export class FunctionalDashboard extends LitElement {
           background 400ms,
           color 400ms,
           box-shadow 400ms;
+      }
+      .marker.device .m-dot {
+        border-radius: 14px;
+        color: var(--text-muted);
       }
       .marker.on .m-dot {
         color: #fff;

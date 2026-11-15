@@ -112,6 +112,11 @@ export function createMockHass(getDarkMode: () => boolean, onUpdate: (hass: Home
   set("remote.salon_tv_samsung_salon_85", "off");
   set("vacuum.limpiasuelos", "docked", { friendly_name: "Limpiasuelos" });
   set("sensor.limpiasuelos_battery_level", "100");
+  set("sensor.epson_et_5150_series", "idle");
+  set("sensor.epson_et_5150_series_black_ink", "73", { unit_of_measurement: "%" });
+  set("sensor.epson_et_5150_series_cyan_ink", "81", { unit_of_measurement: "%" });
+  set("sensor.epson_et_5150_series_magenta_ink", "12", { unit_of_measurement: "%" });
+  set("sensor.epson_et_5150_series_yellow_ink", "82", { unit_of_measurement: "%" });
   set(
     "binary_sensor.limpiasuelos_maintenance",
     "on",

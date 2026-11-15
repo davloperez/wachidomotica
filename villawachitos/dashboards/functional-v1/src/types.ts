@@ -53,4 +53,7 @@ export interface DashboardConfig {
   /** Segundos sin tocar la pantalla tras los que se vuelve a la vista general (0 = nunca). */
   idle_return_seconds?: number;
   images?: ImagesConfig;
+  /** Ubicación de la casa (para el sol de la maqueta 3D) */
+  latitude?: number;
+  longitude?: number;
 }

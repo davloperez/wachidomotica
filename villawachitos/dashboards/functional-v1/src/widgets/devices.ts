@@ -21,6 +21,7 @@ import {
   mdiPot,
   mdiPower,
   mdiPowerPlugOutline,
+  mdiPrinterOutline,
   mdiPump,
   mdiRobotVacuum,
   mdiSolarPowerVariant,
@@ -38,11 +39,12 @@ import { hourlyMeans, type Point } from "../lib/data";
 import { ENERGY, FRIDGE, type DeviceDef } from "../house/rooms";
 import "../charts/charts";
 
-const ICONS: Record<DeviceDef["type"], string> = {
+export const DEVICE_ICONS: Record<DeviceDef["type"], string> = {
   hvac: mdiAirConditioner,
   tv: mdiTelevision,
   vacuum: mdiRobotVacuum,
   fridge: mdiFridgeOutline,
+  printer: mdiPrinterOutline,
   dishwasher: mdiDishwasher,
   airfryer: mdiPot,
   washer: mdiWashingMachine,
@@ -58,6 +60,33 @@ const ICONS: Record<DeviceDef["type"], string> = {
 };
 
 const MEDIA_OFF = ["off", "standby", "unavailable", "unknown"];
+const PRINTER_ES: Record<string, string> = {
+  idle: "En espera",
+  printing: "Imprimiendo",
+  stopped: "Detenida",
+  unavailable: "Apagada",
+};
+
+/** Resumen corto para el marcador del dispositivo sobre la maqueta. */
+export function deviceBrief(h: HomeAssistant | undefined, d: DeviceDef): string {
+  switch (d.type) {
+    case "fridge":
+      return `${fmt(num(h, FRIDGE.sensors.fridge), 0)}° · ${fmt(num(h, FRIDGE.sensors.freezer), 0)}°`;
+    case "vacuum": {
+      const s = st(h, d.entity)?.state ?? "";
+      const bat = num(h, d.battery);
+      return `${VACUUM_ES[s] ?? s}${bat !== undefined ? ` · ${bat} %` : ""}`;
+    }
+    case "printer": {
+      const s = st(h, d.entity)?.state ?? "unavailable";
+      const low = Math.min(...Object.values(d.inks).map((id) => num(h, id) ?? 100));
+      return low < 15 ? `Tinta ${fmt(low, 0)} %` : (PRINTER_ES[s] ?? s);
+    }
+    default:
+      return d.name;
+  }
+}
+
 const VACUUM_ES: Record<string, string> = {
   docked: "En la base",
   cleaning: "Limpiando",
@@ -148,7 +177,7 @@ export class DeviceCard extends LitElement {
     return html`
       <section class="card ${active ? "active" : ""}">
         <header class="card-head">
-          <span class="ico">${icon(ICONS[d.type])}</span>
+          <span class="ico">${icon(DEVICE_ICONS[d.type])}</span>
           <div class="grow ttl">
             <b>${d.name}</b>
             ${status ? html`<span>${status}</span>` : nothing}
@@ -220,6 +249,30 @@ export class DeviceCard extends LitElement {
               ]}
             ></fv1-area-chart>
           `,
+        };
+      }
+      case "printer": {
+        const state = st(h, d.entity)?.state ?? "unavailable";
+        const inks: [string, string, string][] = [
+          ["Negro", d.inks.black, "#3d3d3d"],
+          ["Cian", d.inks.cyan, "#2fa8d8"],
+          ["Magenta", d.inks.magenta, "#d6408f"],
+          ["Amarillo", d.inks.yellow, "#e8c22e"],
+        ];
+        return {
+          entity: d.entity,
+          active: state === "printing",
+          status: PRINTER_ES[state] ?? state,
+          body: html`<div class="inks">
+            ${inks.map(([label, id, color]) => {
+              const v = num(h, id);
+              return html`<div class="ink" style="--c:${color}">
+                <span class="lbl">${label}</span>
+                <div class="ink-bar"><i style="height:${v ?? 0}%"></i></div>
+                <b class="num">${v !== undefined ? `${fmt(v, 0)} %` : "—"}</b>
+              </div>`;
+            })}
+          </div>`,
         };
       }
       case "dishwasher": {
@@ -800,6 +853,36 @@ export class DeviceCard extends LitElement {
         align-items: center;
         justify-content: center;
         gap: 4px;
+      }
+      .inks {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: var(--space-2);
+        text-align: center;
+      }
+      .ink {
+        display: grid;
+        justify-items: center;
+        gap: 4px;
+      }
+      .ink .lbl {
+        font-size: var(--fs-label);
+        color: var(--text-faint);
+      }
+      .ink-bar {
+        position: relative;
+        width: 18px;
+        height: 54px;
+        border-radius: 6px;
+        background: var(--track);
+        overflow: hidden;
+      }
+      .ink-bar i {
+        position: absolute;
+        inset: auto 0 0;
+        background: var(--c);
+        border-radius: 6px;
+        transition: height 600ms var(--ease);
       }
       .progress {
         position: relative;

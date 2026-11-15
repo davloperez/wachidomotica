@@ -40,6 +40,8 @@ export interface Opening {
   kind: "window" | "door";
   /** Entidad `cover.*` de la persiana que cubre esta ventana */
   cover?: string;
+  /** Hoja de puerta cerrada de este color (si no, el hueco se dibuja abierto) */
+  leaf?: string;
 }
 
 export interface Wall {
@@ -211,7 +213,7 @@ export const WALLS: Wall[] = [
     from: [-7.68, -4.04],
     to: [-3.85, -4.04],
     exterior: true,
-    openings: [door(2.49, 0.95, 2.2)],
+    openings: [{ ...door(2.49, 0.95, 2.2), leaf: "#151515" }],
   },
   { from: [-3.85, -5.7], to: [-3.85, -4.04], exterior: true },
 
@@ -492,12 +494,33 @@ export const POOL_DECK: Rect = [
 /** Porche del salón: mismo suelo que la casa, llega hasta ~1 m de la piscina */
 export const PORCH: Rect = [-6.69, 4.63, 1.0, POOL_DECK[1] - 1.0];
 
-/** Zonas pavimentadas (gris): aparcamiento, acceso y paso lateral */
+/** Zonas pavimentadas: aparcamiento, acceso y paso lateral (del mismo suelo que la casa, salvo el hormigón) */
 export const PAVING: Rect[] = [
   [-11.4, -9.2, -6.0, -4.3], // aparcamiento (2 coches)
   [-6.0, -8.9, -4.4, -4.19], // acceso a la puerta principal
   [-8.6, -4.19, -7.83, 0.94], // paso junto al lavadero
 ];
+
+/** Hormigón gris del aparcamiento: acaba 1,5 m antes por el este, sin llegar a la puerta principal. */
+export const PARKING_CONCRETE: Rect = [-11.4, -9.2, -7.5, -4.3];
+
+/** Punto de la linde oeste (último lado de `PLOT`) a la altura `z`. */
+export function westAt(z: number): Point {
+  const [x1, z1] = PLOT[0];
+  const [x2, z2] = PLOT[3];
+  return [x1 + ((z - z1) / (z2 - z1)) * (x2 - x1), z];
+}
+
+/**
+ * Valla negra que separa el aparcamiento del patio del lavadero: de la linde oeste a la esquina
+ * de la casa, con una puerta negra (cerrada) en su extremo este.
+ */
+export const YARD_FENCE = {
+  from: westAt(-4.1),
+  to: [-7.83, -4.1] as Point,
+  door: { from: [-8.78, -4.1] as Point, to: [-7.88, -4.1] as Point },
+  color: "#151515",
+};
 
 /**
  * Caseta de la depuradora: enterrada (1 × 1 m), asoma 10 cm con césped artificial encima.
@@ -557,6 +580,29 @@ export const FRIDGE = {
     freezer: "sensor.cocina_frigo_de_60_temperatura_real_congelador",
     freezerTarget: "number.cocina_frigo_de_60_temperatura_congelador",
     door: "binary_sensor.cocina_frigo_de_60_puerta_abierta_refrigerador",
+  },
+};
+
+/** Robot aspirador (Dreame X40 Master): base contra la pared este, al norte del mueble de la TV. */
+export const VACUUM = {
+  entity: "vacuum.limpiasuelos",
+  battery: "sensor.limpiasuelos_battery_level",
+  /** Centro de la base en planta; el robot aparcado queda delante (al oeste) */
+  dock: [0.97, -1.25] as Point,
+  dockSize: [0.44, 0.59, 0.34] as [number, number, number],
+};
+
+/** Impresora (Epson ET-5150) sobre el extremo sur del escritorio de la oficina 1. */
+export const PRINTER = {
+  entity: "sensor.epson_et_5150_series",
+  at: [-3.5, -3.65] as Point,
+  size: [0.35, 0.24, 0.38] as [number, number, number],
+  lift: 0.77,
+  inks: {
+    black: "sensor.epson_et_5150_series_black_ink",
+    cyan: "sensor.epson_et_5150_series_cyan_ink",
+    magenta: "sensor.epson_et_5150_series_magenta_ink",
+    yellow: "sensor.epson_et_5150_series_yellow_ink",
   },
 };
 

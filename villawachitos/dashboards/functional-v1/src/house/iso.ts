@@ -57,17 +57,8 @@ const depth = (x: number, z: number) => -x * sinT + z * cosT;
 /* ---------- Encuadre de la imagen ---------- */
 
 const MARGIN = 30;
-const TREES: [x: number, z: number, r: number][] = [
-  [-10.2, 1.8, 1.25],
-  [-9.6, 7.6, 1.05],
-  [9.2, 8.4, 1.3],
-  [9.6, 12.6, 0.95],
-  [5.8, 13.3, 0.85],
-  [-8.6, 12.4, 1.0],
-  [9.4, -6.6, 1.1],
-  [-10.6, -2.6, 0.8],
-  [4.6, 8.6, 0.7],
-];
+/** Árboles del jardín (de momento no hay ninguno plantado). */
+export const TREES: [x: number, z: number, r: number][] = [];
 const TREE_H = 2.3;
 
 const extentPts: P2[] = [
