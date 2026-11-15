@@ -16,11 +16,16 @@ import {
   isoCss,
   isoSvg,
   lampPoint,
+  poolLayer,
   roomAnchor,
   roomBounds,
   type Box2,
 } from "./house/iso";
 import { ROOMS_DEF, ROOM_BY_ID, lampPos } from "./house/rooms";
+import { causticUrl } from "./house/materials";
+
+const POOL_LAYER = poolLayer();
+const CAUSTICS = [causticUrl(1.6, 1, 0.035), causticUrl(1.1, 3, 0.022)];
 import { lightIcon } from "./widgets/lights";
 import "./views/home-view";
 import "./views/room-view";
@@ -239,7 +244,15 @@ export class FunctionalDashboard extends LitElement {
                   viewBox="0 0 ${ISO_WIDTH} ${ISO_HEIGHT}"
                 >
                   ${unsafeSVG(isoSvg())}
-                </svg>`
+                </svg>
+                <div
+                  class="pool"
+                  aria-hidden="true"
+                  style="width:${POOL_LAYER.width}px;height:${POOL_LAYER.height}px;transform:${POOL_LAYER.matrix}"
+                >
+                  <i class="c1" style="background-image:${CAUSTICS[0]}"></i>
+                  <i class="c2" style="background-image:${CAUSTICS[1]}"></i>
+                </div>`
           }
         </div>
         ${this.renderRoomImages(room?.id)}
@@ -512,6 +525,52 @@ export class FunctionalDashboard extends LitElement {
       .world svg,
       .world img {
         display: block;
+      }
+      /* Cáusticas de la piscina: capa propia animada solo con transform (no repinta la maqueta) */
+      .pool {
+        position: absolute;
+        left: 0;
+        top: 0;
+        transform-origin: 0 0;
+        overflow: hidden;
+        pointer-events: none;
+        opacity: var(--iso-caustic-op);
+      }
+      .pool i {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: calc(100% + 320px);
+        height: calc(100% + 320px);
+        background-size: 160px 160px;
+        will-change: transform;
+        animation: caustic-a 26s linear infinite;
+      }
+      .pool i.c2 {
+        background-size: 110px 110px;
+        opacity: 0.7;
+        animation: caustic-b 19s linear infinite;
+      }
+      @keyframes caustic-a {
+        from {
+          transform: translate(-160px, -160px);
+        }
+        to {
+          transform: translate(0, 0);
+        }
+      }
+      @keyframes caustic-b {
+        from {
+          transform: translate(0, -110px);
+        }
+        to {
+          transform: translate(-110px, 0);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .pool i {
+          animation: none;
+        }
       }
       .ready.has-room-img .world {
         opacity: 0;

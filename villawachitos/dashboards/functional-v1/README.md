@@ -47,6 +47,13 @@ dispositivos de cada estancia. La forma de la casa sale del plano compartido con
 Mientras no haya imágenes reales se dibuja una **maqueta isométrica** del plano ([`src/house/iso.ts`](src/house/iso.ts)):
 parcela, piscina, suelos, muros cortados a media altura, muebles y árboles, con los colores del tema.
 
+Los **materiales** ([`src/house/materials.ts`](src/house/materials.ts)) se dibujan en metros sobre el plano y se
+proyectan con la misma perspectiva: tarima de roble al tresbolillo con vetas, baldosa de 60 × 60 en baños y lavadero,
+losas de piedra en porche y piscina, adoquín en el aparcamiento, césped segado a franjas con textura, madera con veta
+en los muebles, camas con edredón y almohadas, sofá con cojines, árboles con copa sombreada, sombras suaves de muros y
+muebles y un grano fino por encima. El agua de la piscina lleva cáusticas en movimiento en una capa aparte que solo se
+anima con `transform`, para que la tablet no tenga que repintar la maqueta (se paran con "reducir movimiento").
+
 Para usar imágenes propias, súbelas a `/config/www/functional-v1/img/` y añádelas en `dashboard.config.json`
 (las posiciones van en % del ancho y alto de cada imagen):
 

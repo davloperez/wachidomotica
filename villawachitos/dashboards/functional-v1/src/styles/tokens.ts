@@ -84,6 +84,12 @@ export const tokens = css`
     --iso-shadow: rgba(70, 55, 40, 0.18);
     --iso-light: #ffc96b;
     --iso-fence: rgba(60, 50, 40, 0.55);
+    --iso-cast: #4a3624;
+    --iso-cast-op: 0.22;
+    --iso-glow-blend: soft-light;
+    --iso-grain-op: 0.14;
+    --iso-noise-op: 0.3;
+    --iso-caustic-op: 0.5;
     --t-dark: #6f655c;
     --t-light: #efe8de;
     --t-accent: #c9825a;
@@ -150,6 +156,12 @@ export const tokens = css`
     --iso-shadow: rgba(0, 0, 0, 0.3);
     --iso-light: #ffbe5c;
     --iso-fence: rgba(0, 0, 0, 0.6);
+    --iso-cast: #000;
+    --iso-cast-op: 0.42;
+    --iso-glow-blend: screen;
+    --iso-grain-op: 0.08;
+    --iso-noise-op: 0.12;
+    --iso-caustic-op: 0.22;
     --t-dark: #2f2a26;
     --t-light: #6a6158;
     --t-accent: #a56a4a;
