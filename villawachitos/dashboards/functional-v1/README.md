@@ -8,7 +8,7 @@ paneles de cristal esmerilado y animaciones suaves. Tema claro, oscuro o auto (b
 En el centro, la **maqueta 3D de toda la casa** (interior y exterior). Sobre cada estancia hay un acceso con su nombre,
 temperatura (si tiene sensor), luces encendidas y presencia; las estancias con luces encendidas brillan en la imagen
 y la piscina se ilumina con su luz. Cuando la lavadora termina, el acceso del lavadero se pone verde con el aviso
-«Lavadora lista». La cámara se balancea muy despacio sobre la parcela (±9° en 4 minutos), sin estorbar al tocar.
+«Lavadora lista». La cámara se balancea muy despacio sobre la parcela (±10° en 2 min 40 s), sin estorbar al tocar.
 Alrededor:
 
 - **Saludo**, fecha, hora, tiempo y quién está en casa.
@@ -44,8 +44,19 @@ esa estancia (ver [Maqueta 3D](#maqueta-3d)) y aparecen:
 - **Lavadora terminada** (lavadero): aviso destacado con la hora de fin, la duración del ciclo y los lavados de hoy. La
   automatización «Lavadora: aviso de fin de lavado» manda además un Telegram al grupo de notificaciones.
 
+- **Depuradora** (exterior): su tarjeta y su marcador abren el detalle: estado y medidas en directo, encender o apagar
+  a mano (con confirmación), horario semanal del ayudante `schedule.horario_depuradora_de_piscina` con la hora actual,
+  interruptor de la programación automática, potencia de 24 h con los tramos en marcha, y horas de filtrado y energía
+  de los últimos 14 días. Leer el horario completo necesita un usuario administrador; si no, se ve el próximo cambio.
+
 Las dos oficinas comparten una sola vista (_Oficinas_), igual que el dormitorio 1 y su vestidor. El portero de la
-calle está en el exterior (jardín norte), con su marcador junto a la puerta peatonal.
+calle está en el exterior (jardín norte), con su marcador junto a la puerta peatonal. Las puertas del garaje (1 al
+oeste, 2 al este) tienen un marcador con el estado de cada una: en el exterior siempre y, en la vista general, solo
+cuando hay alguna abierta.
+
+**Gráficas**: las curvas llevan la escala en las líneas guía, el máximo y el mínimo marcados sobre la curva y una
+leyenda con el rango y la variación del periodo (p. ej. «21,0–24,7° · ▲ +1,2° en 24 h»), para saber si un cambio es de
+un grado o de veinte.
 
 Tras `idle_return_seconds` (180 s por defecto) sin tocar la pantalla vuelve a la vista general.
 

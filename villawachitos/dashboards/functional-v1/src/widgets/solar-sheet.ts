@@ -34,6 +34,148 @@ const INVERTER = {
 };
 const DAYS_SHOWN = 30;
 
+/** Estilos de las hojas de detalle (instalación solar, depuradora): panel flotante con secciones. */
+export const sheetStyles = css`
+  :host {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    display: grid;
+    place-items: center;
+  }
+  .scrim {
+    position: absolute;
+    inset: 0;
+    background: rgba(30, 22, 15, 0.25);
+    backdrop-filter: blur(3px);
+    animation: fade 400ms ease forwards;
+  }
+  @keyframes fade {
+    from {
+      opacity: 0;
+    }
+  }
+  .sheet {
+    position: relative;
+    width: min(980px, calc(100% - 32px));
+    max-height: calc(100% - 48px);
+    overflow-y: auto;
+    padding: var(--space-4);
+    display: grid;
+    gap: var(--space-3);
+    background: var(--glass-strong);
+    animation: rise 500ms var(--ease);
+  }
+  header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .ttl {
+    flex: 1;
+    display: grid;
+  }
+  h3 {
+    margin: 0;
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: var(--fs-title);
+  }
+  .halo {
+    display: grid;
+    place-items: center;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: var(--chip);
+    color: var(--text-faint);
+  }
+  .halo.on {
+    color: var(--amber);
+    box-shadow: 0 0 40px -6px var(--amber);
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-3);
+  }
+  .panel {
+    display: grid;
+    gap: 10px;
+    align-content: start;
+    padding: 12px;
+    border-radius: var(--radius-sm);
+    background: var(--chip);
+    min-width: 0;
+  }
+  .panel.wide {
+    grid-column: 1 / -1;
+  }
+  .head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .sub {
+    font-size: var(--fs-label);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+  }
+  .legend {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    font-size: var(--fs-label);
+    color: var(--text-muted);
+  }
+  .legend i {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 6px;
+  }
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .stat {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+  }
+  .stat .lbl {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: var(--fs-label);
+    color: var(--text-muted);
+  }
+  .stat .lbl i {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--c);
+  }
+  .stat b {
+    font-size: 20px;
+    color: var(--text);
+  }
+  .stat .faint {
+    font-size: var(--fs-label);
+  }
+  @media (max-width: 720px) {
+    .grid {
+      grid-template-columns: 1fr;
+    }
+  }
+`;
+
 /**
  * Resumen de la instalación solar: flujo en directo, balance de hoy, curvas de las últimas 24 h,
  * producción y consumo de los últimos 30 días y totales desde la puesta en marcha.
@@ -142,21 +284,20 @@ export class SolarSheet extends LitElement {
           </div>
 
           <div class="panel wide">
-            <div class="head">
-              <span class="sub">Últimas 24 horas</span>
-              <span class="legend">
-                <span><i style="background:var(--amber)"></i>Solar</span>
-                <span><i style="background:var(--terracotta)"></i>Consumo</span>
-                <span><i style="background:var(--sage)"></i>Batería</span>
-              </span>
-            </div>
+            <span class="sub">Últimas 24 horas</span>
             <fv1-area-chart
               .height=${130}
               .digits=${1}
               .series=${[
-                { data: this.hours[s.pv] ?? [], color: "var(--amber)", unit: " kW" },
-                { data: this.hours[s.load] ?? [], color: "var(--terracotta)", unit: " kW" },
-                { data: this.hours[s.soc] ?? [], color: "var(--sage)", unit: " %", own: true },
+                { data: this.hours[s.pv] ?? [], color: "var(--amber)", unit: " kW", label: "Solar" },
+                { data: this.hours[s.load] ?? [], color: "var(--terracotta)", unit: " kW", label: "Consumo" },
+                {
+                  data: this.hours[s.soc] ?? [],
+                  color: "var(--sage)",
+                  unit: " %",
+                  own: true,
+                  label: "Batería",
+                },
               ]}
             ></fv1-area-chart>
           </div>
@@ -211,149 +352,7 @@ export class SolarSheet extends LitElement {
     </div>`;
   }
 
-  static styles = [
-    shared,
-    css`
-      :host {
-        position: absolute;
-        inset: 0;
-        z-index: 20;
-        display: grid;
-        place-items: center;
-      }
-      .scrim {
-        position: absolute;
-        inset: 0;
-        background: rgba(30, 22, 15, 0.25);
-        backdrop-filter: blur(3px);
-        animation: fade 400ms ease forwards;
-      }
-      @keyframes fade {
-        from {
-          opacity: 0;
-        }
-      }
-      .sheet {
-        position: relative;
-        width: min(980px, calc(100% - 32px));
-        max-height: calc(100% - 48px);
-        overflow-y: auto;
-        padding: var(--space-4);
-        display: grid;
-        gap: var(--space-3);
-        background: var(--glass-strong);
-        animation: rise 500ms var(--ease);
-      }
-      header {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-      }
-      .ttl {
-        flex: 1;
-        display: grid;
-      }
-      h3 {
-        margin: 0;
-        font-family: var(--font-display);
-        font-weight: 500;
-        font-size: var(--fs-title);
-      }
-      .halo {
-        display: grid;
-        place-items: center;
-        width: 52px;
-        height: 52px;
-        border-radius: 50%;
-        background: var(--chip);
-        color: var(--text-faint);
-      }
-      .halo.on {
-        color: var(--amber);
-        box-shadow: 0 0 40px -6px var(--amber);
-      }
-      .grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: var(--space-3);
-      }
-      .panel {
-        display: grid;
-        gap: 10px;
-        align-content: start;
-        padding: 12px;
-        border-radius: var(--radius-sm);
-        background: var(--chip);
-        min-width: 0;
-      }
-      .panel.wide {
-        grid-column: 1 / -1;
-      }
-      .head {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 12px;
-        flex-wrap: wrap;
-      }
-      .sub {
-        font-size: var(--fs-label);
-        font-weight: 700;
-        letter-spacing: 0.04em;
-        text-transform: uppercase;
-        color: var(--text-faint);
-      }
-      .legend {
-        display: flex;
-        gap: 14px;
-        flex-wrap: wrap;
-        font-size: var(--fs-label);
-        color: var(--text-muted);
-      }
-      .legend i {
-        display: inline-block;
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        margin-right: 6px;
-      }
-      .stats {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 10px;
-      }
-      .stat {
-        display: grid;
-        gap: 2px;
-        min-width: 0;
-      }
-      .stat .lbl {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        font-size: var(--fs-label);
-        color: var(--text-muted);
-      }
-      .stat .lbl i {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: var(--c);
-      }
-      .stat b {
-        font-size: 20px;
-        color: var(--text);
-      }
-      .stat .faint {
-        font-size: var(--fs-label);
-      }
-      @media (max-width: 720px) {
-        .grid {
-          grid-template-columns: 1fr;
-        }
-      }
-    `,
-  ];
+  static styles = [shared, sheetStyles];
 }
 
 declare global {

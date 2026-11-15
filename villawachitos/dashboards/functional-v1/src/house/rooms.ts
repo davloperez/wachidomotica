@@ -476,6 +476,7 @@ export const DEVICE_SPOTS: Partial<Record<DeviceDef["type"], [x: number, y: numb
   printer: [PRINTER.at[0], 1.15, PRINTER.at[1]],
   washer: [WASHER.at[0], 1.15, WASHER.at[1]],
   energy: [ENERGY.battery.at[0], 1.65, ENERGY.battery.at[1]],
+  pump: [(PUMP.rect[0] + PUMP.rect[2]) / 2, 0.7, (PUMP.rect[1] + PUMP.rect[3]) / 2],
   lock: [
     (PEDESTRIAN_GATE.from[0] + PEDESTRIAN_GATE.to[0]) / 2,
     1.6,

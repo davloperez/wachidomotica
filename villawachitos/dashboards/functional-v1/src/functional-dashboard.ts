@@ -3,12 +3,19 @@ import { customElement, property, state } from "lit/decorators.js";
 import { repeat } from "lit/directives/repeat.js";
 import { unsafeSVG } from "lit/directives/unsafe-svg.js";
 import { styleMap } from "lit/directives/style-map.js";
-import { mdiBrightnessAuto, mdiHomeOutline, mdiMoonWaningCrescent, mdiWhiteBalanceSunny } from "@mdi/js";
+import {
+  mdiGarageOpenVariant,
+  mdiGarageVariant,
+  mdiBrightnessAuto,
+  mdiHomeOutline,
+  mdiMoonWaningCrescent,
+  mdiWhiteBalanceSunny,
+} from "@mdi/js";
 
 import type { DashboardConfig, HomeAssistant, ImagePoint, ThemeMode } from "./types";
 import { shared, tokens } from "./styles/tokens";
 import { loadThemeMode, resolveTheme, saveThemeMode } from "./lib/theme";
-import { call, fmt, icon, isOn, lightColor, num, st } from "./lib/ha";
+import { call, fmt, icon, isOn, lightColor, num, relTime, st } from "./lib/ha";
 import {
   ISO_HEIGHT,
   ISO_WIDTH,
@@ -27,11 +34,12 @@ import { DEVICE_ICONS, deviceBrief } from "./widgets/devices";
 import { causticUrl } from "./house/materials";
 import { lightIcon } from "./widgets/lights";
 import { BASE_VIEW, CUT3D, CalmScene, Vector2, Vector3, type ViewAngle } from "./scene3d/calm-scene";
-import { FOOTPRINT, PLOT, POOL, POOL_DECK, type Rect } from "../../house-3d-v1/src/scene/plan";
+import { FOOTPRINT, GATES, PLOT, POOL, POOL_DECK, type Rect } from "../../house-3d-v1/src/scene/plan";
 import "./views/home-view";
 import "./views/room-view";
 import "./widgets/lights";
 import "./widgets/solar-sheet";
+import "./widgets/pump-sheet";
 
 interface View {
   s: number;
@@ -77,7 +85,7 @@ const EXTERIOR_BOX = boxOf(
   0.5,
 );
 /** Vista del exterior: desde el suroeste y más baja, para diferenciarla de la general */
-const EXTERIOR_VIEW: ViewAngle = { yaw: BASE_VIEW.yaw - (18 * Math.PI) / 180, elev: (45 * Math.PI) / 180 };
+const EXTERIOR_VIEW: ViewAngle = { yaw: BASE_VIEW.yaw - (12 * Math.PI) / 180, elev: (40 * Math.PI) / 180 };
 /** Puntos que la cámara debe ver de una estancia: una rejilla de su suelo y sus dispositivos. */
 function roomPoints(room: RoomDef): Vector3[] {
   const pts: Vector3[] = [];
@@ -92,6 +100,7 @@ function roomPoints(room: RoomDef): Vector3[] {
   }
   return pts;
 }
+const EXTERIOR_ROOM = ROOMS_DEF.find((r) => r.rects.length === 0);
 const area3 = ([x1, z1, x2, z2]: Rect) => Math.abs((x2 - x1) * (z2 - z1));
 
 /** Punto de cada acceso en la maqueta 3D (centro de su estancia más grande, o la piscina). */
@@ -127,6 +136,7 @@ export class FunctionalDashboard extends LitElement {
   @state() private ready = false;
   @state() private sheet?: { entity: string; name: string };
   @state() private solarOpen = false;
+  @state() private pumpOpen = false;
   /** Tamaño natural de las imágenes reales (cuando se configuran) */
   @state() private natural: Record<string, [number, number]> = {};
 
@@ -191,6 +201,7 @@ export class FunctionalDashboard extends LitElement {
     if (view !== HOME && !ROOM_BY_ID.has(view)) return;
     this.sheet = undefined;
     this.solarOpen = false;
+    this.pumpOpen = false;
     this.view = view;
   }
 
@@ -247,12 +258,12 @@ export class FunctionalDashboard extends LitElement {
     if (this.view === HOME) return scene.frame(HOME_BOX, this.area(false), { fill: 0.92, ms });
     const room = ROOM_BY_ID.get(this.view);
     if (!room || !room.rects.length)
-      // Casi el mismo zoom que la vista general: la parcela ocupa todo el ancho y asoma bajo los paneles
+      // Toda la parcela entre los paneles (nada queda tapado), con el menor alejamiento posible
       return scene.frame(
         EXTERIOR_BOX,
-        this.narrow ? this.area(true) : { x: 16, y: 90, w: this.size.w - 32, h: this.size.h - 186 },
+        { ...this.area(true), y: this.narrow ? this.area(true).y : 80 },
         {
-          fill: 0.96,
+          fill: 1,
           ms: ms && ms * 1.6,
           view: EXTERIOR_VIEW,
         },
@@ -284,7 +295,15 @@ export class FunctionalDashboard extends LitElement {
       const [kind, id] = el.dataset.anchor!.split("|");
       let p: Vector3 | undefined;
       if (kind === "room") p = anchor3(id);
-      else if (kind === "dev") {
+      else if (kind === "gate") {
+        const gs = GATES.filter((x) => id.split(",").includes(x.entity));
+        if (gs.length) {
+          const xs = gs.flatMap((g) => [g.from[0], g.to[0]]);
+          const zs = gs.flatMap((g) => [g.from[1], g.to[1]]);
+          const mid = (v: number[]) => (Math.min(...v) + Math.max(...v)) / 2;
+          p = new Vector3(mid(xs), 1.3, mid(zs) + 0.4);
+        }
+      } else if (kind === "dev") {
         const pos = DEVICE_SPOTS[id as keyof typeof DEVICE_SPOTS];
         if (pos) p = new Vector3(...pos);
       } else {
@@ -427,6 +446,11 @@ export class FunctionalDashboard extends LitElement {
         <div class="vignette" aria-hidden="true"></div>
         <div class="pins ${this.use3d ? "live" : ""}">
           ${this.renderHotspots(base)} ${room ? this.renderMarkers(room.id, base) : nothing}
+          ${
+            !room && this.use3d
+              ? html`<div class="markers">${this.renderGatePins(EXTERIOR_ROOM, 0, true)}</div>`
+              : nothing
+          }
         </div>
       </div>
 
@@ -439,6 +463,7 @@ export class FunctionalDashboard extends LitElement {
               @go=${(e: CustomEvent<string>) => this.go(e.detail)}
               @open-light=${(e: CustomEvent<{ entity: string; name: string }>) => (this.sheet = e.detail)}
               @open-solar=${() => (this.solarOpen = true)}
+              @open-pump=${() => (this.pumpOpen = true)}
             ></fv1-room>`
           : html`<fv1-home
               .hass=${this.hass}
@@ -463,6 +488,11 @@ export class FunctionalDashboard extends LitElement {
               .hass=${this.hass}
               @close=${() => (this.solarOpen = false)}
             ></fv1-solar-sheet>`
+          : nothing
+      }
+      ${
+        this.pumpOpen
+          ? html`<fv1-pump-sheet .hass=${this.hass} @close=${() => (this.pumpOpen = false)}></fv1-pump-sheet>`
           : nothing
       }
       ${this.hass && !this.hass.connected ? html`<div class="offline">Sin conexión con Home Assistant…</div>` : nothing}
@@ -608,24 +638,66 @@ export class FunctionalDashboard extends LitElement {
   }
 
   /** Dispositivos con sitio en la maqueta (frigorífico, robot, impresora): tocar lleva a su tarjeta. */
+  /**
+   * Puertas del garaje sobre la maqueta, cada una con su estado. En la vista general solo
+   * aparecen las abiertas (como aviso); en el exterior, siempre.
+   */
+  private renderGatePins(room: RoomDef | undefined, offset: number, onlyOpen = false) {
+    // Las dos puertas están juntas (se ven a pocos píxeles): un solo marcador con una línea por puerta
+    const gates = (room?.devices.flatMap((d) => (d.type === "gates" ? d.gates : [])) ?? []).filter(
+      (g) => !onlyOpen || isOn(this.hass, g.entity),
+    );
+    if (!gates.length) return [];
+    const anyOpen = gates.some((g) => isOn(this.hass, g.entity));
+    return [
+      html`<button
+        class="marker device gate ${anyOpen ? "open" : ""}"
+        data-anchor="gate|${gates.map((g) => g.entity).join(",")}"
+        style=${styleMap({ "--i": String(offset) })}
+        aria-label="Puertas del garaje"
+        @click=${() =>
+          onlyOpen
+            ? this.go(room!.id)
+            : this.renderRoot.querySelector<RoomView>("fv1-room")?.focusDevice("gates")}
+      >
+        <span class="m-dot">${icon(anyOpen ? mdiGarageOpenVariant : mdiGarageVariant)}</span>
+        <span class="m-name gates">
+          ${gates.map((g) => {
+            const e = st(this.hass, g.entity);
+            const open = e?.state === "on";
+            const state = !e || e.state === "unavailable" ? "sin sensor" : open ? "abierta" : "cerrada";
+            return html`<span class=${open ? "g-open" : ""}
+              >${g.name} ${state}${open && e ? ` · ${relTime(e.last_changed)}` : ""}</span
+            >`;
+          })}
+        </span>
+      </button>`,
+    ];
+  }
+
   private renderDevicePins(room: RoomDef, offset: number) {
     const devices = room.devices.filter((d) => DEVICE_SPOTS[d.type]);
-    return devices.map(
-      (d, i) =>
-        html`<button
-          class="marker device"
-          data-anchor="dev|${d.type}"
-          style=${styleMap({ "--i": String(offset + i) })}
-          aria-label=${d.name}
-          @click=${() =>
-            d.type === "energy"
-              ? (this.solarOpen = true)
-              : this.renderRoot.querySelector<RoomView>("fv1-room")?.focusDevice(d.type)}
-        >
-          <span class="m-dot">${icon(DEVICE_ICONS[d.type])}</span>
-          <span class="m-name">${deviceBrief(this.hass, d)}</span>
-        </button>`,
-    );
+    return [
+      ...this.renderGatePins(room, offset + devices.length),
+      ...devices.map(
+        (d, i) =>
+          html`<button
+            class="marker device"
+            data-anchor="dev|${d.type}"
+            style=${styleMap({ "--i": String(offset + i) })}
+            aria-label=${d.name}
+            @click=${() =>
+              d.type === "energy"
+                ? (this.solarOpen = true)
+                : d.type === "pump"
+                  ? (this.pumpOpen = true)
+                  : this.renderRoot.querySelector<RoomView>("fv1-room")?.focusDevice(d.type)}
+          >
+            <span class="m-dot">${icon(DEVICE_ICONS[d.type])}</span>
+            <span class="m-name">${deviceBrief(this.hass, d)}</span>
+          </button>`,
+      ),
+    ];
   }
 
   private renderDock() {
@@ -1012,6 +1084,19 @@ export class FunctionalDashboard extends LitElement {
       .marker.device .m-dot {
         border-radius: 14px;
         color: var(--text-muted);
+      }
+      .m-name.gates {
+        display: grid;
+        text-align: left;
+      }
+      .m-name.gates .g-open {
+        color: var(--amber);
+        font-weight: 700;
+      }
+      .marker.gate.open .m-dot {
+        color: #fff;
+        background: var(--amber);
+        box-shadow: 0 0 0 4px var(--amber-soft);
       }
       .marker.on .m-dot {
         color: #fff;

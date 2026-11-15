@@ -96,14 +96,14 @@ const SLAB = 0.7;
 const SHUTTER_SPEED = 0.35;
 const GATE_SPEED = 0.3;
 const PLOT_CENTER = new Vector3(-0.4, 0, 2.6);
-/** Vista de siempre: desde el sur, casi de frente, unos 61° de elevación (ángulos en radianes). */
-export const BASE_VIEW = { yaw: Math.atan2(-0.12, 17), elev: Math.atan2(31, Math.hypot(0.12, 17)) };
+/** Vista de siempre: desde el sur, casi de frente, 50° de elevación (ángulos en radianes). */
+export const BASE_VIEW = { yaw: Math.atan2(-0.12, 17), elev: (50 * Math.PI) / 180 };
 /** Dirección desde el objetivo hacia la cámara (yaw 0 = desde el sur, π/2 = desde el este). */
 const viewDir = (yaw: number, elev: number) =>
   new Vector3(Math.sin(yaw) * Math.cos(elev), Math.sin(elev), Math.cos(yaw) * Math.cos(elev));
-/** Balanceo de la vista general: ±9° de giro en un ciclo de 4 minutos, casi imperceptible. */
-const DRIFT_AMP = (9 * Math.PI) / 180;
-const DRIFT_PERIOD = 240_000;
+/** Balanceo de la vista general: ±10° de giro en un ciclo de 2 min 40 s, lento y sin estorbar. */
+const DRIFT_AMP = (10 * Math.PI) / 180;
+const DRIFT_PERIOD = 160_000;
 const DRIFT_FPS = 24;
 const wrapAngle = (a: number) => Math.atan2(Math.sin(a), Math.cos(a));
 const WARM_WHITE = new Color(255 / 255, 196 / 255, 137 / 255);
@@ -1041,7 +1041,16 @@ export class CalmScene {
     });
     // Solo se ven las luminarias que quedan por debajo del corte (lámparas, tiras, apliques bajos)
     let bulbMaterial: MeshStandardMaterial | undefined;
-    if (y < CUT3D && def.kind !== "pool") {
+    if (def.column) {
+      // Columna de luz: cuerpo blanco translúcido que brilla entero al encenderse
+      bulbMaterial = new MeshStandardMaterial({ color: 0xf4f1ea, roughness: 0.35 });
+      const body = new Mesh(new CylinderGeometry(0.13, 0.16, def.column, 28), bulbMaterial);
+      body.position.set(x, def.column / 2, z);
+      body.castShadow = true;
+      const base = new Mesh(new CylinderGeometry(0.18, 0.18, 0.03, 28), this.m.steel);
+      base.position.set(x, 0.015, z);
+      this.scene.add(body, base);
+    } else if (y < CUT3D && def.kind !== "pool") {
       bulbMaterial = new MeshStandardMaterial({ color: 0xe9e2d6, roughness: 0.5 });
       const geo =
         def.kind === "strip" && def.strip
@@ -1292,7 +1301,7 @@ export class CalmScene {
     const cands: (ViewAngle & { vis: number; dist: number })[] = [];
     for (let i = 0; i < 16; i++) {
       const yaw = BASE_VIEW.yaw + (i * Math.PI) / 8;
-      for (const deg of [46, 56, 66, 76]) {
+      for (const deg of [38, 46, 54, 62]) {
         const elev = (deg * Math.PI) / 180;
         const pose = this.compute(box, area, fill, { yaw, elev });
         const eye = pose.target
@@ -1324,7 +1333,7 @@ export class CalmScene {
         ? (Math.sin(c.yaw) * out.x + Math.cos(c.yaw) * out.y) * 14 * Math.min(1, outward!.length() / 3)
         : 0) -
       ((1 - Math.cos(c.yaw - BASE_VIEW.yaw)) / 2) * 3 -
-      Math.abs(c.elev - (60 * Math.PI) / 180) * 12;
+      Math.abs(c.elev - (48 * Math.PI) / 180) * 12;
     const best = cands.reduce((a, b) => (score(b) > score(a) ? b : a));
     return { yaw: best.yaw, elev: best.elev };
   }

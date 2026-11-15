@@ -90,6 +90,12 @@ export function deviceBrief(h: HomeAssistant | undefined, d: DeviceDef): string 
       const soc = num(h, ENERGY.sensors.soc);
       return `${pv > 0.05 ? `☀ ${fmt(pv, 1)} kW · ` : ""}${fmt(soc, 0)} %`;
     }
+    case "pump":
+      return isOn(h, d.entity) ? `Filtrando · ${fmt(num(h, d.power), 0)} W` : "Depuradora parada";
+    case "gates": {
+      const open = d.gates.filter((g) => isOn(h, g.entity)).length;
+      return open ? `${open} abierta${open > 1 ? "s" : ""}` : "Cerradas";
+    }
     default:
       return d.name;
   }
@@ -252,8 +258,20 @@ export class DeviceCard extends LitElement {
               .height=${80}
               .digits=${0}
               .series=${[
-                { data: this.series[s.fridge] ?? [], color: "var(--sky)", unit: "°", own: true },
-                { data: this.series[s.freezer] ?? [], color: "var(--lilac)", unit: "°", own: true },
+                {
+                  data: this.series[s.fridge] ?? [],
+                  color: "var(--sky)",
+                  unit: "°",
+                  own: true,
+                  label: "Frigorífico",
+                },
+                {
+                  data: this.series[s.freezer] ?? [],
+                  color: "var(--lilac)",
+                  unit: "°",
+                  own: true,
+                  label: "Congelador",
+                },
               ]}
             ></fv1-area-chart>
           `,
@@ -442,8 +460,15 @@ export class DeviceCard extends LitElement {
             <fv1-area-chart
               .height=${70}
               .digits=${0}
-              .series=${[{ data: this.series[d.power] ?? [], color: "var(--sky)", unit: " W" }]}
+              .trend=${false}
+              .series=${[{ data: this.series[d.power] ?? [], color: "var(--sky)", unit: " W", label: "Potencia" }]}
             ></fv1-area-chart>
+            <button
+              class="btn wide"
+              @click=${() => this.dispatchEvent(new CustomEvent("open-pump", { bubbles: true, composed: true }))}
+            >
+              Horario, consumo e historial
+            </button>
           `,
         };
       }
@@ -697,8 +722,8 @@ export class DeviceCard extends LitElement {
           .height=${90}
           .digits=${0}
           .series=${[
-            { data: this.series[s.soc] ?? [], color: "var(--sage)", unit: " %", own: true },
-            { data: this.series[s.pv] ?? [], color: "var(--amber)", unit: " kW", own: true },
+            { data: this.series[s.soc] ?? [], color: "var(--sage)", unit: " %", own: true, label: "Batería" },
+            { data: this.series[s.pv] ?? [], color: "var(--amber)", unit: " kW", own: true, label: "Solar" },
           ]}
         ></fv1-area-chart>
       `,

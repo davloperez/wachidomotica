@@ -65,6 +65,10 @@ export class AreaChart extends Sized {
   @property({ attribute: false }) series: AreaSeries[] = [];
   @property({ type: Number }) height = 120;
   @property({ type: Number }) digits = 1;
+  /** Leyenda con mínimo, máximo y variación de cada serie (para saber cuánto ha cambiado de verdad) */
+  @property({ type: Boolean }) legend = true;
+  /** Mostrar la variación entre el primer y el último valor (no tiene sentido en consumos a ratos) */
+  @property({ type: Boolean }) trend = true;
   private uidA = `a${uid++}`;
 
   render() {
@@ -90,6 +94,11 @@ export class AreaChart extends Sized {
     const sharedRange = range(shared.length > 1 ? shared : all);
     const x = (t: number) => pad.l + ((t - t0) / Math.max(1, t1 - t0)) * (W - pad.l - pad.r);
     const ticks = [0, 0.5, 1].map((f) => t0 + (t1 - t0) * f);
+    const plotH = H - pad.t - pad.b;
+    // Escala de la primera serie en las líneas guía (si hay varias, con su color)
+    const s0 = this.series.find((s) => s.data.length > 1);
+    const [lo0, hi0] = s0 ? (s0.own ? range(s0.data) : sharedRange) : [0, 1];
+    const multi = this.series.filter((s) => s.data.length > 1).length > 1;
     // Etiquetas del último valor de cada serie, separadas para que no se pisen
     const usedY: number[] = [];
     const labelY = (y: number) => {
@@ -103,7 +112,7 @@ export class AreaChart extends Sized {
       <svg width=${W} height=${H} viewBox="0 0 ${W} ${H}">
         ${[0.25, 0.5, 0.75].map(
           (f) =>
-            svg`<line x1=${pad.l} x2=${W - pad.r} y1=${pad.t + (H - pad.t - pad.b) * f} y2=${pad.t + (H - pad.t - pad.b) * f} class="grid"/>`,
+            svg`<line x1=${pad.l} x2=${W - pad.r} y1=${pad.t + plotH * f} y2=${pad.t + plotH * f} class="grid"/>`,
         )}
         ${this.series.map((s, i) => {
           if (s.data.length < 2) return nothing;
@@ -126,15 +135,71 @@ export class AreaChart extends Sized {
             <path d=${line} fill="none" stroke=${s.color} stroke-width="2.4" stroke-linecap="round" class="line"/>
             <circle cx=${last[0]} cy=${last[1]} r="4.5" fill=${s.color} class="dot"/>
             <circle cx=${last[0]} cy=${last[1]} r="9" fill=${s.color} opacity="0.18" class="halo"/>
+            ${this.extremes(s, pts, i === 0)}
             ${i === 0 || s.own ? svg`<text x=${Math.min(last[0], W - 8)} y=${labelY(last[1])} text-anchor="end" class="val" fill=${s.color}>${fmt(lastV, this.digits)}${s.unit ?? ""}</text>` : nothing}
           `;
         })}
+        ${
+          s0
+            ? [0.25, 0.5, 0.75].map(
+                (f) =>
+                  svg`<text x=${pad.l + 2} y=${pad.t + plotH * f - 3} class="axis" fill=${multi ? s0.color : "var(--text-faint)"}>${fmt(hi0 - (hi0 - lo0) * f, this.digits)}${s0.unit?.trim() ?? ""}</text>`,
+              )
+            : nothing
+        }
         ${ticks.map(
           (t, i) =>
             svg`<text x=${x(t)} y=${H - 4} text-anchor=${i === 0 ? "start" : i === 2 ? "end" : "middle"} class="tick">${hourLabel(t)}</text>`,
         )}
       </svg>
+      ${this.legend ? this.renderLegend() : nothing}
     `;
+  }
+
+  /** Marca el máximo y el mínimo de la serie sobre la curva (si no son el último punto). */
+  private extremes(s: AreaSeries, pts: [number, number][], first: boolean) {
+    const vals = s.data.map((p) => p[1]);
+    const iMax = vals.indexOf(Math.max(...vals));
+    const iMin = vals.indexOf(Math.min(...vals));
+    if (iMax === iMin) return nothing;
+    const last = vals.length - 1;
+    const W = this.w;
+    const mark = (i: number, above: boolean) => {
+      if (i === last) return nothing;
+      const [px, py] = pts[i];
+      const anchor = px < 40 ? "start" : px > W - 40 ? "end" : "middle";
+      return svg`<circle cx=${px} cy=${py} r="3" class="ext" stroke=${s.color}/>
+        <text x=${px} y=${above ? py - 7 : py + 14} text-anchor=${anchor} class="extv" fill=${s.color}>${fmt(vals[i], this.digits)}${s.unit?.trim() ?? ""}</text>`;
+    };
+    // Con varias series solo se rotulan los extremos de la primera para no amontonar cifras
+    return svg`${mark(iMax, true)}${first ? mark(iMin, false) : nothing}`;
+  }
+
+  private renderLegend() {
+    const rows = this.series.filter((s) => s.data.length > 1);
+    if (!rows.length) return nothing;
+    return html`<div class="legend">
+      ${rows.map((s) => {
+        const vals = s.data.map((p) => p[1]);
+        const unit = s.unit ?? "";
+        const delta = vals[vals.length - 1] - vals[0];
+        const flat = Math.abs(delta) < Math.pow(10, -this.digits) / 2;
+        const hours = Math.round((s.data[s.data.length - 1][0] - s.data[0][0]) / 3600_000);
+        return html`<span class="lg">
+          <i style="background:${s.color}"></i>
+          ${s.label ? html`<b>${s.label}</b>` : nothing}
+          <span>${fmt(Math.min(...vals), this.digits)}–${fmt(Math.max(...vals), this.digits)}${unit}</span>
+          ${
+            this.trend
+              ? html` <span class="delta ${flat ? "" : delta > 0 ? "up" : "down"}"
+                  >${flat ? "=" : delta > 0 ? "▲ +" : "▼ −"}${flat ? "" : fmt(Math.abs(delta), this.digits)}${flat ? " estable" : unit}
+                  ${hours ? `en ${hours} h` : ""}</span
+                >`
+              : nothing
+          }
+        </span>`;
+      })}
+    </div>`;
   }
 
   static styles = css`
@@ -145,6 +210,58 @@ export class AreaChart extends Sized {
     svg {
       display: block;
       overflow: visible;
+    }
+    .axis {
+      font-size: 9.5px;
+      font-family: var(--font-ui);
+      opacity: 0.75;
+      paint-order: stroke;
+      stroke: var(--glass-strong);
+      stroke-width: 3px;
+    }
+    .ext {
+      fill: var(--glass-strong);
+      stroke-width: 1.6;
+    }
+    .extv {
+      font-size: 10px;
+      font-weight: 600;
+      font-family: var(--font-ui);
+      paint-order: stroke;
+      stroke: var(--glass-strong);
+      stroke-width: 3px;
+    }
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px 14px;
+      margin-top: 6px;
+      font-size: 11px;
+      font-family: var(--font-ui);
+      color: var(--text-muted);
+    }
+    .lg {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+    }
+    .lg i {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+    .lg b {
+      color: var(--text);
+      font-weight: 600;
+    }
+    .delta {
+      color: var(--text-faint);
+    }
+    .delta.up,
+    .delta.down {
+      color: var(--text);
+      font-weight: 600;
     }
     .grid {
       stroke: var(--grid-line);
@@ -399,11 +516,11 @@ export class Timeline extends Sized {
     const to = Math.max(this.to, from + 1);
     const x = (t: number) => labelW + ((Math.min(to, Math.max(from, t)) - from) / (to - from)) * (W - labelW);
     const hours: number[] = [];
-    for (let h = 0; h <= 24; h += 6) {
-      const d = new Date(from);
-      d.setHours(h, 0, 0, 0);
-      if (d.getTime() <= to) hours.push(d.getTime());
-    }
+    // Marcas cada 6 h (0, 6, 12, 18) dentro del intervalo, aunque no empiece a medianoche
+    const first = new Date(from);
+    first.setHours(Math.ceil(first.getHours() / 6) * 6, 0, 0, 0);
+    if (first.getTime() < from) first.setHours(first.getHours() + 6);
+    for (let t = first.getTime(); t <= to; t += 6 * 3600_000) hours.push(t);
     return html`
       <svg width=${W} height=${H} viewBox="0 0 ${W} ${H}">
         ${hours.map(

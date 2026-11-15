@@ -74,6 +74,25 @@ export function dailyTotals(hass: HomeAssistant, ids: string[], days = 7): Promi
   });
 }
 
+/** Energía (u otro contador creciente) gastada cada día: diferencia diaria de las estadísticas. */
+export function dailyChange(hass: HomeAssistant, ids: string[], days = 7): Promise<Record<string, Point[]>> {
+  return cached(`change:${days}:${ids.join(",")}`, async () => {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    start.setDate(start.getDate() - (days - 1));
+    const res = await hass.callWS<Record<string, (StatRow & { change?: number | null })[]>>({
+      type: "recorder/statistics_during_period",
+      start_time: start.toISOString(),
+      statistic_ids: ids,
+      period: "day",
+      types: ["change"],
+    });
+    const out: Record<string, Point[]> = {};
+    for (const id of ids) out[id] = (res[id] ?? []).map((r) => [toMs(r.start), Math.max(0, r.change ?? 0)]);
+    return out;
+  });
+}
+
 export interface Span {
   from: number;
   to: number;

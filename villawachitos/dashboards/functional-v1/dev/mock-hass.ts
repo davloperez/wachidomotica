@@ -173,6 +173,15 @@ export function createMockHass(getDarkMode: () => boolean, onUpdate: (hass: Home
   set("switch.enchufe_limpiador_piscina", "off");
   set("switch.interruptor_depuradora", "on");
   set("sensor.interruptor_depuradora_power_a", "742");
+  set("sensor.interruptor_depuradora_current_a", "3.31");
+  set("sensor.interruptor_depuradora_voltage_a", "231");
+  set("sensor.interruptor_depuradora_temperature", "27");
+  set("sensor.interruptor_depuradora_energy", "532.9");
+  set("schedule.horario_depuradora_de_piscina", "on", {
+    friendly_name: "Horario depuradora de piscina",
+    next_event: new Date(Date.now() + 40 * 60_000).toISOString(),
+  });
+  set("automation.encendido_y_apagado_automatico_de_depuradora_de_la_piscina", "on");
   set("binary_sensor.sensor_puerta_garaje_1_contact", "off", {}, ago(95));
   set("binary_sensor.sensor_puerta_garaje_2_contact", "on", {}, ago(4));
   set("binary_sensor.sensor_puerta_principal_contact", "off", {}, ago(30));
@@ -232,7 +241,8 @@ function mockWS(msg: Record<string, unknown>, states: Record<string, HassEntity>
         else if (id.includes("refrigerador")) v = 4 + Math.sin(i / 2) * 0.6;
         else if (id.includes("power")) v = hour >= 10 && hour < 16 ? 740 : 0;
         else v = 21 + 3.5 * sun + Math.random() * 0.3;
-        rows.push(day ? { start: t, state: v } : { start: t, mean: v });
+        if (id.includes("_energy")) v = 1.2 + Math.random() * 0.8;
+        rows.push(day ? { start: t, state: v, change: v } : { start: t, mean: v });
       }
       out[id] = rows;
     }
@@ -255,6 +265,14 @@ function mockWS(msg: Record<string, unknown>, states: Record<string, HassEntity>
       out[id] = rows;
     }
     return out;
+  }
+  if (msg.type === "schedule/list") {
+    const day = [
+      { from: "10:00:00", to: "11:00:00" },
+      { from: "14:00:00", to: "15:00:00" },
+    ];
+    const week = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+    return [{ id: "horario_depuradora_de_piscina", ...Object.fromEntries(week.map((d) => [d, day])) }];
   }
   throw new Error("mock");
 }

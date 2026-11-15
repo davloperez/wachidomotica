@@ -327,9 +327,23 @@ export class RoomView extends LitElement {
         <fv1-area-chart
           .height=${90}
           .series=${[
-            { data: this.climate[r.temperature] ?? [], color: "var(--terracotta)", unit: "°", own: true },
+            {
+              data: this.climate[r.temperature] ?? [],
+              color: "var(--terracotta)",
+              unit: "°",
+              own: true,
+              label: "Temperatura",
+            },
             ...(r.humidity
-              ? [{ data: this.climate[r.humidity] ?? [], color: "var(--sky)", unit: " %", own: true }]
+              ? [
+                  {
+                    data: this.climate[r.humidity] ?? [],
+                    color: "var(--sky)",
+                    unit: " %",
+                    own: true,
+                    label: "Humedad",
+                  },
+                ]
               : []),
           ]}
         ></fv1-area-chart>

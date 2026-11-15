@@ -61,6 +61,8 @@ export interface Lamp {
   strip?: { length: number; axis: "x" | "z" };
   /** Downlights empotrados que forman la misma luz (se encienden juntos) */
   spots?: Point[];
+  /** Lámpara de pie en forma de columna luminosa de esta altura (m), apoyada en el suelo */
+  column?: number;
 }
 
 /** 4 downlights repartidos 2 × 2 por el techo de una estancia, como luz de techo. */
@@ -371,7 +373,8 @@ export const LAMPS: Lamp[] = [
   },
   { entity: "light.salon_esp_entrada_luz_exterior_lavadero", kind: "wall", pos: [-7.93, 2.0, -1.2] },
   { entity: "light.salon_esp_entrada_luz_exterior_barbacoa", kind: "wall", pos: [-6.79, 2.0, 3.6] },
-  { entity: "light.lampara_blanca_exterior", kind: "lamp", pos: [-7.8, 1.5, 7.6] },
+  // Columna blanca de 1 m en la esquina suroeste del jardín (grupo de sus dos luces, arriba y abajo)
+  { entity: "light.lampara_blanca_exterior", kind: "lamp", pos: [-8.75, 0.6, 13.1], column: 1.0 },
   { entity: "light.luz_piscina", kind: "pool", pos: [-1.25, -0.7, 12.5] },
 ];
 
