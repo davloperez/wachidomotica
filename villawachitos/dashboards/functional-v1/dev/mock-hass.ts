@@ -128,6 +128,16 @@ export function createMockHass(getDarkMode: () => boolean, onUpdate: (hass: Home
     source_list: ["TV", "HDMI 1", "Netflix"],
   });
   set("remote.salon_tv_samsung_salon_85", "off");
+  for (const id of [
+    "media_player.shellywalldisplay_0205030bbdd8",
+    "media_player.shelly_salon_sur",
+    "media_player.oficina_1_shellywalldisplay_oficina1",
+    "media_player.oficina_2_shellywalldisplay_oficina2",
+  ])
+    set(id, "idle", { volume_level: 0.3 });
+  set("media_player.fire_tv_dormitorio", "unavailable");
+  set("switch.t34_smart_plug_interruptor_1_2", "unavailable");
+  set("binary_sensor.cam_exterior_este_motion_2", "on");
   set("vacuum.limpiasuelos", "docked", { friendly_name: "Limpiasuelos" });
   set("sensor.limpiasuelos_battery_level", "100");
   set("sensor.epson_et_5150_series", "idle");

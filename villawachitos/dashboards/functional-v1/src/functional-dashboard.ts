@@ -28,8 +28,10 @@ import {
   roomBounds,
   type Box2,
 } from "./house/iso";
-import { DEVICE_SPOTS, ROOMS_DEF, ROOM_BY_ID, lampPos, type RoomDef } from "./house/rooms";
+import { ROOMS_DEF, ROOM_BY_ID, deviceSpot, lampPos, type RoomDef } from "./house/rooms";
 import type { RoomView } from "./views/room-view";
+import type { LayerView } from "./views/layer-view";
+import { LAYERS, itemActive, itemAlert, layerItems, rowState, type LayerId, type LayerItem } from "./house/layers";
 import { DEVICE_ICONS, deviceBrief } from "./widgets/devices";
 import { causticUrl } from "./house/materials";
 import { lightIcon } from "./widgets/lights";
@@ -37,6 +39,7 @@ import { BASE_VIEW, CUT3D, CalmScene, Vector2, Vector3, type ViewAngle } from ".
 import { FOOTPRINT, GATES, PLOT, POOL, POOL_DECK, type Rect } from "../../house-3d-v1/src/scene/plan";
 import "./views/home-view";
 import "./views/room-view";
+import "./views/layer-view";
 import "./widgets/lights";
 import "./widgets/solar-sheet";
 import "./widgets/pump-sheet";
@@ -85,7 +88,7 @@ const EXTERIOR_BOX = boxOf(
   0.5,
 );
 /** Vista del exterior: desde el suroeste y más baja, para diferenciarla de la general */
-const EXTERIOR_VIEW: ViewAngle = { yaw: BASE_VIEW.yaw - (12 * Math.PI) / 180, elev: (40 * Math.PI) / 180 };
+const EXTERIOR_VIEW: ViewAngle = { yaw: BASE_VIEW.yaw - (12 * Math.PI) / 180, elev: (36 * Math.PI) / 180 };
 /** Puntos que la cámara debe ver de una estancia: una rejilla de su suelo y sus dispositivos. */
 function roomPoints(room: RoomDef): Vector3[] {
   const pts: Vector3[] = [];
@@ -94,7 +97,7 @@ function roomPoints(room: RoomDef): Vector3[] {
       for (const fz of [0.2, 0.5, 0.8]) pts.push(new Vector3(x1 + (x2 - x1) * fx, 0.35, z1 + (z2 - z1) * fz));
   // Los dispositivos cuentan doble: que se vean importa más que un trozo de suelo
   for (const d of room.devices) {
-    const p = DEVICE_SPOTS[d.type];
+    const p = deviceSpot(d);
     if (p)
       pts.push(new Vector3(p[0], Math.min(p[1], 0.9), p[2]), new Vector3(p[0], Math.min(p[1], 0.9), p[2]));
   }
@@ -137,6 +140,9 @@ export class FunctionalDashboard extends LitElement {
   @state() private sheet?: { entity: string; name: string };
   @state() private solarOpen = false;
   @state() private pumpOpen = false;
+  /** Capa activa (todos los dispositivos de un tipo en la vista general) */
+  @state() private layer?: LayerId;
+  private layerCache = new Map<LayerId, LayerItem[]>();
   /** Tamaño natural de las imágenes reales (cuando se configuran) */
   @state() private natural: Record<string, [number, number]> = {};
 
@@ -184,13 +190,14 @@ export class FunctionalDashboard extends LitElement {
     this.lastTouch = Date.now();
     if (e.key === "Escape") {
       if (this.sheet) this.sheet = undefined;
+      else if (this.layer) this.layer = undefined;
       else this.go(HOME);
     }
   };
 
   private checkIdle(): void {
     const secs = this.config.idle_return_seconds ?? 180;
-    if (!secs || this.view === HOME) return;
+    if (!secs || (this.view === HOME && !this.layer)) return;
     if (Date.now() - this.lastTouch > secs * 1000) {
       this.go(HOME);
     }
@@ -202,7 +209,24 @@ export class FunctionalDashboard extends LitElement {
     this.sheet = undefined;
     this.solarOpen = false;
     this.pumpOpen = false;
+    this.layer = undefined;
     this.view = view;
+  }
+
+  /** Elige una capa (vuelve a la vista general); tocar la capa activa la cierra. */
+  private setLayer(id?: LayerId): void {
+    this.lastTouch = Date.now();
+    this.sheet = undefined;
+    this.solarOpen = false;
+    this.pumpOpen = false;
+    this.view = HOME;
+    this.layer = id === this.layer ? undefined : id;
+  }
+
+  private items(id: LayerId): LayerItem[] {
+    let its = this.layerCache.get(id);
+    if (!its) this.layerCache.set(id, (its = layerItems(id)));
+    return its;
   }
 
   protected willUpdate(): void {
@@ -239,7 +263,8 @@ export class FunctionalDashboard extends LitElement {
     }
     if (theme !== this.scene.currentTheme) this.scene.setTheme(theme);
     if (changed.has("hass") && this.hass) this.scene.update(this.hass, this.config.weather);
-    if (changed.has("view") || changed.has("size")) this.frame3d(changed.has("view") && this.ready);
+    if (changed.has("view") || changed.has("size") || changed.has("layer"))
+      this.frame3d((changed.has("view") || changed.has("layer")) && this.ready);
     // Los accesos recién pintados necesitan su posición
     this.placePins();
   }
@@ -254,6 +279,18 @@ export class FunctionalDashboard extends LitElement {
     const ms = animate ? ZOOM_MS : 0;
     this.homeDistance = scene.distanceFor(HOME_BOX, this.area(false), 0.96);
     scene.setDrift(this.view === HOME);
+    // Capa: la casa y todos sus dispositivos (las cámaras y luces del jardín amplían el encuadre)
+    if (this.view === HOME && this.layer) {
+      const pts = this.items(this.layer).flatMap((it) => (it.pos ? [it.pos] : []));
+      const box: Box3 = [HOME_BOX[0].clone(), HOME_BOX[1].clone()];
+      for (const [x, , z] of pts) {
+        box[0].x = Math.min(box[0].x, x - 0.6);
+        box[0].z = Math.min(box[0].z, z - 0.6);
+        box[1].x = Math.max(box[1].x, x + 0.6);
+        box[1].z = Math.max(box[1].z, z + 0.6);
+      }
+      return scene.frame(box, this.area(false), { fill: 0.92, ms });
+    }
     // La vista general deja algo de margen para el balanceo lento
     if (this.view === HOME) return scene.frame(HOME_BOX, this.area(false), { fill: 0.92, ms });
     const room = ROOM_BY_ID.get(this.view);
@@ -303,9 +340,9 @@ export class FunctionalDashboard extends LitElement {
           const mid = (v: number[]) => (Math.min(...v) + Math.max(...v)) / 2;
           p = new Vector3(mid(xs), 1.3, mid(zs) + 0.4);
         }
-      } else if (kind === "dev") {
-        const pos = DEVICE_SPOTS[id as keyof typeof DEVICE_SPOTS];
-        if (pos) p = new Vector3(...pos);
+      } else if (kind === "pt") {
+        const [x, y, z] = id.split(",").map(Number);
+        p = new Vector3(x, y, z);
       } else {
         const pos = lampPos(id);
         if (pos) p = new Vector3(pos[0], Math.min(pos[1], CUT3D + 0.3), pos[2]);
@@ -336,7 +373,8 @@ export class FunctionalDashboard extends LitElement {
     const col = Math.min(400, Math.max(290, w * 0.23));
     const gut = Math.min(28, Math.max(16, w * 0.015));
     const side = col + gut * 2;
-    const top = room ? 110 : 24;
+    // Arriba queda el selector de capas
+    const top = room ? 110 : 76;
     const bottom = 96;
     return { x: side, y: top, w: w - side * 2, h: h - top - bottom };
   }
@@ -447,10 +485,11 @@ export class FunctionalDashboard extends LitElement {
         <div class="pins ${this.use3d ? "live" : ""}">
           ${this.renderHotspots(base)} ${room ? this.renderMarkers(room.id, base) : nothing}
           ${
-            !room && this.use3d
+            !room && this.use3d && !this.layer
               ? html`<div class="markers">${this.renderGatePins(EXTERIOR_ROOM, 0, true)}</div>`
               : nothing
           }
+          ${!room && this.use3d && this.layer ? this.renderLayerMarkers(this.layer) : nothing}
         </div>
       </div>
 
@@ -465,13 +504,23 @@ export class FunctionalDashboard extends LitElement {
               @open-solar=${() => (this.solarOpen = true)}
               @open-pump=${() => (this.pumpOpen = true)}
             ></fv1-room>`
-          : html`<fv1-home
-              .hass=${this.hass}
-              .config=${this.config}
-              @go=${(e: CustomEvent<string>) => this.go(e.detail)}
-            ></fv1-home>`
+          : this.layer
+            ? html`<fv1-layer
+                .hass=${this.hass}
+                .layer=${this.layer}
+                .items=${this.items(this.layer)}
+                @layer=${() => this.setLayer(undefined)}
+                @open-light=${(e: CustomEvent<{ entity: string; name: string }>) => (this.sheet = e.detail)}
+                @open-solar=${() => (this.solarOpen = true)}
+                @open-pump=${() => (this.pumpOpen = true)}
+              ></fv1-layer>`
+            : html`<fv1-home
+                .hass=${this.hass}
+                .config=${this.config}
+                @go=${(e: CustomEvent<string>) => this.go(e.detail)}
+              ></fv1-home>`
       }
-      ${this.renderDock()}
+      ${this.renderLayerBar()} ${this.renderDock()}
       ${
         this.sheet
           ? html`<fv1-light-sheet
@@ -536,7 +585,7 @@ export class FunctionalDashboard extends LitElement {
   }
 
   private renderHotspots(base: View) {
-    const home = this.view === HOME;
+    const home = this.view === HOME && !this.layer;
     return html`<div class="hotspots ${home ? "" : "hidden"}">
       ${ROOMS_DEF.map((r, i) => {
         const p = this.use3d ? undefined : this.hotspotPoint(r.id);
@@ -676,14 +725,15 @@ export class FunctionalDashboard extends LitElement {
   }
 
   private renderDevicePins(room: RoomDef, offset: number) {
-    const devices = room.devices.filter((d) => DEVICE_SPOTS[d.type]);
+    const devices = room.devices.filter((d) => deviceSpot(d));
     return [
       ...this.renderGatePins(room, offset + devices.length),
       ...devices.map(
         (d, i) =>
           html`<button
             class="marker device"
-            data-anchor="dev|${d.type}"
+            data-anchor="pt|${deviceSpot(d)!.join(",")}"
+            data-dev=${d.type}
             style=${styleMap({ "--i": String(offset + i) })}
             aria-label=${d.name}
             @click=${() =>
@@ -698,6 +748,94 @@ export class FunctionalDashboard extends LitElement {
           </button>`,
       ),
     ];
+  }
+
+  /** Selector de capas, arriba en el centro. */
+  private renderLayerBar() {
+    return html`<nav class="layers glass scroll" aria-label="Capas">
+      ${LAYERS.map((l) => {
+        const busy = this.items(l.id).some((it) => itemAlert(this.hass, it));
+        return html`<button
+          class="tab ${this.layer === l.id ? "on" : ""} ${busy ? "alert" : ""}"
+          title=${l.name}
+          aria-pressed=${this.layer === l.id}
+          @click=${() => this.setLayer(l.id)}
+        >
+          ${icon(l.icon)}<span>${l.name}</span>
+        </button>`;
+      })}
+    </nav>`;
+  }
+
+  /** Marcadores de todos los dispositivos de la capa sobre la maqueta. */
+  private renderLayerMarkers(id: LayerId) {
+    const its = this.items(id).filter((it) => it.pos);
+    const h = this.hass;
+    const panel = () => this.renderRoot.querySelector<LayerView>("fv1-layer");
+    return html`<div class="markers layer ${its.length > 14 ? "dense" : ""}">
+      ${repeat(
+        its,
+        (it) => it.key,
+        (it, i) => {
+          const on = itemActive(h, it);
+          const alert = itemAlert(h, it);
+          const [x, y, z] = it.pos!;
+          const anchor = `pt|${x},${Math.min(y, CUT3D + 0.3)},${z}`;
+          const style = { "--i": String(Math.min(i, 30)) };
+          if (it.kind === "light") {
+            const e = st(h, it.entity);
+            return html`<button
+              class="marker ${on ? "on" : ""}"
+              data-anchor=${anchor}
+              style=${styleMap({ ...style, "--lamp": lightColor(e) })}
+              aria-label=${it.name}
+              @pointerdown=${() => {
+                window.clearTimeout(this.press);
+                this.press = window.setTimeout(() => {
+                  this.press = -1;
+                  this.sheet = { entity: it.entity, name: it.name };
+                }, 550);
+              }}
+              @pointerup=${() => {
+                if (this.press !== -1) {
+                  window.clearTimeout(this.press);
+                  call(h, "light", "toggle", { entity_id: it.entity });
+                  panel()?.focusItem(it.key);
+                }
+                this.press = 0;
+              }}
+              @pointerleave=${() => window.clearTimeout(this.press)}
+            >
+              <span class="m-dot">${icon(lightIcon(it.entity))}</span>
+              <span class="m-name">${it.name}</span>
+            </button>`;
+          }
+          const ico =
+            it.kind === "device" ? DEVICE_ICONS[it.device.type] : it.kind === "row" ? it.icon : LAYERS[1].icon;
+          const label =
+            it.kind === "device"
+              ? deviceBrief(h, it.device)
+              : it.kind === "row"
+                ? `${it.name} · ${rowState(h, it)}`
+                : `${it.name} · ${fmt(st(h, it.entity)?.attributes.current_position as number, 0)} %`;
+          return html`<button
+            class="marker device ${on ? "active" : ""} ${alert ? "alert" : ""}"
+            data-anchor=${anchor}
+            style=${styleMap(style)}
+            aria-label=${it.name}
+            @click=${() => {
+              this.lastTouch = Date.now();
+              if (it.kind === "device" && it.device.type === "energy") this.solarOpen = true;
+              else if (it.kind === "device" && it.device.type === "pump") this.pumpOpen = true;
+              else panel()?.focusItem(it.key);
+            }}
+          >
+            <span class="m-dot">${icon(ico)}</span>
+            <span class="m-name">${label}</span>
+          </button>`;
+        },
+      )}
+    </div>`;
   }
 
   private renderDock() {
@@ -1124,6 +1262,74 @@ export class FunctionalDashboard extends LitElement {
         white-space: nowrap;
       }
 
+      /* ----- Marcadores de una capa ----- */
+      .marker.device.active .m-dot {
+        color: #fff;
+        background: var(--sage);
+        box-shadow: 0 0 0 4px var(--sage-soft);
+      }
+      .marker.device.alert .m-dot {
+        color: #fff;
+        background: var(--amber);
+        box-shadow: 0 0 0 4px var(--amber-soft);
+      }
+      /* Muchas luces o dispositivos: solo se rotulan los encendidos o con aviso */
+      .markers.dense .marker .m-dot {
+        width: 32px;
+        height: 32px;
+      }
+      .markers.dense .marker:not(.on):not(.active):not(.alert) .m-name {
+        opacity: 0;
+        transition: opacity 300ms;
+      }
+      .markers.dense .marker:hover .m-name {
+        opacity: 1;
+      }
+
+      /* ----- Selector de capas (arriba) ----- */
+      .layers {
+        position: absolute;
+        left: 50%;
+        top: var(--space-3);
+        transform: translateX(-50%);
+        z-index: 6;
+        max-width: calc(100% - 2 * var(--col-w) - 80px);
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        padding: 5px;
+        border-radius: 999px;
+        overflow-x: auto;
+        animation: layers-in 900ms var(--ease) both 300ms;
+      }
+      @keyframes layers-in {
+        from {
+          opacity: 0;
+          transform: translate(-50%, -24px);
+        }
+      }
+      .layers .tab {
+        padding: 9px 12px;
+      }
+      .layers .tab:not(.on) span {
+        display: none;
+      }
+      .tab.alert::after {
+        content: "";
+        position: absolute;
+        top: 6px;
+        right: 7px;
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--amber);
+        box-shadow: 0 0 8px var(--amber);
+      }
+      /* En una estancia, el selector se aparta del título (queda arriba en el centro, más discreto) */
+      .stage.in-room ~ .layers {
+        opacity: 0.85;
+      }
+
       /* ----- Barra inferior ----- */
       .dock {
         position: absolute;
@@ -1216,6 +1422,10 @@ export class FunctionalDashboard extends LitElement {
         }
         .dock {
           position: fixed;
+        }
+        .layers {
+          max-width: calc(100% - 24px);
+          top: 8px;
         }
       }
     `,

@@ -8,7 +8,7 @@ paneles de cristal esmerilado y animaciones suaves. Tema claro, oscuro o auto (b
 En el centro, la **maqueta 3D de toda la casa** (interior y exterior). Sobre cada estancia hay un acceso con su nombre,
 temperatura (si tiene sensor), luces encendidas y presencia; las estancias con luces encendidas brillan en la imagen
 y la piscina se ilumina con su luz. Cuando la lavadora termina, el acceso del lavadero se pone verde con el aviso
-«Lavadora lista». La cámara se balancea muy despacio sobre la parcela (±10° en 2 min 40 s), sin estorbar al tocar.
+«Lavadora lista». La cámara se balancea muy despacio sobre la parcela (42° de elevación, ±10° de giro en 2 min 40 s), sin estorbar al tocar.
 Alrededor:
 
 - **Saludo**, fecha, hora, tiempo y quién está en casa.
@@ -23,6 +23,29 @@ Alrededor:
   batería baja, averías (`binary_sensor` de clase `problem`) y dispositivos sin conexión. Tocar uno lleva a su estancia.
 - **Clima interior** (salón, humedad, exterior y aire acondicionado) con curva de 24 h.
 - **Toda la casa**: luces encendidas, apertura media de persianas, apagar todo y subir/bajar todas (con confirmación).
+
+## Capas
+
+Arriba, en el centro, un selector de **capas** muestra todos los dispositivos de un mismo tipo en toda la casa
+(definidas en [`src/house/layers.ts`](src/house/layers.ts)):
+
+| Capa | Qué incluye |
+| --- | --- |
+| Luces | Todas las luces de las estancias y del jardín (con «Apagar todas», doble toque) |
+| Persianas | Todas las persianas, con su marcador en la ventana (subir/bajar todas, doble toque) |
+| Clima | Aire acondicionado, toalleros y sensores de temperatura y humedad |
+| Energía | Instalación solar, depuradora, lavadora y enchufes (ventilación, limpiafondos, ambientador) |
+| Electrodomésticos | Frigorífico, lavavajillas, freidora, lavadora, robot, impresora y arenero |
+| Seguridad | Alarma, puerta principal, puertas del garaje, portero, cada cámara, presencia y sensores de agua |
+| Multimedia | TV del salón, pantallas de pared Shelly (salón y oficinas) y Fire TV del dormitorio |
+
+Al elegir una capa la cámara encuadra la casa con todos sus dispositivos, los accesos de las estancias se ocultan y
+cada dispositivo tiene su marcador (si hay muchos, solo se rotulan los encendidos o con aviso). Los paneles laterales
+pasan a listar los controles reales agrupados por estancia; tocar un marcador lleva a su control y lo resalta (las
+luces se encienden/apagan al tocar y abren el detalle al mantener pulsado). Un punto ámbar en el selector avisa de
+una capa con algo pendiente (fuga, puerta abierta, persona en cámara). Volver a tocar la capa, la ✕ o Escape la
+cierran; elegir una estancia en la barra inferior también. Los sensores de agua zigbee sin estancia aparecen en
+«Sin ubicación», sin marcador.
 
 ## Vista de estancia
 
@@ -86,7 +109,7 @@ sofá, cocina, valla con portones y piscina, con la paleta tranquila del tema (c
   patio del lavadero en negro (cerradas). Son texturas **CC0 de [ambientCG](https://ambientcg.com)**, en
   [`public/textures/`](public/textures/) (~0,8 MB, créditos en `CREDITS.md`).
 - **Dispositivos en su sitio**: frigorífico (al sur del fregadero), robot aspirador en su base (al norte del mueble de
-  la TV; desaparece mientras limpia), impresora (oficina 1), lavadora, baterías e inversor, y portero de la calle. Al entrar en su estancia llevan un marcador con su estado;
+  la TV; desaparece mientras limpia), impresora (oficina 1), lavadora, baterías e inversor, portero de la calle, depuradora y toalleros (radiadores) de los baños. Al entrar en su estancia llevan un marcador con su estado;
   tocarlo lleva a su tarjeta y la resalta.
 - **Sol real** según la hora y la ubicación (`latitude`/`longitude` de la tarjeta, o las de la casa por defecto):
   sombras suaves que se recalculan solo cuando cambia algo.

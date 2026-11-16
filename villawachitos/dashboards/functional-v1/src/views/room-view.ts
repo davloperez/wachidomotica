@@ -496,6 +496,8 @@ export class RoomView extends LitElement {
       }
       .title {
         display: grid;
+        /* El selector de capas ocupa el centro de arriba: los nombres largos pasan a dos líneas */
+        max-width: calc(50vw - 270px);
       }
       .eyebrow {
         font-size: var(--fs-label);
@@ -612,6 +614,9 @@ export class RoomView extends LitElement {
         .summary {
           margin-left: 0;
           justify-content: flex-start;
+        }
+        .title {
+          max-width: none;
         }
       }
     `,

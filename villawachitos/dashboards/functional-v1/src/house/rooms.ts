@@ -24,6 +24,7 @@ import {
   LAMPS,
   PEDESTRIAN_GATE,
   PRINTER,
+  TOWEL_RAILS,
   PUMP,
   ROOMS,
   TV,
@@ -250,6 +251,7 @@ export const ROOMS_DEF: RoomDef[] = [
     ],
     devices: [
       { type: "printer", name: "Impresora", entity: PRINTER.entity, inks: PRINTER.inks },
+      { type: "switch", name: "Ambientador", entity: "switch.t34_smart_plug_interruptor_1_2" },
       {
         type: "presence",
         name: "Panel oficina 1",
@@ -394,7 +396,6 @@ export const ROOMS_DEF: RoomDef[] = [
       { entity: "light.salon_esp_entrada_luz_exterior_lavadero", name: "Patio lavadero" },
     ],
     covers: [],
-    temperature: "sensor.interruptor_depuradora_temperature",
     devices: [
       { type: "pump", name: "Depuradora", entity: PUMP.entity, power: PUMP.power },
       // Portero automático en la puerta peatonal del jardín norte
@@ -455,7 +456,19 @@ export function lampKind(entity: string): LampKind | undefined {
 
 /** Posición de la luminaria en el plano [x, y, z] (si está en el plano). */
 export function lampPos(entity: string): [number, number, number] | undefined {
-  return LAMPS.find((l) => l.entity === entity)?.pos;
+  const l = LAMPS.find((x) => x.entity === entity);
+  if (!l) return undefined;
+  // Marcador desplazado (luces de un mismo mueble repartidas para que no se solapen)
+  return l.pin ? [l.pin[0], l.pos[1], l.pin[1]] : l.pos;
+}
+
+/** Punto del marcador de un dispositivo en la maqueta (los toalleros, en su pared de cada baño). */
+export function deviceSpot(d: DeviceDef): [number, number, number] | undefined {
+  if (d.type === "towel") {
+    const t = TOWEL_RAILS.find((r) => r.entity === d.entity);
+    return t ? [t.at[0], 1.2, t.at[1]] : undefined;
+  }
+  return DEVICE_SPOTS[d.type];
 }
 
 /** Sensores de fugas de agua sin estancia asignada (zigbee). */

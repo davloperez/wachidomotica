@@ -90,14 +90,60 @@ export function deviceBrief(h: HomeAssistant | undefined, d: DeviceDef): string 
       const soc = num(h, ENERGY.sensors.soc);
       return `${pv > 0.05 ? `☀ ${fmt(pv, 1)} kW · ` : ""}${fmt(soc, 0)} %`;
     }
+    case "towel":
+      return `Toallero · ${isOn(h, d.entity) ? "calentando" : "apagado"}`;
     case "pump":
       return isOn(h, d.entity) ? `Filtrando · ${fmt(num(h, d.power), 0)} W` : "Depuradora parada";
     case "gates": {
       const open = d.gates.filter((g) => isOn(h, g.entity)).length;
       return open ? `${open} abierta${open > 1 ? "s" : ""}` : "Cerradas";
     }
-    default:
-      return d.name;
+    case "hvac": {
+      const e = st(h, d.entity);
+      if (!e || e.state === "unavailable") return "Clima sin conexión";
+      const cur = e.attributes.current_temperature as number | undefined;
+      return e.state === "off"
+        ? `Apagado${cur !== undefined ? ` · ${fmt(cur, 1)}°` : ""}`
+        : `${HVAC_ES[e.state] ?? e.state} a ${fmt(e.attributes.temperature as number, 0)}°`;
+    }
+    case "tv": {
+      const e = st(h, d.entity);
+      if (!e || e.state === "unavailable") return `${d.name} · sin conexión`;
+      return MEDIA_OFF.includes(e.state) || e.state === "idle"
+        ? `${d.name} · ${e.state === "idle" ? "en espera" : "apagada"}`
+        : `${d.name} · ${(e.attributes.media_title ?? e.attributes.app_name ?? "encendida") as string}`;
+    }
+    case "dishwasher": {
+      const s = (st(h, d.state)?.state ?? "unavailable").toLowerCase();
+      const p = num(h, d.progress);
+      return `Lavavajillas · ${DISH_ES[s] ?? s}${s === "run" && p !== undefined ? ` ${p} %` : ""}`;
+    }
+    case "airfryer": {
+      const rem = num(h, d.remaining);
+      return rem ? `Freidora · ${rem} min` : "Freidora parada";
+    }
+    case "litter": {
+      const visits = num(h, d.visits);
+      const warn = isOn(h, d.full) ? " · cubo lleno" : isOn(h, d.clean) ? " · limpiar" : "";
+      return `Arenero · ${fmt(visits, 0)} visitas${warn}`;
+    }
+    case "cameras": {
+      const person = d.cameras.some((c) => isOn(h, c.person));
+      const motion = d.cameras.some((c) => isOn(h, c.motion));
+      return `${d.name} · ${person ? "persona" : motion ? "movimiento" : "tranquila"}`;
+    }
+    case "presence":
+      return `${d.name} · ${isOn(h, d.occupancy) ? "hay alguien" : "vacío"}`;
+    case "lock": {
+      const s = st(h, d.entity)?.state;
+      return `${d.name} · ${!s || s === "unavailable" ? "sin conexión" : s === "locked" ? "cerrado" : "abierto"}`;
+    }
+    case "switch": {
+      const e = st(h, d.entity);
+      const p = num(h, d.power);
+      if (!e || e.state === "unavailable") return `${d.name} · sin conexión`;
+      return `${d.name} · ${e.state === "on" ? (p !== undefined ? `${fmt(p, 0)} W` : "encendido") : "apagado"}`;
+    }
   }
 }
 

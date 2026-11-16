@@ -96,8 +96,8 @@ const SLAB = 0.7;
 const SHUTTER_SPEED = 0.35;
 const GATE_SPEED = 0.3;
 const PLOT_CENTER = new Vector3(-0.4, 0, 2.6);
-/** Vista de siempre: desde el sur, casi de frente, 50° de elevación (ángulos en radianes). */
-export const BASE_VIEW = { yaw: Math.atan2(-0.12, 17), elev: (50 * Math.PI) / 180 };
+/** Vista de siempre: desde el sur, casi de frente, 42° de elevación (ángulos en radianes). */
+export const BASE_VIEW = { yaw: Math.atan2(-0.12, 17), elev: (42 * Math.PI) / 180 };
 /** Dirección desde el objetivo hacia la cámara (yaw 0 = desde el sur, π/2 = desde el este). */
 const viewDir = (yaw: number, elev: number) =>
   new Vector3(Math.sin(yaw) * Math.cos(elev), Math.sin(elev), Math.cos(yaw) * Math.cos(elev));

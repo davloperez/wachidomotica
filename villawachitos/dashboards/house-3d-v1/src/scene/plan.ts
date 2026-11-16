@@ -63,6 +63,8 @@ export interface Lamp {
   spots?: Point[];
   /** Lámpara de pie en forma de columna luminosa de esta altura (m), apoyada en el suelo */
   column?: number;
+  /** Punto [x, z] del marcador si no es el centro (para separar luces de un mismo mueble) */
+  pin?: Point;
 }
 
 /** 4 downlights repartidos 2 × 2 por el techo de una estancia, como luz de techo. */
@@ -335,18 +337,27 @@ export const LAMPS: Lamp[] = [
     kind: "strip",
     pos: [1.86, 2.15, 0.48],
     strip: { length: 3.2, axis: "z" },
+    pin: [1.86, -0.6],
   },
   {
     entity: "light.luz_armarios_bajos",
     kind: "strip",
     pos: [1.86, 0.3, 0.48],
     strip: { length: 3.2, axis: "z" },
+    pin: [1.86, 1.6],
   },
-  { entity: "light.luz_cajones", kind: "strip", pos: [1.86, 0.85, 0.48], strip: { length: 3.2, axis: "z" } },
+  {
+    entity: "light.luz_cajones",
+    kind: "strip",
+    pos: [1.86, 0.85, 0.48],
+    strip: { length: 3.2, axis: "z" },
+    pin: [1.86, 0.5],
+  },
   /* Dormitorio 1 */
   downlights("light.dormitorio_1_persiana_dormitorio_1_luz_techo_dormitorio_1", [1.15, 2.18, 5.92, 5.7]),
-  { entity: "light.luz_mesita_noche_dorm_1", kind: "lamp", pos: [2.95, 0.75, 2.5] },
-  { entity: "light.enchufe_luz_nube_infantil", kind: "lamp", pos: [5.5, 1.3, 2.5] },
+  // Mesita al este del cabecero; la nube, en la pared oeste junto a la esquina de la fachada
+  { entity: "light.luz_mesita_noche_dorm_1", kind: "lamp", pos: [5.3, 0.75, 2.5] },
+  { entity: "light.enchufe_luz_nube_infantil", kind: "lamp", pos: [1.27, 1.3, 5.4] },
   /* Baño 1 */
   { entity: "light.bano_1_bano_1_luz_techo_bano_1", kind: "ceiling", pos: [6.8, 2.55, 3.9] },
   {
@@ -355,7 +366,8 @@ export const LAMPS: Lamp[] = [
     pos: [7.5, 1.7, 3.9],
     strip: { length: 1.3, axis: "z" },
   },
-  { entity: "light.bano_1_bano_1_luz_hornacina_bano_1", kind: "lamp", pos: [6.5, 1.2, 5.4] },
+  // Hornacina en la pared norte de la ducha
+  { entity: "light.bano_1_bano_1_luz_hornacina_bano_1", kind: "lamp", pos: [6.85, 1.2, 2.26] },
 
   /* Exteriores */
   { entity: "light.salon_esp_entrada_luz_mamposteria_entrada", kind: "wall", pos: [-5.9, 1.9, -4.3] },
@@ -427,7 +439,8 @@ export const FURNITURE: Furniture[] = [
   { at: [4.16, 2.36], size: [2.5, 0.9, 0.3], tone: "dark" },
   // Baño 1: ducha al norte (plato y mampara) con salida al exterior, lavabo en la pared este, WC al sur
   { at: [6.81, 2.7], size: [1.7, 0.05, 0.95], tone: "white" },
-  { at: [6.5, 3.18], size: [1.1, 2.0, 0.02], tone: "glass" },
+  // Mampara fija en la mitad este: se entra a la ducha por el oeste, junto al toallero
+  { at: [7.14, 3.18], size: [1.04, 2.0, 0.02], tone: "glass" },
   { at: [7.35, 4.0], size: [0.45, 0.85, 1.4], tone: "light" },
   { at: [6.55, 5.35], size: [0.4, 0.45, 0.6], tone: "white" },
 ];
