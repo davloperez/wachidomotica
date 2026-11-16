@@ -63,8 +63,6 @@ switch:
     inverted: True
     name: "Luz Exterior Baño 2"
 
-# No blink scripts: LEDs reflect physical button state (on while pressed)
-
 binary_sensor:
   - platform: gpio
     pin:

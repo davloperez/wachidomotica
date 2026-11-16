@@ -215,7 +215,7 @@
     {
       "label": "ESPHome: compilar todos",
       "type": "shell",
-      "command": "./compile_all.sh",
+      "command": "./run_all.sh compile",
       "options": {
         "cwd": "${workspaceFolder}/villawachitos/esphome",
         "env": { "PATH": "${workspaceFolder}/villawachitos/esphome/venv/bin:${env:PATH}" }
@@ -225,7 +225,7 @@
     {
       "label": "ESPHome: subir todos (OTA)",
       "type": "shell",
-      "command": "./upload_all.sh",
+      "command": "./run_all.sh upload",
       "options": {
         "cwd": "${workspaceFolder}/villawachitos/esphome",
         "env": { "PATH": "${workspaceFolder}/villawachitos/esphome/venv/bin:${env:PATH}" }

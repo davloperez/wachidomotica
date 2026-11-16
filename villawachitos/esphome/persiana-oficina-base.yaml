@@ -1,47 +1,14 @@
-# Resumen de pines usados en este archivo:
-# - SN74HC595: DATA=GPIO4, CLOCK=GPIO22, LATCH=GPIO23
-# - Relés persiana (en persiana-base.yaml): relay_up=GPIO16, relay_down=GPIO17
-# - Relé luz techo: GPIO18
-# - Botones físicos (1..8): GPIO34, GPIO32, GPIO25, GPIO27, GPIO35, GPIO33, GPIO26, GPIO14
-# - Botón luz techo (físico): Button 2 -> GPIO32 (inverso en led_2)
-#
-# Nota: este listado refleja los pines usados por `persiana-oficina-base.yaml`.
-# Otros paquetes/device files (p. ej. `controller.yaml`) pueden usar pines
-# adicionales (por ejemplo I2C/OLED suele usar GPIO21/GPIO22). Verifiqua antes
-# de reasignar pines para evitar conflictos.
-#
-# Pines no usados en este archivo: todos los demás GPIOs del SoC (ej.: GPIO0, GPIO1,
-# GPIO2, GPIO12, GPIO13, GPIO36, etc.) pero la disponibilidad real depende de
-# otras configuraciones en el proyecto y de la placa concreta.
-#
-# Mantener este archivo actualizado si cambias asignaciones de pines.
-#
-# Shared base configuration for oficina persiana controllers
-# Adds: 8 status LEDs (SN74HC595) and ceiling light
-# Note: persiana-base.yaml must also be included in the device file
+# Paquete compartido de las persianas de oficina (incluir junto a persiana-base.yaml).
+# Pines: relés persiana (persiana-base) GPIO16/GPIO17; relés luz relay_light=GPIO18;
+# botones button_1..button_3 = GPIO33, GPIO26, GPIO14.
 
-# ====== 8 STATUS LEDS (via SN74HC595) ======
 switch:
-  # ====== CEILING LIGHT (existing relay) ======
   - platform: gpio
     pin: GPIO18
     id: relay_light
     restore_mode: ALWAYS_OFF
     inverted: True
     name: "Luz Techo"
-
-# ====== EXTENDER COVER CON LÓGICA DE PERSIANAS ======
-cover:
-  - id: !extend persiana_cover
-    on_idle:
-      - lambda: |-
-          ESP_LOGI("persiana", "idle pos=%.2f op=%d",
-            id(persiana_cover).position,
-            id(persiana_cover).current_operation);
-          id(persiana_position_storage) = id(persiana_cover).position;
-          ESP_LOGI("persiana", "store idle pos=%.2f", id(persiana_position_storage));
-
-# No blink scripts: LEDs reflect physical button state (on while pressed)
 
 binary_sensor:
   - platform: gpio
@@ -98,60 +65,3 @@ binary_sensor:
           - OFF for at least 50ms
         then:
           - script.execute: set_button_down_30
-
-  - platform: gpio
-    pin:
-      number: GPIO13
-      mode:
-        input: true
-        pulldown: true
-    id: button_4
-    name: "Button 4"
-
-  # - platform: gpio
-  #   pin:
-  #     number: GPIO21
-  #     inverted: true
-  #     mode:
-  #       input: true
-  #       pulldown: true
-  #   id: button_5
-  #   name: "Button 5"
-
-  # - platform: gpio
-  #   pin:
-  #     number: GPIO19
-  #     inverted: true
-  #     mode:
-  #       input: true
-  #       pulldown: true
-  #   id: button_6
-  #   name: "Button 6"
-
-  # - platform: gpio
-  #   pin:
-  #     number: GPIO5
-  #     inverted: true
-  #     mode:
-  #       input: true
-  #       pulldown: true
-  #   id: button_7
-  #   name: "Button 7"
-
-  # - platform: gpio
-  #   pin:
-  #     number: GPIO16
-  #     inverted: true
-  #     mode:
-  #       input: true
-  #       pulldown: true
-  #   id: button_8
-  #   name: "Button 8"
-
-  # Ceiling light is controlled by Button 2 (GPIO32). Led_2 is inverted with relay_light.
-
-# Notas:
-# - Los pins físicos 34,32,25,27,35,33,26,14 quedan reservados para botones 1..8
-# - Los LEDs de estado se controlan por el SN74HC595 (led_1..led_8)
-# - No hay lógica de "blink": los LEDs se encienden mientras su botón esté presionado
-# - Botón 1 ejecuta `toggle_button_up`, botón 3 ejecuta `toggle_button_down`

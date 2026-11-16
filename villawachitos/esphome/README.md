@@ -1,232 +1,40 @@
-# ESPHome Project
+# ESPHome
 
-This repository contains ESPHome configuration files for multiple ESP32 devices.
+Firmware de los ESP32 de la casa. Cada `esp-*.yaml` marcado con `# @esphome-device` es un dispositivo físico.
 
-All device YAML files live at the project root for simplicity (for now), along with shared configuration and secrets.
+| Fichero | Contenido |
+| --- | --- |
+| `common.yaml` | Configuración común (placa, API, OTA, logger, web server) |
+| `persiana-base.yaml` | Persiana `time_based`: relés, posición guardada, receptor ESP-NOW y scripts de los botones |
+| `persiana-oficina-base.yaml`, `persiana-dormitorio-base.yaml` | Luces y botones compartidos de esas persianas |
+| `espnow_recv.h` / `espnow_includes.h` | Código C del receptor (persianas) y emisor (`controller.yaml`) ESP-NOW |
+| `controller.yaml` | Mando ESP-NOW con pantalla OLED que manda subir/bajar a las persianas (`device_id` 0–7) |
+| `v2/www.js` | Interfaz web local que sirve el `web_server` de cada dispositivo |
+| `secrets.yaml` | `wifi_ssid`, `wifi_password`, `api_encryption_key` (no se sube a git) |
 
----
+## Entorno
 
-## 📁 Project Structure
-
-```
-esphome/
-├── venv/               # Python virtual environment (not committed)
-├── .gitignore
-├── secrets.yaml        # WiFi credentials, passwords (not committed)
-├── common.yaml         # Shared ESPHome configuration
-├── esp32-salon.yaml
-├── esp32-cocina.yaml
-├── esp32-garaje.yaml
-└── README.md
-```
-
-### Important notes:
-
-- `venv/` contains a local Python environment with ESPHome installed
-- `.esphome/` (auto-created by ESPHome) is ignored by git
-- `secrets.yaml` is never committed (contains sensitive data)
-- Each `esp32-*.yaml` file represents one physical device
-
----
-
-## 🧰 Requirements
-
-You need:
-
-- Linux (tested on Ubuntu)
-- Python 3.8+ recommended
-- pip (usually comes with Python)
-
----
-
-## ✅ Check if Python 3 is installed
-
-Run:
+ESPHome se instala en `venv/` (no se sube a git). Para crearlo o actualizarlo usa la tarea de VSCode
+_ESPHome: crear/actualizar entorno Python_, o:
 
 ```bash
-python3 --version
+rm -rf venv && python3 -m venv venv && venv/bin/pip install --upgrade pip esphome
 ```
 
-If you see something like:
+Si el sistema cambia de versión de Python, el `venv` deja de funcionar: hay que recrearlo.
 
-```
-Python 3.10.x
-```
+## Uso
 
-You're good.
-
----
-
-## 📦 Install Python 3 (if missing)
-
-On Ubuntu:
+Desde VSCode, con las tareas _ESPHome: …_ (compilar/subir/logs del archivo abierto, o todos). Desde terminal:
 
 ```bash
-sudo apt update
-sudo apt install python3 python3-venv python3-pip
+venv/bin/esphome run esp-cocina.yaml
 ```
-
-Verify again:
 
 ```bash
-python3 --version
+PATH="$PWD/venv/bin:$PATH" ./run_all.sh compile
 ```
-
----
-
-## 🐍 First-time setup (create local environment)
-
-From the project folder:
 
 ```bash
-python3 -m venv venv
-source venv/bin/activate
-pip install esphome
+PATH="$PWD/venv/bin:$PATH" ./run_all.sh upload
 ```
-
-Test:
-
-```bash
-esphome version
-```
-
----
-
-## ⬆️ Update ESPHome to Latest Stable Version
-
-To update ESPHome to the latest stable version, activate your virtual environment and run:
-
-```bash
-source venv/bin/activate
-pip install --upgrade esphome
-```
-
-You can verify the update with:
-
-```bash
-esphome version
-```
-
----
-
-## ▶️ Using ESPHome
-
-Activate the environment:
-
-```bash
-source venv/bin/activate
-```
-
-Run a specific device:
-
-```bash
-esphome run esp32-salon.yaml
-```
-
-Or:
-
-```bash
-esphome run esp32-cocina.yaml
-```
-
----
-
-## 🔁 Shared configuration
-
-Common ESPHome settings live in:
-
-```
-common.yaml
-```
-
-Each device YAML typically includes it using:
-
-```yaml
-packages:
-  base: !include common.yaml
-```
-
----
-
-## 🔐 Secrets
-
-Sensitive values are stored in:
-
-```
-secrets.yaml
-```
-
-Example:
-
-```yaml
-wifi_ssid: "MyWifi"
-wifi_password: "supersecret"
-ota_password: "xxxx"
-api_password: "yyyy"
-```
-
-Use them in configs like:
-
-```yaml
-password: !secret wifi_password
-```
-
----
-
-## 🧹 Git ignore
-
-The following are intentionally not tracked:
-
-- `venv/`
-- `.esphome/`
-- `secrets.yaml`
-- build/cache files
-
----
-
-## 🛠️ Batch Compile & Upload Scripts
-
-You can compile or upload all persiana device configurations at once using the provided scripts:
-
-### Compile all persiana configs
-
-This will attempt to compile every `persiana-*.yaml` (except `persiana-base-old.yaml`).
-
-```bash
-./compile_all.sh
-```
-
-The script prints a summary and lists any configs that failed to compile.
-
-### Upload all persiana configs (OTA)
-
-This will attempt to upload every `persiana-*.yaml` to its device via OTA:
-
-```bash
-./upload_all.sh
-```
-
-The script prints a summary and lists any configs that failed to upload.
-
----
-
-## 🧠 Typical workflow
-
-```bash
-cd esphome
-source venv/bin/activate
-esphome run esp32-device.yaml
-```
-
----
-
-## 📌 Notes for future me
-
-- ESPHome is installed locally in `venv/`
-- Never install it system-wide
-- If things break: delete `venv/`, recreate it, reinstall ESPHome
-- Device YAML files live at project root (for now)
-
----
-
-Happy automating 🤖

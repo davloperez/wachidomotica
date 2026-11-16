@@ -41,34 +41,12 @@ switch:
 binary_sensor:
   - platform: gpio
     pin:
-      number: GPIO33
-      mode:
-        input: true
-        pulldown: true
-    id: boton_1_jung_cocina
-    name: "Botón 1 Jung Cocina"
-    filters:
-      - delayed_on: 20ms
-      - delayed_off: 20ms
-  - platform: gpio
-    pin:
       number: GPIO32
       mode:
         input: true
         pulldown: true
     id: boton_2_jung_cocina
     name: "Botón 2 Jung Cocina"
-    filters:
-      - delayed_on: 20ms
-      - delayed_off: 20ms
-  - platform: gpio
-    pin:
-      number: GPIO27
-      mode:
-        input: true
-        pulldown: true
-    id: boton_3_jung_cocina
-    name: "Botón 3 Jung Cocina"
     filters:
       - delayed_on: 20ms
       - delayed_off: 20ms
@@ -117,17 +95,6 @@ binary_sensor:
     on_release:
       then:
         - switch.turn_off: relay_light_techo_barra_cocina
-  - platform: gpio
-    pin:
-      number: GPIO14
-      mode:
-        input: true
-        pulldown: true
-    id: boton_7_jung_cocina
-    name: "Botón 7 Jung Cocina"
-    filters:
-      - delayed_on: 20ms
-      - delayed_off: 20ms
   - platform: gpio
     pin:
       number: GPIO13

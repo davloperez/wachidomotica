@@ -1,6 +1,6 @@
 # @esphome-device
 # Persiana Salon 1 Configuration
-# Imports shared logic from persiana-base-old.yaml
+# Imports shared logic from persiana-base.yaml
 
 substitutions:
   device_id: "5"
@@ -23,18 +23,6 @@ wifi:
   ap:
     password: "platano+1234"
     ssid: "AP-Persiana-Salon-1"
-
-cover:
-  - id: !extend persiana_cover
-    on_idle:
-      - lambda: |-
-          ESP_LOGI("persiana", "idle pos=%.2f op=%d",
-            id(persiana_cover).position,
-            id(persiana_cover).current_operation);
-          id(persiana_position_storage) = id(persiana_cover).position;
-          ESP_LOGI("persiana", "store idle pos=%.2f", id(persiana_position_storage));
-
-# No blink scripts: LEDs reflect physical button state (on while pressed)
 
 binary_sensor:
   - platform: gpio
