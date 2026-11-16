@@ -18,48 +18,69 @@ wifi:
     password: "platano+1234"
     ssid: "AP-Bano-2"
 
+# ====== Diagnóstico de reinicios ======
+debug:
+  update_interval: 30s
+
+text_sensor:
+  - platform: debug
+    reset_reason:
+      name: "Motivo de reinicio"
+
+sensor:
+  - platform: uptime
+    name: "Uptime"
+  - platform: wifi_signal
+    name: "Señal WiFi"
+    update_interval: 60s
+  - platform: debug
+    free:
+      name: "Heap libre"
+    loop_time:
+      name: "Loop time"
+
 switch:
   # ====== CEILING LIGHT (existing relay) ======
   - platform: gpio
     pin: GPIO18
     id: relay_light_techo_bano_2
-    restore_mode: ALWAYS_OFF
+    restore_mode: RESTORE_DEFAULT_OFF
     inverted: True
     name: "Luz Techo Baño 2"
   - platform: gpio
     pin: GPIO19
     id: relay_light_hornacina_bano_2
-    restore_mode: ALWAYS_OFF
+    restore_mode: RESTORE_DEFAULT_OFF
     inverted: True
     name: "Luz Hornacina Baño 2"
   - platform: gpio
     pin: GPIO21
     id: relay_light_espejo_bano_2
-    restore_mode: ALWAYS_OFF
+    restore_mode: RESTORE_DEFAULT_OFF
     inverted: True
     name: "Luz Espejo Baño 2"
   - platform: gpio
     pin: GPIO22
     id: relay_toallero_bano_2
-    restore_mode: ALWAYS_OFF
+    restore_mode: RESTORE_DEFAULT_OFF
     inverted: True
     name: "Luz Toallero Baño 2"
   - platform: gpio
     pin: GPIO16
     id: relay_light_techo_pasillo
-    restore_mode: ALWAYS_OFF
+    restore_mode: RESTORE_DEFAULT_OFF
     inverted: True
     name: "Luz Techo Pasillo"
   - platform: gpio
     pin: GPIO17
     id: relay_light_aplique_pasillo
-    restore_mode: ALWAYS_OFF
+    restore_mode: RESTORE_DEFAULT_OFF
     inverted: True
     name: "Luz Aplique Pasillo"
   - platform: gpio
     pin: GPIO23
     id: relay_light_exterior_bano_2
-    restore_mode: ALWAYS_OFF
+    restore_mode: RESTORE_DEFAULT_OFF
     inverted: True
     name: "Luz Exterior Baño 2"
 

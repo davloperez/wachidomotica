@@ -38,6 +38,71 @@ switch:
     inverted: True
     name: "Luz Techo Cocina"
 
+script:
+  - id: dimming_up_loop_boton_2
+    mode: restart
+    then:
+      - delay: 200ms
+      - if:
+          condition:
+            binary_sensor.is_on: boton_2_jung_cocina
+          then:
+            - homeassistant.event:
+                event: esphome.jung_dimming_up
+                data:
+                  device: cocina
+                  button: button_2
+                  gesture: dimming_up
+            - script.execute: dimming_up_loop_boton_2
+
+  - id: dimming_down_loop_boton_2
+    mode: restart
+    then:
+      - delay: 200ms
+      - if:
+          condition:
+            binary_sensor.is_on: boton_2_jung_cocina
+          then:
+            - homeassistant.event:
+                event: esphome.jung_dimming_down
+                data:
+                  device: cocina
+                  button: button_2
+                  gesture: dimming_down
+            - script.execute: dimming_down_loop_boton_2
+
+  - id: dimming_up_loop_boton_8
+    mode: restart
+    then:
+      - delay: 200ms
+      - if:
+          condition:
+            binary_sensor.is_on: boton_8_jung_cocina
+          then:
+            - homeassistant.event:
+                event: esphome.jung_dimming_up
+                data:
+                  device: cocina
+                  button: button_8
+                  gesture: dimming_up
+            - script.execute: dimming_up_loop_boton_8
+
+  - id: dimming_down_loop_boton_8
+    mode: restart
+    then:
+      - delay: 200ms
+      - if:
+          condition:
+            binary_sensor.is_on: boton_8_jung_cocina
+          then:
+            - homeassistant.event:
+                event: esphome.jung_dimming_down
+                data:
+                  device: cocina
+                  button: button_8
+                  gesture: dimming_down
+            - script.execute: dimming_down_loop_boton_8
+
 binary_sensor:
   - platform: gpio
     pin:
@@ -50,6 +115,41 @@ binary_sensor:
     filters:
       - delayed_on: 20ms
       - delayed_off: 20ms
+    on_multi_click:
+      - timing:
+          - ON for 50ms to 350ms
+          - OFF for 50ms to 350ms
+          - ON for 50ms to 350ms
+          - OFF for at least 350ms
+        then:
+          - homeassistant.event:
+              event: esphome.jung_double_click
+              data:
+                device: cocina
+                button: button_2
+                gesture: double_click
+      - timing:
+          - ON for 50ms to 350ms
+          - OFF for at least 350ms
+        then:
+          - homeassistant.event:
+              event: esphome.jung_single_click
+              data:
+                device: cocina
+                button: button_2
+                gesture: single_click
+      - timing:
+          - ON for 50ms to 350ms
+          - OFF for 50ms to 350ms
+          - ON for at least 800ms
+        then:
+          - script.stop: dimming_up_loop_boton_2
+          - script.execute: dimming_down_loop_boton_2
+    on_press:
+      - script.execute: dimming_up_loop_boton_2
+    on_release:
+      - script.stop: dimming_up_loop_boton_2
+      - script.stop: dimming_down_loop_boton_2
   - platform: gpio
     pin:
       number: GPIO26
@@ -106,3 +206,38 @@ binary_sensor:
     filters:
       - delayed_on: 20ms
       - delayed_off: 20ms
+    on_multi_click:
+      - timing:
+          - ON for 50ms to 350ms
+          - OFF for 50ms to 350ms
+          - ON for 50ms to 350ms
+          - OFF for at least 350ms
+        then:
+          - homeassistant.event:
+              event: esphome.jung_double_click
+              data:
+                device: cocina
+                button: button_8
+                gesture: double_click
+      - timing:
+          - ON for 50ms to 350ms
+          - OFF for at least 350ms
+        then:
+          - homeassistant.event:
+              event: esphome.jung_single_click
+              data:
+                device: cocina
+                button: button_8
+                gesture: single_click
+      - timing:
+          - ON for 50ms to 350ms
+          - OFF for 50ms to 350ms
+          - ON for at least 800ms
+        then:
+          - script.stop: dimming_up_loop_boton_8
+          - script.execute: dimming_down_loop_boton_8
+    on_press:
+      - script.execute: dimming_up_loop_boton_8
+    on_release:
+      - script.stop: dimming_up_loop_boton_8
+      - script.stop: dimming_down_loop_boton_8

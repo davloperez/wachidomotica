@@ -31,7 +31,16 @@ import {
 import { ROOMS_DEF, ROOM_BY_ID, deviceSpot, lampPos, type RoomDef } from "./house/rooms";
 import type { RoomView } from "./views/room-view";
 import type { LayerView } from "./views/layer-view";
-import { LAYERS, itemActive, itemAlert, layerItems, rowState, type LayerId, type LayerItem } from "./house/layers";
+import {
+  LAYERS,
+  deviceKey,
+  itemActive,
+  itemAlert,
+  layerItems,
+  rowState,
+  type LayerId,
+  type LayerItem,
+} from "./house/layers";
 import { DEVICE_ICONS, deviceBrief } from "./widgets/devices";
 import { causticUrl } from "./house/materials";
 import { lightIcon } from "./widgets/lights";
@@ -724,29 +733,57 @@ export class FunctionalDashboard extends LitElement {
     ];
   }
 
+  /**
+   * Marcadores de todo lo de la estancia que no son luces: persianas, dispositivos, sensores y
+   * pantallas (los mismos elementos y sitios que las capas). Tocar uno lleva a su tarjeta.
+   */
   private renderDevicePins(room: RoomDef, offset: number) {
-    const devices = room.devices.filter((d) => deviceSpot(d));
+    const h = this.hass;
+    const seen = new Set<string>();
+    const its = LAYERS.flatMap((l) => this.items(l.id)).filter(
+      (it) =>
+        it.room.id === room.id &&
+        it.pos &&
+        it.kind !== "light" &&
+        !(it.kind === "device" && it.device.type === "gates") &&
+        !seen.has(it.key) &&
+        seen.add(it.key),
+    );
     return [
-      ...this.renderGatePins(room, offset + devices.length),
-      ...devices.map(
-        (d, i) =>
-          html`<button
-            class="marker device"
-            data-anchor="pt|${deviceSpot(d)!.join(",")}"
-            data-dev=${d.type}
-            style=${styleMap({ "--i": String(offset + i) })}
-            aria-label=${d.name}
-            @click=${() =>
-              d.type === "energy"
-                ? (this.solarOpen = true)
-                : d.type === "pump"
-                  ? (this.pumpOpen = true)
-                  : this.renderRoot.querySelector<RoomView>("fv1-room")?.focusDevice(d.type)}
-          >
-            <span class="m-dot">${icon(DEVICE_ICONS[d.type])}</span>
-            <span class="m-name">${deviceBrief(this.hass, d)}</span>
-          </button>`,
-      ),
+      ...this.renderGatePins(room, offset + its.length),
+      ...its.map((it, i) => {
+        const [x, y, z] = it.pos!;
+        const ico =
+          it.kind === "device" ? DEVICE_ICONS[it.device.type] : it.kind === "row" ? it.icon : LAYERS[1].icon;
+        const label =
+          it.kind === "device"
+            ? deviceBrief(h, it.device)
+            : it.kind === "row"
+              ? `${it.name} · ${rowState(h, it)}`
+              : `${it.name} · ${fmt(st(h, it.entity)?.attributes.current_position as number, 0)} %`;
+        const on = itemActive(h, it);
+        const alert = itemAlert(h, it);
+        return html`<button
+          class="marker device ${on ? "active" : ""} ${alert ? "alert" : ""}"
+          data-anchor="pt|${x},${Math.min(y, CUT3D + 0.3)},${z}"
+          style=${styleMap({ "--i": String(offset + i) })}
+          aria-label=${it.name}
+          @click=${() => {
+            if (it.kind === "device" && it.device.type === "energy") this.solarOpen = true;
+            else if (it.kind === "device" && it.device.type === "pump") this.pumpOpen = true;
+            else
+              this.renderRoot
+                .querySelector<RoomView>("fv1-room")
+                ?.focusKey(
+                  it.kind === "device" ? deviceKey(it.device) : it.key,
+                  it.kind === "device" ? it.device : undefined,
+                );
+          }}
+        >
+          <span class="m-dot">${icon(ico)}</span>
+          <span class="m-name">${label}</span>
+        </button>`;
+      }),
     ];
   }
 
@@ -811,7 +848,11 @@ export class FunctionalDashboard extends LitElement {
             </button>`;
           }
           const ico =
-            it.kind === "device" ? DEVICE_ICONS[it.device.type] : it.kind === "row" ? it.icon : LAYERS[1].icon;
+            it.kind === "device"
+              ? DEVICE_ICONS[it.device.type]
+              : it.kind === "row"
+                ? it.icon
+                : LAYERS[1].icon;
           const label =
             it.kind === "device"
               ? deviceBrief(h, it.device)

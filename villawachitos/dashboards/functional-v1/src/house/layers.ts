@@ -114,8 +114,16 @@ const SPOTS: Record<string, [number, number, number]> = {
 const MEDIA: { room: string; entity: string; name: string }[] = [
   { room: "salon", entity: "media_player.shellywalldisplay_0205030bbdd8", name: "Pantalla salón este" },
   { room: "salon", entity: "media_player.shelly_salon_sur", name: "Pantalla salón sur" },
-  { room: "oficinas", entity: "media_player.oficina_1_shellywalldisplay_oficina1", name: "Pantalla oficina 1" },
-  { room: "oficinas", entity: "media_player.oficina_2_shellywalldisplay_oficina2", name: "Pantalla oficina 2" },
+  {
+    room: "oficinas",
+    entity: "media_player.oficina_1_shellywalldisplay_oficina1",
+    name: "Pantalla oficina 1",
+  },
+  {
+    room: "oficinas",
+    entity: "media_player.oficina_2_shellywalldisplay_oficina2",
+    name: "Pantalla oficina 2",
+  },
   { room: "dormitorio_1", entity: "media_player.fire_tv_dormitorio", name: "Fire TV" },
 ];
 
@@ -160,6 +168,11 @@ function deviceEntity(d: DeviceDef): string | undefined {
   return undefined;
 }
 
+/** Clave de un dispositivo en las listas y marcadores (tipo + entidad o nombre). */
+export function deviceKey(d: DeviceDef): string {
+  return `${d.type}:${deviceEntity(d) ?? d.name}`;
+}
+
 /** Todos los elementos de una capa, en el orden de las estancias. */
 export function layerItems(layer: LayerId): LayerItem[] {
   const out: LayerItem[] = [];
@@ -176,11 +189,25 @@ export function layerItems(layer: LayerId): LayerItem[] {
 
     if (layer === "luces")
       for (const l of room.lights)
-        out.push({ key: l.entity, room, name: l.name, kind: "light", entity: l.entity, pos: spot(l.entity, lampPos(l.entity)) });
+        out.push({
+          key: l.entity,
+          room,
+          name: l.name,
+          kind: "light",
+          entity: l.entity,
+          pos: spot(l.entity, lampPos(l.entity)),
+        });
 
     if (layer === "persianas")
       for (const cv of room.covers)
-        out.push({ key: cv.entity, room, name: cv.name, kind: "cover", entity: cv.entity, pos: spot(cv.entity, coverSpot(cv.entity)) });
+        out.push({
+          key: cv.entity,
+          room,
+          name: cv.name,
+          kind: "cover",
+          entity: cv.entity,
+          pos: spot(cv.entity, coverSpot(cv.entity)),
+        });
 
     if (layer === "clima" && room.temperature)
       out.push({
@@ -197,11 +224,38 @@ export function layerItems(layer: LayerId): LayerItem[] {
 
     if (layer === "seguridad") {
       if (room.id === "entrada")
-        out.push({ key: ALARM, room, name: "Alarma", kind: "row", row: "alarm", entity: ALARM, icon: mdiShieldHomeOutline, pos: spot(ALARM) });
+        out.push({
+          key: ALARM,
+          room,
+          name: "Alarma",
+          kind: "row",
+          row: "alarm",
+          entity: ALARM,
+          icon: mdiShieldHomeOutline,
+          pos: spot(ALARM),
+        });
       for (const d of room.doors ?? [])
-        out.push({ key: d.entity, room, name: d.name, kind: "row", row: "door", entity: d.entity, icon: mdiDoorClosed, pos: spot(d.entity) });
+        out.push({
+          key: d.entity,
+          room,
+          name: d.name,
+          kind: "row",
+          row: "door",
+          entity: d.entity,
+          icon: mdiDoorClosed,
+          pos: spot(d.entity),
+        });
       for (const id of room.leaks ?? [])
-        out.push({ key: id, room, name: "Sensor de agua", kind: "row", row: "leak", entity: id, icon: mdiWaterAlertOutline, pos: spot(id) });
+        out.push({
+          key: id,
+          room,
+          name: "Sensor de agua",
+          kind: "row",
+          row: "leak",
+          entity: id,
+          icon: mdiWaterAlertOutline,
+          pos: spot(id),
+        });
     }
 
     for (const d of room.devices) {
@@ -221,7 +275,9 @@ export function layerItems(layer: LayerId): LayerItem[] {
       }
       const ent = deviceEntity(d);
       const pos =
-        d.type === "tv" ? ([TV.at[0], TV.lift + TV.height / 2, TV.at[1]] as [number, number, number]) : spot(ent, deviceSpot(d));
+        d.type === "tv"
+          ? ([TV.at[0], TV.lift + TV.height / 2, TV.at[1]] as [number, number, number])
+          : spot(ent, deviceSpot(d));
       out.push({ key: `${d.type}:${ent ?? d.name}`, room, name: d.name, kind: "device", device: d, pos });
     }
 
@@ -250,6 +306,18 @@ export function layerItems(layer: LayerId): LayerItem[] {
       }),
     );
   return out;
+}
+
+/**
+ * Elementos de las capas que la vista de estancia no pinta por sí sola: puertas, fugas y alarma
+ * (filas) y las pantallas y altavoces de la capa multimedia.
+ */
+export function roomExtras(room: RoomDef): LayerItem[] {
+  return [...layerItems("seguridad"), ...layerItems("multimedia")].filter(
+    (it) =>
+      it.room.id === room.id &&
+      (it.kind === "row" || (it.kind === "device" && it.key.startsWith("media_player."))),
+  );
 }
 
 /* ------------------------------------------------------------------ */

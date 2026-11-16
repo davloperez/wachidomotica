@@ -58,7 +58,12 @@ esa estancia (ver [Maqueta 3D](#maqueta-3d)) y aparecen:
   color, color y efectos WLED).
 - **Luces sobre la imagen**: cada luminaria aparece en su sitio; tocar enciende/apaga, mantener pulsado abre el detalle.
 - **Ambiente** (temperatura y humedad con curva de 24 h) o el tiempo en el exterior.
-- **Persianas** con dibujo de lamas, subir/parar/bajar y apertura exacta.
+- **Persianas** con dibujo de lamas, subir/parar/bajar y apertura exacta (primera tarjeta de la columna derecha).
+- **Seguridad** de la estancia (puertas, sensores de agua, alarma) y pantallas Shelly / Fire TV si las hay: todo lo que
+  aparece en las capas aparece también en su estancia.
+- **Ambientador** (oficinas): enchufe más dosificación periódica — «Dosificar ahora» (`script.ambientador_descarga`),
+  tiempo hasta la próxima dosis (`timer.ambientador`), intervalo (`input_number.ambientador_intervalo`) y automático
+  (`automation.ambientador_periodico`).
 - **Dispositivos** de la estancia: climatización, TV, robot, frigorífico (con curva de temperaturas), lavavajillas,
   freidora, lavadora, arenero, toalleros, ventilación, instalación solar (flujo de energía animado), depuradora,
   puertas de la calle, portero (abrir con confirmación), cámaras y presencia.

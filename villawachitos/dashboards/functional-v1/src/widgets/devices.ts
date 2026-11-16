@@ -175,17 +175,24 @@ export class DeviceCard extends LitElement {
   @state() private series: Record<string, Point[]> = {};
   @state() private armed?: string;
   @state() private hvacDraft?: number;
+  @state() private doseDraft?: number;
   private armTimer = 0;
   private loadTimer = 0;
+  private tickTimer = 0;
 
   connectedCallback(): void {
     super.connectedCallback();
     this.loadTimer = window.setInterval(() => this.load(), 5 * 60_000);
+    // La cuenta atrás de la próxima dosificación se refresca cada 20 s
+    this.tickTimer = window.setInterval(() => {
+      if (this.def?.type === "switch" && this.def.dose) this.requestUpdate();
+    }, 20_000);
   }
 
   disconnectedCallback(): void {
     super.disconnectedCallback();
     window.clearInterval(this.loadTimer);
+    window.clearInterval(this.tickTimer);
     window.clearTimeout(this.armTimer);
   }
 
@@ -480,12 +487,13 @@ export class DeviceCard extends LitElement {
           active: on,
           status: `${on ? "Encendido" : "Apagado"}${p !== undefined ? ` · ${fmt(p, 0)} W` : ""}`,
           body: html`<div class="line-ctl">
-            <span class="muted">${isUnavailable(st(h, d.entity)) ? "Sin conexión" : "Encendido"}</span>
-            <button
-              class="toggle ${on ? "on" : ""}"
-              @click=${() => call(h, "switch", "toggle", { entity_id: d.entity })}
-            ></button>
-          </div>`,
+              <span class="muted">${isUnavailable(st(h, d.entity)) ? "Sin conexión" : "Encendido"}</span>
+              <button
+                class="toggle ${on ? "on" : ""}"
+                @click=${() => call(h, "switch", "toggle", { entity_id: d.entity })}
+              ></button>
+            </div>
+            ${d.dose ? this.dose(d.dose) : nothing}`,
         };
       }
       case "pump": {
@@ -590,6 +598,97 @@ export class DeviceCard extends LitElement {
         };
       }
     }
+  }
+
+  /** Tiempo que falta para la próxima dosificación (según el temporizador) y su hora. */
+  private nextDose(timer: string): { text: string; at?: string } {
+    const e = st(this.hass, timer);
+    if (!e || isUnavailable(e)) return { text: "Sin conexión" };
+    const fmtLeft = (ms: number) => {
+      const m = Math.max(0, Math.ceil(ms / 60_000));
+      return m < 1
+        ? "menos de 1 min"
+        : m >= 60
+          ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, "0")} min`
+          : `${m} min`;
+    };
+    if (e.state === "active") {
+      const end = Date.parse(e.attributes.finishes_at as string);
+      if (!Number.isFinite(end)) return { text: "—" };
+      return {
+        text: fmtLeft(end - Date.now()),
+        at: new Date(end).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }),
+      };
+    }
+    if (e.state === "paused") {
+      const [hh = 0, mm = 0, ss = 0] = String(e.attributes.remaining ?? "0:0:0")
+        .split(":")
+        .map(Number);
+      return { text: `En pausa · ${fmtLeft((hh * 3600 + mm * 60 + ss) * 1000)}` };
+    }
+    return { text: "Sin programar" };
+  }
+
+  /** Dosificación periódica: descarga inmediata, cuenta atrás, intervalo y programación automática. */
+  private dose(c: NonNullable<Extract<DeviceDef, { type: "switch" }>["dose"]>) {
+    const h = this.hass;
+    const iv = st(h, c.interval);
+    const min = (iv?.attributes.min as number | undefined) ?? 10;
+    const max = (iv?.attributes.max as number | undefined) ?? 480;
+    const step = (iv?.attributes.step as number | undefined) ?? 5;
+    const val = this.doseDraft ?? num(h, c.interval) ?? min;
+    const auto = isOn(h, c.auto);
+    const dosing = isOn(h, c.script);
+    const { text, at } = this.nextDose(c.timer);
+    const hm = (m: number) =>
+      m >= 60 ? `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ""}` : `${m} min`;
+    const setInterval = (v: number) => {
+      this.doseDraft = undefined;
+      call(h, "input_number", "set_value", { entity_id: c.interval, value: v });
+      // El nuevo intervalo se aplica ya: la cuenta atrás en marcha se reinicia con él
+      if (st(h, c.timer)?.state === "active")
+        call(h, "timer", "start", { entity_id: c.timer, duration: v * 60 });
+    };
+    return html`
+      <div class="dose">
+        <div class="dose-next">
+          <div>
+            <span class="faint">Próxima dosis</span>
+            <b class="num">${auto || st(h, c.timer)?.state === "active" ? text : "Automático desactivado"}</b>
+          </div>
+          ${at && auto ? html`<span class="muted num">a las ${at}</span>` : nothing}
+        </div>
+        <button
+          class="btn wide"
+          ?disabled=${dosing || isUnavailable(st(h, c.script))}
+          @click=${() => call(h, "script", "turn_on", { entity_id: c.script })}
+        >
+          ${dosing ? "Dosificando…" : "Dosificar ahora"}
+        </button>
+        <div class="dose-iv">
+          <span class="muted">Cada <b class="num">${hm(val)}</b></span>
+          <input
+            type="range"
+            class="slider thin"
+            min=${min}
+            max=${max}
+            step=${step}
+            aria-label="Intervalo entre dosis"
+            .value=${String(val)}
+            style="--pct:${((val - min) / (max - min)) * 100}%; --fill: var(--sky)"
+            @input=${(ev: Event) => (this.doseDraft = Number((ev.target as HTMLInputElement).value))}
+            @change=${(ev: Event) => setInterval(Number((ev.target as HTMLInputElement).value))}
+          />
+        </div>
+        <div class="line-ctl">
+          <span class="muted">Automático${c.hours ? ` · ${c.hours}` : ""}</span>
+          <button
+            class="toggle ${auto ? "on" : ""}"
+            @click=${() => call(h, "automation", "toggle", { entity_id: c.auto })}
+          ></button>
+        </div>
+      </div>
+    `;
   }
 
   private hvac(entity: string) {
@@ -892,6 +991,30 @@ export class DeviceCard extends LitElement {
         font-size: var(--fs-label);
         color: var(--text-muted);
         font-weight: 600;
+      }
+      .dose {
+        display: grid;
+        gap: 10px;
+      }
+      .dose-next {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 8px 10px;
+        border-radius: 12px;
+        background: var(--chip);
+      }
+      .dose-next > div {
+        display: grid;
+        gap: 2px;
+      }
+      .dose-next .faint {
+        font-size: var(--fs-label);
+      }
+      .dose-iv {
+        display: grid;
+        gap: 6px;
       }
       .line-ctl {
         display: flex;

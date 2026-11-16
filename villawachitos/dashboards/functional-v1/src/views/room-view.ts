@@ -8,6 +8,7 @@ import {
   mdiBlindsHorizontal,
   mdiChartTimelineVariant,
   mdiLightbulbGroupOutline,
+  mdiShieldHomeOutline,
   mdiThermometer,
   mdiWashingMachine,
   mdiWaterPercent,
@@ -18,7 +19,8 @@ import type { DashboardConfig, HomeAssistant } from "../types";
 import { shared } from "../styles/tokens";
 import { WEATHER_ES, call, fmt, icon, isDimmable, isOn, num, st } from "../lib/ha";
 import { hourlyMeans, startOfToday, stateSpans, type Point, type Span } from "../lib/data";
-import { lampKind, type RoomDef } from "../house/rooms";
+import { lampKind, type DeviceDef, type RoomDef } from "../house/rooms";
+import { deviceKey, itemActive, itemAlert, roomExtras, rowState, type LayerItem } from "../house/layers";
 import { WEATHER_ICON } from "./home-view";
 import "../charts/charts";
 import "../widgets/lights";
@@ -51,6 +53,20 @@ export class RoomView extends LitElement {
   /** Lleva a la vista la tarjeta del dispositivo (al tocar su marcador en la maqueta) y la resalta. */
   focusDevice(type: string): void {
     const card = this.renderRoot.querySelector<HTMLElement>(`fv1-device[data-type="${type}"]`);
+    if (!card) return;
+    card.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    card.classList.remove("flash");
+    void card.offsetWidth;
+    card.classList.add("flash");
+  }
+
+  /** Lleva a la vista la tarjeta de un elemento (persiana, sensor o dispositivo) por su clave y la resalta. */
+  focusKey(key: string, device?: DeviceDef): void {
+    const q = (sel: string) => this.renderRoot.querySelector<HTMLElement>(sel);
+    const card =
+      q(`[data-key="${CSS.escape(key)}"]`) ??
+      (device ? q(`fv1-device[data-type="${device.type}"]`) : undefined) ??
+      q(".card.sensors");
     if (!card) return;
     card.scrollIntoView({ behavior: "smooth", block: "nearest" });
     card.classList.remove("flash");
@@ -143,6 +159,7 @@ export class RoomView extends LitElement {
       .map((c) => st(h, c.entity)?.attributes.current_position as number | undefined)
       .filter((p): p is number => typeof p === "number");
     const avg = pos.length ? Math.round(pos.reduce((a, b) => a + b, 0) / pos.length) : undefined;
+    const extras = roomExtras(r);
 
     return html`
       <header class="top">
@@ -169,14 +186,16 @@ export class RoomView extends LitElement {
         ${r.lights.length ? this.lightsCard(lightsOn) : nothing} ${this.activityCard()}
       </aside>
       <aside class="col right scroll">
-        ${this.washerDone()} ${this.climateCard()} ${r.covers.length ? this.coversCard(avg) : nothing}
+        ${this.washerDone()} ${r.covers.length ? this.coversCard(avg) : nothing} ${this.sensorsCard(extras)}
+        ${this.climateCard()}
         ${repeat(
-          r.devices,
+          [...r.devices, ...extras.flatMap((x) => (x.kind === "device" ? [x.device] : []))],
           (d) => `${d.type}:${d.name}`,
           (d, i) =>
             html`<fv1-device
               class="glass dev"
               data-type=${d.type}
+              data-key=${deviceKey(d)}
               style="--d:${i + 2}"
               .hass=${h}
               .def=${d}
@@ -264,7 +283,33 @@ export class RoomView extends LitElement {
               : nothing
           }
         </header>
-        ${r.covers.map((c) => html`<fv1-cover .hass=${this.hass} .entity=${c.entity} .name=${c.name}></fv1-cover>`)}
+        ${r.covers.map((c) => html`<fv1-cover data-key=${c.entity} .hass=${this.hass} .entity=${c.entity} .name=${c.name}></fv1-cover>`)}
+      </section>
+    `;
+  }
+
+  /** Puertas, sensores de agua y alarma de la estancia (las filas de la capa de seguridad). */
+  private sensorsCard(extras: LayerItem[]) {
+    const rows = extras.filter((x): x is LayerItem & { kind: "row" } => x.kind === "row");
+    if (!rows.length) return nothing;
+    const h = this.hass;
+    const alerts = rows.filter((x) => itemAlert(h, x)).length;
+    return html`
+      <section class="glass card sensors" style="--d:1">
+        <header class="card-head">
+          <span class="ico ${alerts ? "warn" : ""}">${icon(mdiShieldHomeOutline)}</span>
+          <div class="grow ttl">
+            <b>Seguridad</b>
+            <span>${alerts ? `${alerts} aviso${alerts > 1 ? "s" : ""}` : "Todo en orden"}</span>
+          </div>
+        </header>
+        ${rows.map((x) => {
+          const alert = itemAlert(h, x);
+          return html`<div data-key=${x.key} class="srow ${alert ? "alert" : itemActive(h, x) ? "on" : ""}">
+            <span class="r-ico">${icon(x.icon)}</span><b>${x.name}</b>
+            <span class="r-state num">${rowState(h, x)}</span>
+          </div>`;
+        })}
       </section>
     `;
   }
@@ -553,6 +598,9 @@ export class RoomView extends LitElement {
       .dev {
         background: var(--glass);
       }
+      .flash {
+        animation: flash 1.6s var(--ease);
+      }
       .dev.flash {
         animation: flash 1.6s var(--ease);
       }
@@ -582,6 +630,36 @@ export class RoomView extends LitElement {
       .tiles {
         display: grid;
         gap: 8px;
+      }
+      .srow {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 12px;
+        border-radius: var(--radius-sm);
+        background: var(--chip);
+        font-size: var(--fs-small);
+      }
+      .srow .r-ico {
+        display: grid;
+        place-items: center;
+        color: var(--text-muted);
+      }
+      .srow .r-state {
+        color: var(--text-muted);
+        font-weight: 600;
+      }
+      .srow.on .r-ico {
+        color: var(--sage);
+      }
+      .srow.alert .r-ico,
+      .srow.alert .r-state {
+        color: var(--amber);
+      }
+      .ico.warn {
+        background: var(--amber-soft);
+        color: var(--amber);
       }
       .round.sm {
         width: 36px;

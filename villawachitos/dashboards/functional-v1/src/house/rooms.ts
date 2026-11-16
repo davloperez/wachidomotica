@@ -80,7 +80,15 @@ export type DeviceDef =
       full: string;
     }
   | { type: "towel"; name: string; entity: string; mode: string }
-  | { type: "switch"; name: string; entity: string; power?: string; icon?: string }
+  | {
+      type: "switch";
+      name: string;
+      entity: string;
+      power?: string;
+      icon?: string;
+      /** Enchufe que dosifica de forma periódica (ambientador): script de descarga, temporizador, intervalo y automatización */
+      dose?: { script: string; timer: string; interval: string; auto: string; hours?: string };
+    }
   | { type: "pump"; name: string; entity: string; power: string; temperature?: string }
   | { type: "energy"; name: string }
   | { type: "gates"; name: string; gates: { entity: string; name: string }[] }
@@ -251,7 +259,20 @@ export const ROOMS_DEF: RoomDef[] = [
     ],
     devices: [
       { type: "printer", name: "Impresora", entity: PRINTER.entity, inks: PRINTER.inks },
-      { type: "switch", name: "Ambientador", entity: "switch.t34_smart_plug_interruptor_1_2" },
+      {
+        type: "switch",
+        name: "Ambientador",
+        entity: "switch.t34_smart_plug_interruptor_1",
+        power: "sensor.t34_smart_plug_potencia",
+        // Dosificación periódica (automatización «Ambientador periódico»): una descarga de 10 s cada X minutos
+        dose: {
+          script: "script.ambientador_descarga",
+          timer: "timer.ambientador",
+          interval: "input_number.ambientador_intervalo",
+          auto: "automation.ambientador_periodico",
+          hours: "08:00–21:00",
+        },
+      },
       {
         type: "presence",
         name: "Panel oficina 1",
