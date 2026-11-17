@@ -289,7 +289,17 @@ export class CalmScene {
   private water!: Mesh<PlaneGeometry, MeshStandardMaterial>;
   private waterNormal!: CanvasTexture;
   private lastWater = 0;
-  private tv!: { screen: MeshStandardMaterial; light: PointLight; on: boolean | undefined };
+  private tv!: {
+    screen: MeshStandardMaterial;
+    light: PointLight;
+    on: boolean | undefined;
+    /** Destello: nivel actual y objetivo (0..1), color y próximo «cambio de plano» */
+    level: number;
+    goal: number;
+    hue: number;
+    nextCut: number;
+    last: number;
+  };
   private towels: { entity: string; material: MeshStandardMaterial; on: boolean | undefined }[] = [];
   private pumpEdge!: MeshStandardMaterial;
   private robot!: Group;
@@ -987,7 +997,7 @@ export class CalmScene {
     tvLight.position.set(tx - 0.8, lift + 0.4, tz);
     tvLight.visible = false;
     this.scene.add(tvLight);
-    this.tv = { screen, light: tvLight, on: undefined };
+    this.tv = { screen, light: tvLight, on: undefined, level: 0.5, goal: 0.5, hue: 0.5, nextCut: 0, last: 0 };
 
     for (const t of TOWEL_RAILS) {
       const material = new MeshStandardMaterial({ color: 0xf2f2f2, roughness: 0.35, metalness: 0.3 });
@@ -1458,6 +1468,24 @@ export class CalmScene {
         cameraMoved = true;
         this.dirty = true;
       }
+    }
+
+    // TV encendida: la luz que emite destella como una película (cambios de plano suaves, a ~15 fps)
+    const tv = this.tv;
+    if (tv.on && !reducedMotion() && now - tv.last > 66) {
+      tv.last = now;
+      if (now > tv.nextCut) {
+        tv.goal = 0.1 + Math.random() * 0.9;
+        tv.hue = Math.random();
+        tv.nextCut = now + 250 + Math.random() * 1400;
+      }
+      tv.level += (tv.goal - tv.level) * 0.35 + (Math.random() - 0.5) * 0.05;
+      const k = Math.max(0, Math.min(1, tv.level));
+      tv.light.intensity = 1.2 + k * 3.6;
+      tv.light.color.setRGB(0.5 + 0.3 * tv.hue, 0.62 + 0.12 * (1 - tv.hue), 0.88 - 0.25 * tv.hue);
+      tv.screen.emissive.copy(tv.light.color);
+      tv.screen.emissiveIntensity = 0.45 + k * 0.9;
+      this.dirty = true;
     }
 
     for (const g of this.gates) {

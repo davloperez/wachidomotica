@@ -71,7 +71,7 @@ function roomCenter(room: RoomDef): [number, number] {
 }
 
 /** Persianas: centro de su ventana en el muro del plano. */
-function coverSpot(entity: string): [number, number, number] | undefined {
+export function coverSpot(entity: string): [number, number, number] | undefined {
   for (const w of WALLS)
     for (const o of w.openings ?? []) {
       if (o.cover !== entity) continue;
@@ -85,13 +85,13 @@ function coverSpot(entity: string): [number, number, number] | undefined {
 
 /** Sitio de los dispositivos que no tienen mueble propio en el plano. */
 const SPOTS: Record<string, [number, number, number]> = {
-  // Split del salón en la pared norte, cerca del techo
-  "climate.aidoo_28_cc_ff_82_82_6f": [-0.9, 2.3, -2.3],
+  // Control del aire acondicionado: dentro del armario del recibidor (entrada)
+  "climate.aidoo_28_cc_ff_82_82_6f": [-5.8, 1.4, -2.1],
   // Pantallas de pared Shelly (presencia, luz, temperatura y altavoz)
-  "binary_sensor.shellywalldisplay_0205030bbdd8_ocupacion": [1.15, 1.4, 3.3],
-  "media_player.shellywalldisplay_0205030bbdd8": [1.15, 1.4, 3.3],
-  "media_player.shelly_salon_sur": [-1.4, 1.4, 4.4],
-  "sensor.shelly_salon_sur_temperatura": [-1.4, 1.4, 4.4],
+  "binary_sensor.shellywalldisplay_0205030bbdd8_ocupacion": [1.15, 1.4, -0.85],
+  "media_player.shellywalldisplay_0205030bbdd8": [1.15, 1.4, -0.85],
+  // Shelly Cocina, en la pared sur de la cocina (antes «salón sur»)
+  "media_player.shelly_salon_sur": [-5.6, 1.4, 4.4],
   "binary_sensor.oficina_1_shellywalldisplay_oficina1_ocupacion": [-3.7, 1.4, -3.0],
   "media_player.oficina_1_shellywalldisplay_oficina1": [-3.7, 1.4, -3.0],
   "binary_sensor.oficina_2_shellywalldisplay_oficina2_ocupacion": [0.95, 1.4, -3.0],
@@ -102,6 +102,8 @@ const SPOTS: Record<string, [number, number, number]> = {
   "binary_sensor.sensor_agua_dreame_water_leak": [0.6, 0.3, -1.25],
   "binary_sensor.sensor_puerta_principal_contact": [-4.8, 1.3, -4.04],
   "alarm_control_panel.alarma_vivienda": [-4.1, 1.5, -2.6],
+  // Enchufe del limpiafondos: esquina suroeste de la piscina, por fuera
+  "switch.enchufe_limpiador_piscina": [-5.4, 0.5, 13.2],
   // Cámaras exteriores
   "binary_sensor.cam_garaje_motion": [-8.8, 2.4, -8.6],
   "binary_sensor.cam_patio_lavadero_motion_2": [-7.9, 2.4, -2.0],
@@ -113,7 +115,7 @@ const SPOTS: Record<string, [number, number, number]> = {
 /** Altavoces y pantallas que no son dispositivos de ninguna estancia (solo en la capa multimedia). */
 const MEDIA: { room: string; entity: string; name: string }[] = [
   { room: "salon", entity: "media_player.shellywalldisplay_0205030bbdd8", name: "Pantalla salón este" },
-  { room: "salon", entity: "media_player.shelly_salon_sur", name: "Pantalla salón sur" },
+  { room: "cocina", entity: "media_player.shelly_salon_sur", name: "Shelly Cocina" },
   {
     room: "oficinas",
     entity: "media_player.oficina_1_shellywalldisplay_oficina1",

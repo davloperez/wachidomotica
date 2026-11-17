@@ -132,14 +132,13 @@ export const ROOMS_DEF: RoomDef[] = [
       { entity: "light.wled_gledopto", name: "Cortinero LED" },
     ],
     covers: [
-      { entity: "cover.persiana_salon_1_persiana", name: "Balconera 1" },
-      { entity: "cover.persiana_salon_2_persiana", name: "Balconera 2" },
-      { entity: "cover.persiana_salon_3_persiana", name: "Balconera 3" },
+      { entity: "cover.persiana_salon_1_persiana", name: "Persiana Salón 1" },
+      { entity: "cover.persiana_salon_2_persiana", name: "Persiana Salón 2" },
+      { entity: "cover.persiana_salon_3_persiana", name: "Persiana Salón 3" },
     ],
     temperature: "sensor.shelly_salon_sur_temperatura",
     humidity: "sensor.shelly_salon_sur_humedad",
     devices: [
-      { type: "hvac", entity: "climate.aidoo_28_cc_ff_82_82_6f", name: "Climatización" },
       { type: "tv", entity: TV.entity, name: 'TV 85"' },
       {
         type: "vacuum",
@@ -200,7 +199,8 @@ export const ROOMS_DEF: RoomDef[] = [
       { entity: "light.salon_esp_entrada_luz_cuadro_entrada", name: "Cuadro" },
     ],
     covers: [],
-    devices: [],
+    // El control y termostato del aire acondicionado está en el armario del recibidor
+    devices: [{ type: "hvac", entity: "climate.aidoo_28_cc_ff_82_82_6f", name: "Climatización" }],
     doors: [{ entity: "binary_sensor.sensor_puerta_principal_contact", name: "Puerta principal" }],
   },
   {
@@ -332,7 +332,7 @@ export const ROOMS_DEF: RoomDef[] = [
       { entity: "light.bano_2_esp_bano_2_luz_aplique_pasillo", name: "Aplique" },
     ],
     covers: [],
-    devices: [{ type: "switch", name: "Limpiafondos piscina", entity: "switch.enchufe_limpiador_piscina" }],
+    devices: [],
   },
   {
     id: "dormitorio_2",
@@ -419,6 +419,8 @@ export const ROOMS_DEF: RoomDef[] = [
     covers: [],
     devices: [
       { type: "pump", name: "Depuradora", entity: PUMP.entity, power: PUMP.power },
+      // Enchufe del limpiafondos, en la esquina suroeste de la piscina (exterior sur)
+      { type: "switch", name: "Limpiafondos piscina", entity: "switch.enchufe_limpiador_piscina" },
       // Portero automático en la puerta peatonal del jardín norte
       {
         type: "lock",
@@ -476,9 +478,16 @@ export function lampKind(entity: string): LampKind | undefined {
 }
 
 /** Posición de la luminaria en el plano [x, y, z] (si está en el plano). */
+/** Marcadores de luz que no van sobre la propia luminaria del plano, [x, z] (el aplique del pasillo, en su pared). */
+const PIN_OVERRIDE: Record<string, [number, number]> = {
+  "light.salon_persiana_salon_3_luz_aplique_pasillo_salon": [-1.15, -0.61],
+};
+
 export function lampPos(entity: string): [number, number, number] | undefined {
   const l = LAMPS.find((x) => x.entity === entity);
   if (!l) return undefined;
+  const o = PIN_OVERRIDE[entity];
+  if (o) return [o[0], l.pos[1], o[1]];
   // Marcador desplazado (luces de un mismo mueble repartidas para que no se solapen)
   return l.pin ? [l.pin[0], l.pos[1], l.pin[1]] : l.pos;
 }

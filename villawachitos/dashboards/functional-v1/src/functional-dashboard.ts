@@ -99,6 +99,13 @@ const EXTERIOR_BOX = boxOf(
 /** Vista del exterior: desde el suroeste y más baja, para diferenciarla de la general */
 const EXTERIOR_VIEW: ViewAngle = { yaw: BASE_VIEW.yaw - (12 * Math.PI) / 180, elev: (36 * Math.PI) / 180 };
 /** Puntos que la cámara debe ver de una estancia: una rejilla de su suelo y sus dispositivos. */
+/** Separación en píxeles de marcadores que caen casi en el mismo punto de la maqueta (sin mover el dispositivo). */
+const PIN_NUDGE: Record<string, [dx: number, dy: number]> = {
+  "binary_sensor.sensor_agua_dreame_water_leak": [-46, 20],
+  "vacuum:vacuum.limpiasuelos": [-48, -28],
+  "presence:binary_sensor.shellywalldisplay_0205030bbdd8_ocupacion": [38, -34],
+};
+
 function roomPoints(room: RoomDef): Vector3[] {
   const pts: Vector3[] = [];
   for (const [x1, z1, x2, z2] of room.rects)
@@ -337,6 +344,7 @@ export class FunctionalDashboard extends LitElement {
   private placePins(): void {
     const scene = this.scene;
     if (!scene) return;
+    const free = this.view !== HOME && !this.layer && !this.narrow ? this.area(true) : undefined;
     for (const el of this.renderRoot.querySelectorAll<HTMLElement>("[data-anchor]")) {
       const [kind, id] = el.dataset.anchor!.split("|");
       let p: Vector3 | undefined;
@@ -357,7 +365,16 @@ export class FunctionalDashboard extends LitElement {
         if (pos) p = new Vector3(pos[0], Math.min(pos[1], CUT3D + 0.3), pos[2]);
       }
       const xy = p && scene.project(p);
-      if (xy) el.style.transform = `translate(${xy[0].toFixed(1)}px, ${xy[1].toFixed(1)}px)`;
+      if (xy) {
+        let x = xy[0] + Number(el.dataset.dx ?? 0);
+        let y = xy[1] + Number(el.dataset.dy ?? 0);
+        // En una estancia, los marcadores no se quedan tapados por los paneles laterales ni por la barra inferior
+        if (free && el.classList.contains("marker")) {
+          x = Math.min(Math.max(x, free.x + 28), free.x + free.w - 28);
+          y = Math.min(Math.max(y, free.y), free.y + free.h);
+        }
+        el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
+      }
     }
   }
 
@@ -766,6 +783,8 @@ export class FunctionalDashboard extends LitElement {
         return html`<button
           class="marker device ${on ? "active" : ""} ${alert ? "alert" : ""}"
           data-anchor="pt|${x},${Math.min(y, CUT3D + 0.3)},${z}"
+          data-dx=${PIN_NUDGE[it.key]?.[0] ?? nothing}
+          data-dy=${PIN_NUDGE[it.key]?.[1] ?? nothing}
           style=${styleMap({ "--i": String(offset + i) })}
           aria-label=${it.name}
           @click=${() => {
