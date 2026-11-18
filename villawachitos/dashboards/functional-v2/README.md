@@ -31,8 +31,7 @@ piscina, suelos de cada estancia, muros con sus puertas y ventanas, muebles, val
 ([`src/plan/geometry.ts`](src/plan/geometry.ts), [`src/plan/floor-plan.ts`](src/plan/floor-plan.ts)).
 
 - **Navegable**: arrastrar para moverlo, pellizcar (o rueda del ratón) para el zoom, **doble toque** para acercar
-  (con mucho zoom, el doble toque vuelve al encuadre) y botones **+**, **−** y **encuadrar**. Abajo a la izquierda,
-  la rosa con el norte real.
+  (con mucho zoom, el doble toque vuelve al encuadre) (sin botones de zoom).
 - **Encuadre automático**: vista general = casa y piscina; estancia = la estancia con algo de alrededor; exterior =
   toda la parcela; capa = todo lo que tiene marcador.
 - **Tocar una estancia** del plano lleva a su vista; la estancia elegida se marca con un borde discontinuo.
@@ -106,6 +105,39 @@ Multimedia. Las hojas de detalle (luz, instalación solar, depuradora) ocupan to
 Estancias y dispositivos: [`src/house/rooms.ts`](src/house/rooms.ts); capas: [`src/house/layers.ts`](src/house/layers.ts)
 (copias de las de la v1: un dispositivo nuevo hay que añadirlo en las dos).
 
+**Previsión**: bajo el saludo, las próximas horas de hoy y los siguientes 5 días (mínima, máxima y probabilidad de
+lluvia) de la entidad `weather` configurada, que usa las coordenadas de la casa (Urbanización La Quinta, Molina de
+Segura). Se lee con `weather/subscribe_forecast`, así que la entidad debe soportar previsión diaria y por horas.
+
+**Avisos meteorológicos (AEMET)**: aparecen en *Avisos* (amarillo = info, naranja = aviso, rojo = importante) cuando
+un sensor de alertas está activo. Home Assistant no trae las alertas de la AEMET por sí solo: hace falta la
+integración **Meteoalarm** (publica los avisos de la AEMET para España). Se detectan solos los `binary_sensor` con
+«meteoalarm» o «aemet» en el id, o se indican con `weather_alerts`.
+
+**Tocar para ver más**: las filas de Seguridad (alarma, puertas, sensores de agua), cada puerta de la calle y cada
+cámara, el clima de la estancia y el tiempo abren el detalle de Home Assistant (la alarma se conecta o desconecta ahí).
+
+**Robot aspirador** (Dreame): además de *Limpiar* y *A la base*, el botón **Personalizar limpieza e historial** (o tocar su
+marcador en el plano) abre una hoja con:
+
+- **Modo**: solo aspirar, solo fregar o aspirar y fregar a la vez; **potencia de aspirado** (silencio, estándar,
+  fuerte, turbo) y **humedad de la mopa** (poco húmeda, húmeda, muy mojada). Sin mopa instalada solo deja aspirar.
+- **Estancias**: botones *Interior*, *Exterior* (el porche, lo único exterior del mapa del robot) y *Todo*, o *Elegir*
+  y tocar las estancias en un plano sencillo: el número indica el orden de limpieza. Las del robot no coinciden con
+  las del panel (p. ej. Salón y cocina son una sola).
+- **Últimas limpiezas**: fecha, duración, superficie, tipo, si se interrumpió y por qué, si llevaba mopa, método,
+  estancias donde no pudo entrar, y el desgaste de cepillos y filtro (de `sensor.limpiasuelos_cleaning_history`).
+- **Mapas**: el mapa en directo mientras limpia (o el último estado) y el recorrido de cada limpieza del historial, con
+  una miniatura en cada tarjeta; tocar una la muestra en grande. Salen de `camera.limpiasuelos_map` (la integración
+  de Dreame guarda las últimas 30 tareas con su imagen).
+- Al empezar se desactiva CleanGenius y la limpieza personalizada del robot (si no, ignora estos ajustes), se fijan
+  modo, succión y humedad, se ordena la secuencia de estancias y se llama a `dreame_vacuum.vacuum_clean_segment`.
+
+**Modo kiosko**: el despliegue oculta la cabecera y la barra lateral de Home Assistant (`"kiosk": true` en
+`deploy.json`). El botón **Ajustes** del final de la barra inferior las muestra (recarga con `?disable_km`, que es como
+lo desactiva kiosk-mode) para entrar en ajustes u otros paneles; el mismo botón, ahora **Kiosko**, vuelve a ocultarlas.
+Volver a abrir el panel desde la barra lateral también lo deja en kiosko. Se quita con `"kiosk_toggle": false`.
+
 Tras `idle_return_seconds` (180 s por defecto) sin tocar la pantalla vuelve a la vista general.
 
 ## Configuración de la tarjeta
@@ -116,9 +148,11 @@ Tras `idle_return_seconds` (180 s por defecto) sin tocar la pantalla vuelve a la
   "title": "Villawachitos",
   "theme": "auto",
   "weather": "weather.forecast_casa",
+  "weather_alerts": ["binary_sensor.meteoalarm"],
   "alarm": "alarm_control_panel.alarma_vivienda",
   "idle_return_seconds": 180,
   "priority_alerts": true,
+  "kiosk_toggle": true,
   "marker_positions": {
     "light.luz_piscina": [-1.25, 11.3]
   }

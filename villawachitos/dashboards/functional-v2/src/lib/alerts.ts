@@ -6,6 +6,7 @@
 import type { HomeAssistant } from "../types";
 import { EXTRA_LEAKS, FRIDGE, ROOMS_DEF, ENERGY, ROOM_BY_ID } from "../house/rooms";
 import { isOn, isUnavailable, num, st } from "./ha";
+import { weatherAlerts } from "./weather";
 
 export type Level = "bad" | "warn" | "info";
 
@@ -20,7 +21,11 @@ export interface Alert {
 /** `binary_sensor` de avería que no son relevantes en el panel. */
 const IGNORE = [/connectif/, /cpu_vulnerabilities/];
 
-export function computeAlerts(hass: HomeAssistant | undefined, alarm?: string): Alert[] {
+export function computeAlerts(
+  hass: HomeAssistant | undefined,
+  alarm?: string,
+  weatherSensors?: string[],
+): Alert[] {
   if (!hass) return [];
   const out: Alert[] = [];
   const a = st(hass, alarm);
@@ -108,6 +113,9 @@ export function computeAlerts(hass: HomeAssistant | undefined, alarm?: string): 
           out.push({ level: "info", title: "Arenero: necesita limpieza", room: r.id });
       }
     }
+
+  // Avisos meteorológicos (AEMET)
+  for (const w of weatherAlerts(hass, weatherSensors)) out.push(w);
 
   // Batería de la casa
   const soc = num(hass, ENERGY.sensors.soc);

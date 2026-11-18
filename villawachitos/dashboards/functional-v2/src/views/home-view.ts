@@ -34,6 +34,7 @@ import { ALARM_ES, HVAC_ES, WEATHER_ES, call, fmt, icon, isOn, num, relTime, st 
 import { dailyTotals, hourlyMeans, type Point } from "../lib/data";
 import { computeAlerts, roomName } from "../lib/alerts";
 import { ALL_OFF_SCRIPT, ENERGY, PEOPLE, ROOMS_DEF } from "../house/rooms";
+import { subscribeForecast, type Forecast } from "../lib/weather";
 import "../charts/charts";
 import "../widgets/alarm-keypad";
 
@@ -76,7 +77,10 @@ export class HomeView extends LitElement {
   @state() private armed?: string;
   @state() private now = new Date();
   @state() private keypad = false;
+  @state() private daily: Forecast[] = [];
+  @state() private hourly: Forecast[] = [];
   private timers: number[] = [];
+  private forecastOff: (() => void)[] = [];
 
   connectedCallback(): void {
     super.connectedCallback();
@@ -94,10 +98,27 @@ export class HomeView extends LitElement {
   disconnectedCallback(): void {
     super.disconnectedCallback();
     this.timers.forEach((t) => window.clearInterval(t));
+    this.forecastOff.forEach((off) => off());
+    this.forecastOff = [];
+  }
+
+  /** Suscripción a la previsión diaria y por horas de la entidad `weather` (se renueva sola). */
+  private async subscribeWeather(): Promise<void> {
+    const entity = this.config?.weather;
+    if (!this.hass || !entity) return;
+    const h = this.hass;
+    const subs = await Promise.all([
+      subscribeForecast(h, entity, "daily", (l) => (this.daily = l)),
+      subscribeForecast(h, entity, "hourly", (l) => (this.hourly = l)),
+    ]);
+    this.forecastOff = subs.filter((x): x is () => void => !!x);
   }
 
   protected willUpdate(changed: PropertyValues<this>): void {
-    if (changed.has("hass") && !changed.get("hass") && this.hass) this.load();
+    if (changed.has("hass") && !changed.get("hass") && this.hass) {
+      this.load();
+      void this.subscribeWeather();
+    }
   }
 
   private async load(): Promise<void> {
@@ -155,7 +176,11 @@ export class HomeView extends LitElement {
           >
           ${
             w
-              ? html`<span class="weather">
+              ? html`<span
+                  class="weather"
+                  title="Más información"
+                  @click=${() => this.dispatchEvent(new CustomEvent("hass-more-info", { detail: { entityId: w.entity_id }, bubbles: true, composed: true }))}
+                >
                   ${icon(WEATHER_ICON[w.state] ?? mdiWeatherPartlyCloudy)}
                   <b class="num">${fmt(temp, 0)}°</b>
                   <span class="muted">${WEATHER_ES[w.state] ?? w.state}</span>
@@ -174,7 +199,70 @@ export class HomeView extends LitElement {
             ${home.length === 0 ? "No hay nadie en casa" : home.length === people.length ? "Todos en casa" : `${home.length} en casa`}
           </span>
         </div>
+        ${this.forecast()}
       </section>
+    `;
+  }
+
+  /** Previsión de hoy (próximas horas) y de los siguientes días. */
+  private forecast() {
+    const today = this.now.toDateString();
+    const hours = this.hourly
+      .filter((f) => {
+        const d = new Date(f.datetime);
+        return d.toDateString() === today && d.getTime() >= this.now.getTime() - 3_600_000;
+      })
+      .filter((_, i) => i % 3 === 0)
+      .slice(0, 6);
+    const days = this.daily.filter((f) => new Date(f.datetime).toDateString() !== today).slice(0, 5);
+    const td = this.daily.find((f) => new Date(f.datetime).toDateString() === today);
+    if (!hours.length && !days.length && !td) return nothing;
+    const rain = (f: Forecast) =>
+      f.precipitation_probability ? html`<span class="rain">${Math.round(f.precipitation_probability)}%</span>` : nothing;
+    return html`
+      <div class="fc">
+        <div class="fc-head muted">
+          <span>Urbanización La Quinta · Molina de Segura</span>
+          ${
+            td
+              ? html`<span class="num"
+                  >Hoy ${fmt(td.templow, 0)}° / <b>${fmt(td.temperature, 0)}°</b>${
+                    td.precipitation_probability ? html` · ☂ ${Math.round(td.precipitation_probability)}%` : nothing
+                  }</span
+                >`
+              : nothing
+          }
+        </div>
+        ${
+          hours.length
+            ? html`<div class="fc-row">
+                ${hours.map(
+                  (f) => html`<div class="fc-it">
+                    <span class="faint">${new Date(f.datetime).getHours()}h</span>
+                    ${icon(WEATHER_ICON[f.condition ?? ""] ?? mdiWeatherPartlyCloudy)}
+                    <b class="num">${fmt(f.temperature, 0)}°</b>
+                    ${rain(f)}
+                  </div>`,
+                )}
+              </div>`
+            : nothing
+        }
+        ${
+          days.length
+            ? html`<div class="fc-row days">
+                ${days.map(
+                  (f) => html`<div class="fc-it">
+                    <span class="faint">${DAYS[new Date(f.datetime).getDay()]}</span>
+                    ${icon(WEATHER_ICON[f.condition ?? ""] ?? mdiWeatherPartlyCloudy)}
+                    <b class="num">${fmt(f.temperature, 0)}°</b>
+                    <span class="faint num">${fmt(f.templow, 0)}°</span>
+                    ${rain(f)}
+                  </div>`,
+                )}
+              </div>`
+            : nothing
+        }
+      </div>
     `;
   }
 
@@ -399,7 +487,7 @@ export class HomeView extends LitElement {
   }
 
   private alerts() {
-    const list = computeAlerts(this.hass, this.config?.alarm);
+    const list = computeAlerts(this.hass, this.config?.alarm, this.config?.weather_alerts);
     const ICON = { bad: mdiAlertCircleOutline, warn: mdiAlertOutline, info: mdiInformationOutline };
     return html`
       <section class="glass card" style="--d:1">
@@ -572,6 +660,7 @@ export class HomeView extends LitElement {
         letter-spacing: -0.03em;
       }
       .weather {
+        cursor: pointer;
         display: inline-flex;
         align-items: center;
         gap: 6px;
@@ -582,6 +671,44 @@ export class HomeView extends LitElement {
       }
       .weather svg {
         color: var(--amber);
+      }
+      .fc {
+        display: grid;
+        gap: 8px;
+        padding-top: 10px;
+        border-top: 1px solid var(--glass-border);
+      }
+      .fc-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        font-size: var(--fs-label);
+      }
+      .fc-row {
+        display: grid;
+        grid-auto-flow: column;
+        grid-auto-columns: 1fr;
+        gap: 4px;
+      }
+      .fc-row.days {
+        padding-top: 8px;
+        border-top: 1px dashed var(--glass-border);
+      }
+      .fc-it {
+        display: grid;
+        justify-items: center;
+        gap: 2px;
+        font-size: var(--fs-small);
+        min-width: 0;
+      }
+      .fc-it svg {
+        color: var(--amber);
+        width: 22px;
+        height: 22px;
+      }
+      .fc-it .rain {
+        color: var(--sky);
+        font-size: var(--fs-label);
       }
       .people {
         display: flex;

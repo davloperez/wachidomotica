@@ -138,8 +138,69 @@ export function createMockHass(getDarkMode: () => boolean, onUpdate: (hass: Home
   set("media_player.fire_tv_dormitorio", "unavailable");
   set("switch.t34_smart_plug_interruptor_1_2", "unavailable");
   set("binary_sensor.cam_exterior_este_motion_2", "on");
-  set("vacuum.limpiasuelos", "docked", { friendly_name: "Limpiasuelos" });
+  const robotRooms = [
+    [2, "Cuarto De Servicio"],
+    [3, "Oficina 2"],
+    [5, "Oficina 1"],
+    [6, "Vestidor"],
+    [8, "Dormitorio 2"],
+    [9, "Dormitorio 1"],
+    [10, "Dormitorio 3"],
+    [11, "Salón"],
+    [13, "Baño 1"],
+    [15, "Pasillo"],
+    [17, "Porche"],
+    [20, "Baño 2"],
+  ].map(([id, name]) => ({ id, name }));
+  set("vacuum.limpiasuelos", "docked", {
+    friendly_name: "Limpiasuelos",
+    fan_speed: "standard",
+    mop_pad: true,
+    mop_pad_humidity: "Moist",
+    cleaning_mode: "Sweeping and mopping",
+    cleaning_sequence: [11, 2, 5, 3, 8, 6, 9, 13, 10, 15, 20, 17],
+    cleaning_time: 12,
+    cleaned_area: 9,
+    rooms: { Villawachitos: robotRooms },
+  });
   set("sensor.limpiasuelos_battery_level", "100");
+  set("sensor.limpiasuelos_current_room", "Salón");
+  set("sensor.limpiasuelos_cleaning_count", "174");
+  set("sensor.limpiasuelos_total_cleaned_area", "7370");
+  set("sensor.limpiasuelos_main_brush_left", "47");
+  set("sensor.limpiasuelos_side_brush_left", "21");
+  set("sensor.limpiasuelos_filter_left", "97");
+  set("sensor.limpiasuelos_sensor_dirty_left", "93");
+  {
+    const t0 = Date.now();
+    const at = (h: number) => Math.round((t0 - h * 3600_000) / 1000);
+    const task = (h: number, min: number, m2: number, extra: Record<string, unknown> = {}) => ({
+      timestamp: at(h),
+      cleaning_time: `${min} min`,
+      cleaned_area: `${m2} m²`,
+      status: "Room cleaning",
+      completed: true,
+      mop_pad: "Installed",
+      cleanup_method: "Default mode",
+      pet: false,
+      ...extra,
+    });
+    const pics: Record<string, string> = {};
+    [3, 20, 40, 60, 90, 120, 150].forEach((h, i) => (pics[`${i + 1}: tarea`] = `/dev/mock-map.svg?v=${at(h)}`));
+    set("camera.limpiasuelos_map", new Date().toISOString(), {
+      entity_picture: `/dev/mock-map.svg?v=${Date.now()}`,
+      cleaning_history_picture: pics,
+    });
+    set("sensor.limpiasuelos_cleaning_history", new Date().toISOString(), {
+      "a": task(3, 6, 7, { cleanup_method: "Cleangenius" }),
+      "b": task(20, 115, 87, { blocked_rooms: { "13": "Blocked by dynamic obstacle" }, pet: true, status: "Cleaning" }),
+      "c": task(40, 38, 40, { completed: false, interrupt_reason: "Robot lifted" }),
+      "d": task(60, 6, 5, { mop_pad: "Not installed" }),
+      "e": task(90, 115, 83, { blocked_rooms: { "10": "Blocked by door", "15": "Blocked by door" } }),
+      "f": task(120, 12, 12, { status: "Zone cleaning" }),
+      "g": task(150, 29, 22),
+    });
+  }
   set("sensor.epson_et_5150_series", "idle");
   set("sensor.epson_et_5150_series_black_ink", "73", { unit_of_measurement: "%" });
   set("sensor.epson_et_5150_series_cyan_ink", "81", { unit_of_measurement: "%" });
@@ -180,7 +241,6 @@ export function createMockHass(getDarkMode: () => boolean, onUpdate: (hass: Home
     set(`input_select.modo_de_toalleros_bano_${n}`, "Automático Invierno", {
       options: ["Automático Invierno", "Automático Verano"],
     });
-  set("switch.enchufe_limpiador_piscina", "off");
   set("switch.interruptor_depuradora", "on");
   set("sensor.interruptor_depuradora_power_a", "742");
   set("sensor.interruptor_depuradora_current_a", "3.31");
@@ -224,7 +284,12 @@ export function createMockHass(getDarkMode: () => boolean, onUpdate: (hass: Home
       connected: true,
       language: "es",
       themes: { darkMode: getDarkMode() },
-      connection: { subscribeMessage: async () => async () => {} },
+      connection: {
+        subscribeMessage: async (cb: (m: never) => void, msg: Record<string, unknown>) => {
+          if (msg.type === "weather/subscribe_forecast") mockForecast(cb as never, msg.forecast_type as string);
+          return async () => {};
+        },
+      },
       callWS: async <T>(msg: Record<string, unknown>) => mockWS(msg, states) as T,
       callService: async (domain, service, data) => {
         mockService(states, domain, service, data ?? {});
@@ -258,6 +323,27 @@ export function createMockHass(getDarkMode: () => boolean, onUpdate: (hass: Home
 }
 
 /** Estadísticas e historial inventados (curvas suaves y tramos de encendido). */
+/** Previsión simulada (diaria o por horas) para la tarjeta de saludo. */
+function mockForecast(cb: (m: { forecast: unknown[] }) => void, type: string): void {
+  const conds = ["sunny", "partlycloudy", "cloudy", "rainy", "pouring", "sunny", "partlycloudy"];
+  const hourly = type === "hourly";
+  const start = new Date();
+  start.setMinutes(0, 0, 0);
+  const forecast = Array.from({ length: hourly ? 36 : 7 }, (_, i) => {
+    const d = new Date(start.getTime() + i * (hourly ? 3600_000 : 86_400_000));
+    if (!hourly) d.setHours(0);
+    const h = d.getHours();
+    return {
+      datetime: d.toISOString(),
+      condition: hourly ? conds[Math.floor(i / 5) % conds.length] : conds[i % conds.length],
+      temperature: hourly ? Math.round(18 + 7 * Math.sin(((h - 8) / 24) * 2 * Math.PI)) : 24 - i,
+      templow: hourly ? undefined : 13 - i,
+      precipitation_probability: i % 3 === 1 ? 40 : 0,
+    };
+  });
+  setTimeout(() => cb({ forecast }), 0);
+}
+
 function mockWS(msg: Record<string, unknown>, states: Record<string, HassEntity>): unknown {
   const ids = (msg.statistic_ids ?? msg.entity_ids ?? []) as string[];
   const start = Date.parse(msg.start_time as string);
@@ -391,8 +477,13 @@ function mockService(
       if (state === "unlocked")
         pending(() => (states[id] = entity(id, "locked", states[id].attributes)), 4000);
     }
-    if (domain === "vacuum")
-      state = service === "start" ? "cleaning" : service === "pause" ? "paused" : "returning";
+    if (domain === "vacuum" || domain === "dreame_vacuum") {
+      if (service === "set_fan_speed") a.fan_speed = data.fan_speed;
+      else if (service === "vacuum_set_cleaning_sequence") a.cleaning_sequence = data.cleaning_sequence;
+      else if (service === "start" || service === "vacuum_clean_segment") state = "cleaning";
+      else if (service === "pause") state = "paused";
+      else state = service === "stop" ? "idle" : "returning";
+    }
     states[id] = entity(id, state, a);
   }
 }

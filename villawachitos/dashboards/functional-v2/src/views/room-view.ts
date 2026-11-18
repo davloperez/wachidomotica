@@ -17,7 +17,7 @@ import {
 } from "@mdi/js";
 import type { DashboardConfig, HomeAssistant } from "../types";
 import { shared } from "../styles/tokens";
-import { WEATHER_ES, call, fmt, icon, isDimmable, isOn, num, st } from "../lib/ha";
+import { WEATHER_ES, call, fmt, icon, isDimmable, isOn, moreInfo, num, st } from "../lib/ha";
 import { hourlyMeans, startOfToday, stateSpans, type Point, type Span } from "../lib/data";
 import { lampKind, type DeviceDef, type RoomDef } from "../house/rooms";
 import { deviceKey, itemActive, itemAlert, roomExtras, rowState, type LayerItem } from "../house/layers";
@@ -306,7 +306,12 @@ export class RoomView extends LitElement {
         </header>
         ${rows.map((x) => {
           const alert = itemAlert(h, x);
-          return html`<div data-key=${x.key} class="srow ${alert ? "alert" : itemActive(h, x) ? "on" : ""}">
+          return html`<div
+            data-key=${x.key}
+            class="srow tap ${alert ? "alert" : itemActive(h, x) ? "on" : ""}"
+            title=${x.row === "alarm" ? "Conectar o desconectar la alarma" : "Más información"}
+            @click=${() => moreInfo(this, x.entity)}
+          >
             <span class="r-ico">${icon(x.icon)}</span><b>${x.name}</b>
             <span class="r-state num">${rowState(h, x)}</span>
           </div>`;
@@ -323,7 +328,7 @@ export class RoomView extends LitElement {
       if (!w) return nothing;
       const a = w.attributes;
       return html`
-        <section class="glass card" style="--d:0">
+        <section class="glass card tap" style="--d:0" @click=${() => moreInfo(this, w.entity_id)}>
           <header class="card-head">
             <span class="ico">${icon(WEATHER_ICON[w.state] ?? mdiWeatherPartlyCloudy)}</span>
             <div class="grow ttl"><b>Tiempo</b><span>${WEATHER_ES[w.state] ?? w.state}</span></div>
@@ -352,7 +357,7 @@ export class RoomView extends LitElement {
       t === undefined ? "" : t < 19 ? "Fresco" : t <= 25 ? "Confortable" : t <= 28 ? "Cálido" : "Caluroso";
     return html`
       <section class="glass card" style="--d:0">
-        <header class="card-head">
+        <header class="card-head tap" @click=${() => moreInfo(this, r.temperature!)}>
           <span class="ico">${icon(mdiThermometer)}</span>
           <div class="grow ttl"><b>Ambiente</b><span>${comfort}</span></div>
         </header>
@@ -622,6 +627,9 @@ export class RoomView extends LitElement {
       .tiles {
         display: grid;
         gap: 8px;
+      }
+      .tap {
+        cursor: pointer;
       }
       .srow {
         display: grid;

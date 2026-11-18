@@ -76,7 +76,7 @@ export const PLOT_BOX: Box = {
 
 /** Caja de una estancia (exterior = parcela entera). */
 export function roomBox(room: RoomDef): Box {
-  return room.rects.length ? boxOfRects(room.rects, 1) : PLOT_BOX;
+  return room.rects.length ? boxOfRects(room.rects, 0.2) : PLOT_BOX;
 }
 
 /** Une varias cajas (para encuadrar una capa con todos sus marcadores). */
@@ -197,6 +197,3 @@ export function structureSvg(): string {
   out.push(line(PEDESTRIAN_GATE.from, PEDESTRIAN_GATE.to, "p-gate", 0.16));
   return out.join("");
 }
-
-/** Rosa de los vientos: el norte real está girado respecto al "arriba" del plano. */
-export { NORTH_ANGLE } from "../../../house-3d-v1/src/scene/plan";

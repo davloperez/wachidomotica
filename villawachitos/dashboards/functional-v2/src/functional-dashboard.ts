@@ -3,6 +3,8 @@ import { customElement, property, state } from "lit/decorators.js";
 import { repeat } from "lit/directives/repeat.js";
 import {
   mdiBrightnessAuto,
+  mdiCogOutline,
+  mdiFullscreen,
   mdiCheck,
   mdiCodeJson,
   mdiContentCopy,
@@ -30,7 +32,7 @@ import {
   type LayerId,
   type LayerItem,
 } from "./house/layers";
-import { DEVICE_ICONS, deviceBrief } from "./widgets/devices";
+import { deviceIcon, deviceBrief } from "./widgets/devices";
 import { lightIcon } from "./widgets/lights";
 import { GATES } from "../../house-3d-v1/src/scene/plan";
 import { HOME_BOX, fromWorld, roomAnchor, roomBox, toWorld, unionBox, type Box } from "./plan/geometry";
@@ -45,6 +47,7 @@ import "./views/layer-view";
 import "./widgets/lights";
 import "./widgets/solar-sheet";
 import "./widgets/pump-sheet";
+import "./widgets/vacuum-sheet";
 import "./widgets/priority-alert";
 
 const HOME = "home";
@@ -114,6 +117,7 @@ export class FunctionalDashboard extends LitElement {
   @state() private sheet?: { entity: string; name: string };
   @state() private solarOpen = false;
   @state() private pumpOpen = false;
+  @state() private vacuumOpen = false;
   /** Capa activa (todos los dispositivos de un tipo en la vista general) */
   @state() private layer?: LayerId;
   /** Refresco periódico (caducidad de las alertas prioritarias) */
@@ -149,6 +153,9 @@ export class FunctionalDashboard extends LitElement {
   connectedCallback(): void {
     super.connectedCallback();
     window.addEventListener("keydown", this.onKey);
+    window.addEventListener("resize", this.fit);
+    // La cabecera de HA (modo no kiosko) tarda en colocarse: se recalcula también un poco después
+    this.fitTimers = [0, 300, 1200].map((ms) => window.setTimeout(this.fit, ms));
     this.mq = window.matchMedia(DESKTOP_MQ);
     this.mq.addEventListener("change", this.onMq);
     this.onMq();
@@ -161,6 +168,8 @@ export class FunctionalDashboard extends LitElement {
   disconnectedCallback(): void {
     super.disconnectedCallback();
     window.removeEventListener("keydown", this.onKey);
+    window.removeEventListener("resize", this.fit);
+    this.fitTimers.forEach((t) => window.clearTimeout(t));
     this.mq?.removeEventListener("change", this.onMq);
     window.clearInterval(this.idleTimer);
   }
@@ -172,6 +181,14 @@ export class FunctionalDashboard extends LitElement {
     plan?.addEventListener("click", this.onEditClick, true);
     plan?.addEventListener("dblclick", this.onEditDouble, true);
   }
+
+  private fitTimers: number[] = [];
+
+  /** Alto disponible bajo lo que HA deje encima (su cabecera si no está en kiosko), para que no se recorte la barra inferior. */
+  private fit = () => {
+    const top = Math.max(0, this.getBoundingClientRect().top);
+    this.style.setProperty("--fv2-height", `${Math.round(window.innerHeight - top)}px`);
+  };
 
   private onMq = () => {
     this.desktop = !!this.mq?.matches;
@@ -315,6 +332,7 @@ export class FunctionalDashboard extends LitElement {
     this.sheet = undefined;
     this.solarOpen = false;
     this.pumpOpen = false;
+    this.vacuumOpen = false;
     this.layer = undefined;
     if (view !== this.view) {
       this.view = view;
@@ -328,6 +346,7 @@ export class FunctionalDashboard extends LitElement {
     this.sheet = undefined;
     this.solarOpen = false;
     this.pumpOpen = false;
+    this.vacuumOpen = false;
     this.view = HOME;
     this.layer = id === this.layer ? undefined : id;
     this.toTop();
@@ -347,6 +366,19 @@ export class FunctionalDashboard extends LitElement {
     let its = this.layerCache.get(id);
     if (!its) this.layerCache.set(id, (its = layerItems(id)));
     return its;
+  }
+
+  /** ¿Se ha salido del modo kiosko (cabecera y barra lateral de HA visibles)? Kiosk-mode lo desactiva con `?disable_km`. */
+  private get kioskOff(): boolean {
+    return new URLSearchParams(window.location.search).has("disable_km");
+  }
+
+  /** Alterna el modo kiosko recargando la página con o sin `?disable_km` (kiosk-mode lo lee al cargar). */
+  private toggleKiosk(): void {
+    const url = new URL(window.location.href);
+    if (this.kioskOff) url.searchParams.delete("disable_km");
+    else url.searchParams.set("disable_km", "");
+    window.location.assign(url.toString().replace("disable_km=", "disable_km"));
   }
 
   private setTheme(): void {
@@ -425,6 +457,7 @@ export class FunctionalDashboard extends LitElement {
                     @open-light=${(e: CustomEvent<{ entity: string; name: string }>) => (this.sheet = e.detail)}
                     @open-solar=${() => (this.solarOpen = true)}
                     @open-pump=${() => (this.pumpOpen = true)}
+                    @open-vacuum=${() => (this.vacuumOpen = true)}
                   ></fv2-room>`
                 : this.layer
                   ? html`<fv2-layer
@@ -435,6 +468,7 @@ export class FunctionalDashboard extends LitElement {
                       @open-light=${(e: CustomEvent<{ entity: string; name: string }>) => (this.sheet = e.detail)}
                       @open-solar=${() => (this.solarOpen = true)}
                       @open-pump=${() => (this.pumpOpen = true)}
+                    @open-vacuum=${() => (this.vacuumOpen = true)}
                     ></fv2-layer>`
                   : html`<fv2-home
                       .hass=${this.hass}
@@ -458,6 +492,7 @@ export class FunctionalDashboard extends LitElement {
       }
       ${this.solarOpen ? html`<fv2-solar-sheet .hass=${this.hass} @close=${() => (this.solarOpen = false)}></fv2-solar-sheet>` : nothing}
       ${this.pumpOpen ? html`<fv2-pump-sheet .hass=${this.hass} @close=${() => (this.pumpOpen = false)}></fv2-pump-sheet>` : nothing}
+      ${this.vacuumOpen ? html`<fv2-vacuum-sheet .hass=${this.hass} @close=${() => (this.vacuumOpen = false)}></fv2-vacuum-sheet>` : nothing}
       ${
         this.alerts.length
           ? html`<fv2-priority
@@ -574,6 +609,7 @@ export class FunctionalDashboard extends LitElement {
             onTap: () => {
               if (it.kind === "device" && it.device.type === "energy") this.solarOpen = true;
               else if (it.kind === "device" && it.device.type === "pump") this.pumpOpen = true;
+              else if (it.kind === "device" && it.device.type === "vacuum") this.vacuumOpen = true;
               else
                 panel()?.focusKey(
                   it.kind === "device" ? deviceKey(it.device) : it.key,
@@ -606,6 +642,7 @@ export class FunctionalDashboard extends LitElement {
                   this.lastTouch = Date.now();
                   if (it.kind === "device" && it.device.type === "energy") this.solarOpen = true;
                   else if (it.kind === "device" && it.device.type === "pump") this.pumpOpen = true;
+              else if (it.kind === "device" && it.device.type === "vacuum") this.vacuumOpen = true;
                   else panel()?.focusItem(it.key);
                 },
               }),
@@ -656,7 +693,7 @@ export class FunctionalDashboard extends LitElement {
     const h = this.hass;
     const [x, , z] = it.pos!;
     const ico =
-      it.kind === "device" ? DEVICE_ICONS[it.device.type] : it.kind === "row" ? it.icon : LAYERS[1].icon;
+      it.kind === "device" ? deviceIcon(it.device) : it.kind === "row" ? it.icon : LAYERS[1].icon;
     const label =
       it.kind === "device"
         ? deviceBrief(h, it.device)
@@ -802,6 +839,17 @@ export class FunctionalDashboard extends LitElement {
       <button class="tab theme" title="Tema: ${theme}" @click=${this.setTheme}>
         ${icon(themeIcon)}<span>Tema</span>
       </button>
+      ${
+        this.config.kiosk_toggle === false
+          ? nothing
+          : html`<button
+              class="tab"
+              title=${this.kioskOff ? "Volver al modo kiosko (oculta la barra lateral de Home Assistant)" : "Mostrar la barra lateral y los ajustes de Home Assistant"}
+              @click=${this.toggleKiosk}
+            >
+              ${icon(this.kioskOff ? mdiFullscreen : mdiCogOutline)}<span>${this.kioskOff ? "Kiosko" : "Ajustes"}</span>
+            </button>`
+      }
     </nav>`;
   }
 

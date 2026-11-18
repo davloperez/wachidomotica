@@ -24,6 +24,8 @@ export interface HomeAssistant {
   locale?: { language: string };
   themes: { darkMode: boolean };
   connection: HassConnection;
+  /** Convierte una ruta de HA (p. ej. `/api/camera_proxy/...`) en URL completa (solo en el frontend de HA y en dev). */
+  hassUrl?(path?: string): string;
   callWS<T>(msg: Record<string, unknown>): Promise<T>;
   callService(domain: string, service: string, data?: Record<string, unknown>): Promise<unknown>;
 }
@@ -35,6 +37,10 @@ export interface DashboardConfig {
   title?: string;
   theme?: ThemeMode;
   weather?: string;
+  /** Sensores con avisos meteorológicos (AEMET/Meteoalarm). Por defecto se detectan los `binary_sensor` con «meteoalarm» o «aemet». */
+  weather_alerts?: string[];
+  /** Botón del dock para mostrar u ocultar la barra lateral de HA (modo kiosko). `false` lo quita. */
+  kiosk_toggle?: boolean;
   alarm?: string;
   /** Segundos sin tocar la pantalla tras los que se vuelve a la vista general (0 = nunca). */
   idle_return_seconds?: number;

@@ -10,7 +10,9 @@ import {
   mdiPool,
   mdiPower,
   mdiWallSconceRound,
-  mdiCeilingLightMultiple,
+  mdiCloudOutline,
+  mdiDeskLamp,
+  mdiLightRecessed,
   mdiTuneVariant,
 } from "@mdi/js";
 import type { HomeAssistant } from "../types";
@@ -18,12 +20,22 @@ import { shared } from "../styles/tokens";
 import { brightnessPct, call, icon, isDimmable, isUnavailable, lightColor, moreInfo, st } from "../lib/ha";
 import { lampKind } from "../house/rooms";
 
+/** Iconos que no salen del tipo de luminaria del plano: se eligen por entidad. */
+const ICON_OVERRIDE: [RegExp, string][] = [
+  [/luz_nube/, mdiCloudOutline],
+  [/mesita/, mdiCeilingLight], // lámparas colgantes
+  [/fregadero/, mdiLedStripVariant],
+  [/luz_isla/, mdiLightRecessed], // luz de cocinar, empotrada
+  [/lampara_pro_mi|desk_lamp/, mdiDeskLamp], // flexos modernos, sin tulipa
+];
+
 export function lightIcon(entity: string): string {
+  const over = ICON_OVERRIDE.find(([re]) => re.test(entity));
+  if (over) return over[1];
   switch (lampKind(entity)) {
     case "ceiling":
-      return mdiCeilingLight;
     case "downlights":
-      return mdiCeilingLightMultiple;
+      return mdiLightRecessed;
     case "strip":
       return mdiLedStripVariant;
     case "lamp":

@@ -4,7 +4,7 @@ import { repeat } from "lit/directives/repeat.js";
 import { mdiArrowCollapseDown, mdiArrowCollapseUp, mdiClose, mdiLightbulbOffOutline } from "@mdi/js";
 import type { HomeAssistant } from "../types";
 import { shared } from "../styles/tokens";
-import { call, fmt, icon, num, st } from "../lib/ha";
+import { call, fmt, icon, moreInfo, num, st } from "../lib/ha";
 import { ENERGY, type RoomDef } from "../house/rooms";
 import {
   ALARM,
@@ -193,10 +193,9 @@ export class LayerView extends LitElement {
 
   private group(g: Group, d: number) {
     const h = this.hass;
-    const plain = g.items.filter((it) => it.kind !== "device");
-    const devices = g.items.filter((it) => it.kind === "device");
     const active = g.items.filter((it) => itemActive(h, it)).length;
-    // Las tarjetas de dispositivo van sueltas bajo la estancia (necesitan todo el ancho)
+    // Todo lo de la estancia va dentro de su recuadro (luces, filas y dispositivos), como en Seguridad > Entrada
+    const items = [...g.items.filter((it) => it.kind !== "device"), ...g.items.filter((it) => it.kind === "device")];
     return html`<div class="group" style="--d:${d}">
       <section class="glass card">
         <header class="card-head">
@@ -204,23 +203,14 @@ export class LayerView extends LitElement {
           <b class="grow room">${g.room.name}</b>
           ${active ? html`<span class="count num">${active}/${g.items.length}</span>` : nothing}
         </header>
-        ${
-          plain.length
-            ? html`<div class="tiles">
-                ${repeat(
-                  plain,
-                  (it) => it.key,
-                  (it) => this.item(it),
-                )}
-              </div>`
-            : nothing
-        }
+        <div class="tiles">
+          ${repeat(
+            items,
+            (it) => it.key,
+            (it) => this.item(it),
+          )}
+        </div>
       </section>
-      ${repeat(
-        devices,
-        (it) => it.key,
-        (it) => this.item(it),
-      )}
     </div>`;
   }
 
@@ -243,7 +233,6 @@ export class LayerView extends LitElement {
         ></fv2-cover>`;
       case "device":
         return html`<fv2-device
-          class="glass dev"
           data-key=${it.key}
           data-type=${it.device.type}
           .hass=${h}
@@ -252,7 +241,12 @@ export class LayerView extends LitElement {
       case "row": {
         const alert = itemAlert(h, it);
         const on = itemActive(h, it);
-        return html`<div class="row ${alert ? "alert" : on ? "on" : ""}" data-key=${it.key}>
+        return html`<div
+          class="row ${alert ? "alert" : on ? "on" : ""}"
+          data-key=${it.key}
+          title=${it.row === "alarm" ? "Conectar o desconectar la alarma" : "Más información"}
+          @click=${() => moreInfo(this, it.entity)}
+        >
           <span class="r-ico">${icon(it.icon)}</span>
           <b>${it.name}</b>
           <span class="r-state num">${rowState(h, it)}</span>
@@ -290,9 +284,6 @@ export class LayerView extends LitElement {
       .group > .card:only-child,
       .group > .card {
         padding: 12px var(--space-3);
-      }
-      .dev {
-        background: var(--glass);
       }
       .ttl {
         display: grid;
@@ -344,6 +335,7 @@ export class LayerView extends LitElement {
         gap: 8px;
       }
       .row {
+        cursor: pointer;
         display: grid;
         grid-template-columns: auto 1fr auto;
         align-items: center;

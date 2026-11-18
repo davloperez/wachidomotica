@@ -102,8 +102,6 @@ const SPOTS: Record<string, [number, number, number]> = {
   "binary_sensor.sensor_agua_dreame_water_leak": [0.6, 0.3, -1.25],
   "binary_sensor.sensor_puerta_principal_contact": [-4.8, 1.3, -4.04],
   "alarm_control_panel.alarma_vivienda": [-4.1, 1.5, -2.6],
-  // Enchufe del limpiafondos: esquina suroeste de la piscina, por fuera
-  "switch.enchufe_limpiador_piscina": [-5.4, 0.5, 13.2],
   // Cámaras exteriores
   "binary_sensor.cam_garaje_motion": [-8.8, 2.4, -8.6],
   "binary_sensor.cam_patio_lavadero_motion_2": [-7.9, 2.4, -2.0],
@@ -117,12 +115,12 @@ const MEDIA: { room: string; entity: string; name: string }[] = [
   { room: "salon", entity: "media_player.shellywalldisplay_0205030bbdd8", name: "Pantalla salón este" },
   { room: "cocina", entity: "media_player.shelly_salon_sur", name: "Shelly Cocina" },
   {
-    room: "oficinas",
+    room: "oficina_1",
     entity: "media_player.oficina_1_shellywalldisplay_oficina1",
     name: "Pantalla oficina 1",
   },
   {
-    room: "oficinas",
+    room: "oficina_2",
     entity: "media_player.oficina_2_shellywalldisplay_oficina2",
     name: "Pantalla oficina 2",
   },
@@ -261,7 +259,9 @@ export function layerItems(layer: LayerId): LayerItem[] {
     }
 
     for (const d of room.devices) {
-      if (!DEVICE_LAYER[d.type].includes(layer)) continue;
+      // El enchufe con dosificación (ambientador) es un electrodoméstico, no un consumo de energía
+      const layers = d.type === "switch" && d.dose ? ["electro"] : DEVICE_LAYER[d.type];
+      if (!layers.includes(layer)) continue;
       // Cada cámara, con su propio marcador
       if (d.type === "cameras") {
         for (const cam of d.cameras)

@@ -1,14 +1,11 @@
 import { LitElement, css, html, svg, nothing, type PropertyValues } from "lit";
 import { customElement, property } from "lit/decorators.js";
 import { unsafeSVG } from "lit/directives/unsafe-svg.js";
-import { mdiFitToScreenOutline, mdiMinus, mdiPlus } from "@mdi/js";
 import { shared } from "../styles/tokens";
-import { icon } from "../lib/ha";
 import { POOL } from "../../../house-3d-v1/src/scene/plan";
 import {
   FLOORS,
   HOME_BOX,
-  NORTH_ANGLE,
   PX,
   WORLD_H,
   WORLD_W,
@@ -25,7 +22,7 @@ const ANIM_MS = 420;
 /** A partir de esta escala (píxeles de pantalla por metro) se rotulan todos los marcadores */
 const NEAR_PX_PER_M = 32;
 /** Zoom máximo al encuadrar una estancia (píxeles de pantalla por metro) */
-const FRAME_MAX = 46;
+const FRAME_MAX = 76;
 
 // --inv se registra como número para poder animarlo junto al zoom (si no, los marcadores
 // cambiarían de tamaño de golpe al principio de cada viaje del plano).
@@ -137,7 +134,7 @@ export class FloorPlan extends LitElement {
     this.frame(this.frameBox, true);
   }
 
-  private fitScale(b: Box, fill = 0.94): number {
+  private fitScale(b: Box, fill = 0.96): number {
     return Math.min((this.w / b.w) * fill, ((this.h - this.padTop) / b.h) * fill);
   }
 
@@ -194,10 +191,6 @@ export class FloorPlan extends LitElement {
     this.clampPan();
     this.userMoved = true;
     this.apply(animate);
-  }
-
-  private zoomButton(factor: number): void {
-    this.zoomAt(factor, this.w / 2, this.h / 2, true);
   }
 
   /* ---------------------------------------------------------------- */
@@ -367,18 +360,6 @@ export class FloorPlan extends LitElement {
           <slot></slot>
         </div>
       </div>
-      <div class="ctl zoom">
-        <button class="round" title="Acercar" @click=${() => this.zoomButton(1.6)}>${icon(mdiPlus)}</button>
-        <button class="round" title="Alejar" @click=${() => this.zoomButton(1 / 1.6)}>
-          ${icon(mdiMinus)}
-        </button>
-        <button class="round" title="Encuadrar" @click=${() => this.reset()}>
-          ${icon(mdiFitToScreenOutline)}
-        </button>
-      </div>
-      <div class="ctl north" title="Norte" style="--north:${-NORTH_ANGLE}deg">
-        <span>N</span>
-      </div>
     `;
   }
 
@@ -476,52 +457,6 @@ export class FloorPlan extends LitElement {
         stroke-width: 3;
         stroke-dasharray: 8 5;
         pointer-events: none;
-      }
-      .ctl {
-        position: absolute;
-        z-index: 2;
-      }
-      .zoom {
-        right: 10px;
-        bottom: 10px;
-        display: grid;
-        gap: 8px;
-      }
-      .zoom .round {
-        width: 46px;
-        height: 46px;
-        background: var(--glass);
-        border: 1px solid var(--glass-border);
-        color: var(--text);
-      }
-      .north {
-        left: 10px;
-        bottom: 10px;
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        display: grid;
-        place-items: center;
-        background: var(--glass);
-        border: 1px solid var(--glass-border);
-        color: var(--terracotta);
-        font-weight: 800;
-        font-size: 14px;
-        pointer-events: none;
-      }
-      .north span {
-        transform: rotate(var(--north));
-        display: block;
-      }
-      .north span::before {
-        content: "";
-        display: block;
-        width: 0;
-        height: 0;
-        margin: 0 auto 1px;
-        border: 5px solid transparent;
-        border-bottom: 7px solid var(--terracotta);
-        border-top: 0;
       }
     `,
   ];

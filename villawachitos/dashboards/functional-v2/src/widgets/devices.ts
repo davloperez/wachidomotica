@@ -25,6 +25,10 @@ import {
   mdiPrinterOutline,
   mdiPump,
   mdiRobotVacuum,
+  mdiFan,
+  mdiFlower,
+  mdiTablet,
+  mdiTune,
   mdiSolarPowerVariant,
   mdiTelevision,
   mdiVolumeHigh,
@@ -40,7 +44,7 @@ import { hourlyMeans, type Point } from "../lib/data";
 import { ENERGY, FRIDGE, type DeviceDef } from "../house/rooms";
 import "../charts/charts";
 
-export const DEVICE_ICONS: Record<DeviceDef["type"], string> = {
+const DEVICE_ICONS: Record<DeviceDef["type"], string> = {
   hvac: mdiAirConditioner,
   tv: mdiTelevision,
   vacuum: mdiRobotVacuum,
@@ -67,6 +71,17 @@ const PRINTER_ES: Record<string, string> = {
   stopped: "Detenida",
   unavailable: "Apagada",
 };
+
+/** Icono de un dispositivo: por tipo, salvo las pantallas Shelly (tablet), el ambientador (flor) y la ventilación (ventilador). */
+export function deviceIcon(d: DeviceDef): string {
+  if ((d.type === "tv" && d.entity.includes("shelly")) || (d.type === "presence" && d.occupancy?.includes("shellywalldisplay")))
+    return mdiTablet;
+  if (d.type === "switch") {
+    if (d.dose) return mdiFlower;
+    if (d.entity.includes("ventilacion")) return mdiFan;
+  }
+  return DEVICE_ICONS[d.type];
+}
 
 /** Resumen corto para el marcador del dispositivo sobre el plano. */
 export function deviceBrief(h: HomeAssistant | undefined, d: DeviceDef): string {
@@ -244,7 +259,7 @@ export class DeviceCard extends LitElement {
     return html`
       <section class="card ${active ? "active" : ""}">
         <header class="card-head">
-          <span class="ico">${icon(DEVICE_ICONS[d.type])}</span>
+          <span class="ico">${icon(deviceIcon(d))}</span>
           <div class="grow ttl">
             <b>${d.name}</b>
             ${status ? html`<span>${status}</span>` : nothing}
@@ -291,6 +306,12 @@ export class DeviceCard extends LitElement {
             </button>
             <button class="btn" @click=${() => call(h, "vacuum", "return_to_base", { entity_id: d.entity })}>
               ${icon(mdiHomeImportOutline)} A la base
+            </button>
+            <button
+              class="btn wide"
+              @click=${() => this.dispatchEvent(new CustomEvent("open-vacuum", { bubbles: true, composed: true }))}
+            >
+              ${icon(mdiTune)} Personalizar limpieza e historial
             </button>
           </div>`,
         };
@@ -537,7 +558,7 @@ export class DeviceCard extends LitElement {
             ${d.gates.map((g) => {
               const e = st(h, g.entity);
               const o = e?.state === "on";
-              return html`<div class="li">
+              return html`<div class="li tap" @click=${() => moreInfo(this, g.entity)}>
                 <span class="dot ${o ? "warn" : "ok"}"></span><b>${g.name}</b>
                 <span class="muted"
                   >${isUnavailable(e) ? "Sin sensor" : o ? "Abierta" : "Cerrada"} ·
@@ -572,7 +593,7 @@ export class DeviceCard extends LitElement {
             ${d.cameras.map((c) => {
               const person = isOn(h, c.person);
               const motion = isOn(h, c.motion);
-              return html`<div class="li">
+              return html`<div class="li tap" @click=${() => moreInfo(this, c.motion)}>
                 <span class="dot ${person ? "bad" : motion ? "warn" : "ok"}"></span><b>${c.name}</b>
                 <span class="muted"
                   >${person ? "Persona" : motion ? "Movimiento" : "Tranquilo"} ·
@@ -1025,6 +1046,9 @@ export class DeviceCard extends LitElement {
       .list {
         display: grid;
         gap: 6px;
+      }
+      .tap {
+        cursor: pointer;
       }
       .li {
         display: grid;

@@ -126,15 +126,15 @@ export const ROOMS_DEF: RoomDef[] = [
     icon: mdiSofaOutline,
     rects: rectOf("Salón"),
     lights: [
-      { entity: "light.salon_persiana_salon_3_luz_techo_salon", name: "Techo" },
-      { entity: "light.salon_persiana_salon_3_luz_pasillo_salon", name: "Techo pasillo" },
+      { entity: "light.salon_persiana_salon_3_luz_techo_salon", name: "Luz Techo" },
+      { entity: "light.salon_persiana_salon_3_luz_pasillo_salon", name: "Luz Techo Pasillo" },
       { entity: "light.salon_persiana_salon_3_luz_aplique_pasillo_salon", name: "Aplique" },
       { entity: "light.wled_gledopto", name: "Cortinero LED" },
     ],
     covers: [
-      { entity: "cover.persiana_salon_1_persiana", name: "Persiana Salón 1" },
-      { entity: "cover.persiana_salon_2_persiana", name: "Persiana Salón 2" },
-      { entity: "cover.persiana_salon_3_persiana", name: "Persiana Salón 3" },
+      { entity: "cover.persiana_salon_1_persiana", name: "Persiana 1" },
+      { entity: "cover.persiana_salon_2_persiana", name: "Persiana 2" },
+      { entity: "cover.persiana_salon_3_persiana", name: "Persiana 3" },
     ],
     temperature: "sensor.shelly_salon_sur_temperatura",
     humidity: "sensor.shelly_salon_sur_humedad",
@@ -161,8 +161,8 @@ export const ROOMS_DEF: RoomDef[] = [
     icon: mdiStove,
     rects: rectOf("Cocina").concat(ROOMS.filter((r) => r.name === "").map((r) => r.rect)),
     lights: [
-      { entity: "light.cocina_esp_cocina_luz_techo_cocina", name: "Techo" },
-      { entity: "light.cocina_esp_cocina_luz_isla_cocina", name: "Lámparas isla" },
+      { entity: "light.cocina_esp_cocina_luz_techo_cocina", name: "Luz Techo" },
+      { entity: "light.cocina_esp_cocina_luz_isla_cocina", name: "Luz de cocinar" },
       { entity: "light.led_barra_isla", name: "LED barra" },
       { entity: "light.luz_fregadero_cocina", name: "Fregadero" },
     ],
@@ -195,7 +195,7 @@ export const ROOMS_DEF: RoomDef[] = [
     // El recibidor sigue hacia el sur por el pasillo del cuadro (dentro del rectángulo de la cocina)
     rects: [...rectOf("Entrada"), [-5.76, -2.41, -4.6, -1.2]],
     lights: [
-      { entity: "light.salon_esp_entrada_luz_techo_entrada", name: "Techo" },
+      { entity: "light.salon_esp_entrada_luz_techo_entrada", name: "Luz Techo" },
       { entity: "light.salon_esp_entrada_luz_cuadro_entrada", name: "Cuadro" },
     ],
     covers: [],
@@ -208,7 +208,7 @@ export const ROOMS_DEF: RoomDef[] = [
     name: "Lavadero",
     icon: mdiTshirtCrewOutline,
     rects: rectOf("Lavadero"),
-    lights: [{ entity: "light.salon_esp_entrada_luz_techo_lavadero", name: "Techo" }],
+    lights: [{ entity: "light.salon_esp_entrada_luz_techo_lavadero", name: "Luz Techo" }],
     covers: [],
     devices: [
       { type: "energy", name: "Instalación solar" },
@@ -238,25 +238,16 @@ export const ROOMS_DEF: RoomDef[] = [
     ],
   },
   {
-    // Las dos oficinas comparten vista: se ven y se controlan juntas
-    id: "oficinas",
-    name: "Oficinas",
+    id: "oficina_1",
+    name: "Oficina 1",
     icon: mdiMonitor,
-    rects: [...rectOf("Oficina 1"), ...rectOf("Oficina 2")],
-    anchor: [-1.33, -4.05],
+    rects: rectOf("Oficina 1"),
     lights: [
-      { entity: "light.oficina_1_persiana_oficina_1_luz_techo", name: "Downlights ofi. 1" },
+      { entity: "light.oficina_1_persiana_oficina_1_luz_techo", name: "Luz Techo" },
       { entity: "light.oficina_1_lampara_mueble_oficina_1", name: "Lámpara mueble" },
-      { entity: "light.oficina_1_wled_cortinero_oficina_1", name: "Cortinero ofi. 1" },
-      { entity: "light.persiana_oficina_2_luz_techo", name: "Downlights ofi. 2" },
-      { entity: "light.oficina_2_lampara_pro_mi_1", name: "Flexo 1" },
-      { entity: "light.oficina_2_lampara_pro_mi_2_mijia_desk_lamp_sw", name: "Flexo 2" },
-      { entity: "light.oficina_2_wled_cortinero_oficina_2", name: "Cortinero ofi. 2" },
+      { entity: "light.oficina_1_wled_cortinero_oficina_1", name: "Cortinero" },
     ],
-    covers: [
-      { entity: "cover.persiana_oficina_1_persiana", name: "Corredera ofi. 1" },
-      { entity: "cover.persiana_oficina_2_persiana", name: "Corredera ofi. 2" },
-    ],
+    covers: [{ entity: "cover.persiana_oficina_1_persiana", name: "Persiana" }],
     devices: [
       { type: "printer", name: "Impresora", entity: PRINTER.entity, inks: PRINTER.inks },
       {
@@ -279,6 +270,21 @@ export const ROOMS_DEF: RoomDef[] = [
         occupancy: "binary_sensor.oficina_1_shellywalldisplay_oficina1_ocupacion",
         illuminance: "sensor.oficina_1_shellywalldisplay_oficina1_iluminancia",
       },
+    ],
+  },
+  {
+    id: "oficina_2",
+    name: "Oficina 2",
+    icon: mdiMonitor,
+    rects: rectOf("Oficina 2"),
+    lights: [
+      { entity: "light.persiana_oficina_2_luz_techo", name: "Luz Techo" },
+      { entity: "light.oficina_2_lampara_pro_mi_1", name: "Flexo 1" },
+      { entity: "light.oficina_2_lampara_pro_mi_2_mijia_desk_lamp_sw", name: "Flexo 2" },
+      { entity: "light.oficina_2_wled_cortinero_oficina_2", name: "Cortinero" },
+    ],
+    covers: [{ entity: "cover.persiana_oficina_2_persiana", name: "Persiana" }],
+    devices: [
       {
         type: "presence",
         name: "Panel oficina 2",
@@ -293,7 +299,7 @@ export const ROOMS_DEF: RoomDef[] = [
     icon: mdiShower,
     rects: rectOf("Baño 2"),
     lights: [
-      { entity: "light.bano_2_esp_bano_2_luz_techo_bano_2", name: "Techo" },
+      { entity: "light.bano_2_esp_bano_2_luz_techo_bano_2", name: "Luz Techo" },
       { entity: "light.bano_2_esp_bano_2_luz_espejo_bano_2", name: "Espejo" },
       { entity: "light.bano_2_esp_bano_2_luz_hornacina_bano_2", name: "Hornacina" },
     ],
@@ -314,12 +320,12 @@ export const ROOMS_DEF: RoomDef[] = [
     icon: mdiBedOutline,
     rects: rectOf("Dormitorio 3"),
     lights: [
-      { entity: "light.dormitorio_3_persiana_dormitorio_3_luz_techo", name: "Downlights" },
-      { entity: "light.dormitorio_3_persiana_dormitorio_3_luz_techo_2", name: "Techo 2" },
+      { entity: "light.dormitorio_3_persiana_dormitorio_3_luz_techo", name: "Luz Techo" },
+      { entity: "light.dormitorio_3_persiana_dormitorio_3_luz_techo_2", name: "Luz Techo 2" },
       { entity: "light.dormitorio_3_persiana_dormitorio_3_luz_mesita", name: "Mesita 1" },
       { entity: "light.dormitorio_3_persiana_dormitorio_3_luz_mesita_2", name: "Mesita 2" },
     ],
-    covers: [{ entity: "cover.persiana_dormitorio_3_persiana", name: "Corredera" }],
+    covers: [{ entity: "cover.persiana_dormitorio_3_persiana", name: "Persiana" }],
     devices: [],
   },
   {
@@ -328,7 +334,7 @@ export const ROOMS_DEF: RoomDef[] = [
     icon: mdiWalk,
     rects: rectOf("Pasillo"),
     lights: [
-      { entity: "light.bano_2_esp_bano_2_luz_techo_pasillo", name: "Techo" },
+      { entity: "light.bano_2_esp_bano_2_luz_techo_pasillo", name: "Luz Techo" },
       { entity: "light.bano_2_esp_bano_2_luz_aplique_pasillo", name: "Aplique" },
     ],
     covers: [],
@@ -341,10 +347,10 @@ export const ROOMS_DEF: RoomDef[] = [
     icon: mdiBedOutline,
     rects: rectOf("Dormitorio 2"),
     lights: [
-      { entity: "light.dormitorio_2_persiana_dormitorio_2_luz_techo", name: "Downlights" },
+      { entity: "light.dormitorio_2_persiana_dormitorio_2_luz_techo", name: "Luz Techo" },
       { entity: "light.luz_wifi_mesita_noche_dorm_2", name: "Mesita" },
     ],
-    covers: [{ entity: "cover.persiana_dormitorio_2_persiana", name: "Corredera" }],
+    covers: [{ entity: "cover.persiana_dormitorio_2_persiana", name: "Persiana" }],
     devices: [],
   },
   {
@@ -356,15 +362,15 @@ export const ROOMS_DEF: RoomDef[] = [
     rects: [...rectOf("Dormitorio 1"), ...rectOf("Vestidor")],
     anchor: [3.3, 2.18],
     lights: [
-      { entity: "light.dormitorio_1_persiana_dormitorio_1_luz_techo_dormitorio_1", name: "Downlights" },
+      { entity: "light.dormitorio_1_persiana_dormitorio_1_luz_techo_dormitorio_1", name: "Luz Techo" },
       { entity: "light.luz_mesita_noche_dorm_1", name: "Mesita" },
       { entity: "light.enchufe_luz_nube_infantil", name: "Nube infantil" },
-      { entity: "light.dormitorio_1_persiana_dormitorio_1_luz_techo_vestidor", name: "Downlights vestidor" },
+      { entity: "light.dormitorio_1_persiana_dormitorio_1_luz_techo_vestidor", name: "Luz Techo vestidor" },
       { entity: "light.luz_armarios_altos", name: "Armarios altos" },
       { entity: "light.luz_armarios_bajos", name: "Armarios bajos" },
       { entity: "light.luz_cajones", name: "Cajones" },
     ],
-    covers: [{ entity: "cover.persiana_dormitorio_1_persiana", name: "Balconera" }],
+    covers: [{ entity: "cover.persiana_dormitorio_1_persiana", name: "Persiana" }],
     devices: [
       {
         type: "presence",
@@ -379,7 +385,7 @@ export const ROOMS_DEF: RoomDef[] = [
     icon: mdiBathtubOutline,
     rects: rectOf("Baño 1"),
     lights: [
-      { entity: "light.bano_1_bano_1_luz_techo_bano_1", name: "Techo" },
+      { entity: "light.bano_1_bano_1_luz_techo_bano_1", name: "Luz Techo" },
       { entity: "light.bano_1_bano_1_luz_espejo_bano_1", name: "Espejo" },
       { entity: "light.bano_1_bano_1_luz_hornacina_bano_1", name: "Hornacina" },
     ],
@@ -419,8 +425,6 @@ export const ROOMS_DEF: RoomDef[] = [
     covers: [],
     devices: [
       { type: "pump", name: "Depuradora", entity: PUMP.entity, power: PUMP.power },
-      // Enchufe del limpiafondos, en la esquina suroeste de la piscina (exterior sur)
-      { type: "switch", name: "Limpiafondos piscina", entity: "switch.enchufe_limpiador_piscina" },
       // Portero automático en la puerta peatonal del jardín norte
       {
         type: "lock",

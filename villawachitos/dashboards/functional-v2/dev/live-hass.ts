@@ -32,6 +32,7 @@ export async function createLiveHass(
       connection: {
         subscribeMessage: (cb, msg) => conn.subscribeMessage(cb, msg as never),
       },
+      hassUrl: (path = "") => new URL(path, url).toString(),
       callWS: (msg) => conn.sendMessagePromise(msg as never),
       callService: (domain, service, data) => callService(conn, domain, service, data),
     });
