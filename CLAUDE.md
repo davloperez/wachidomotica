@@ -32,7 +32,7 @@ Never read or search inside `node_modules/`, `dist/`, `venv/`, `.esphome/`, `pac
 - A `home-assistant` MCP server is usually connected: use it (`ha_search`, `ha_get_state`, `ha_get_entity`…) to
   find real entity IDs and attributes instead of guessing. Read-only lookups are fine; anything that changes HA
   (services, config, automations, restarts) needs the user's OK.
-- Entity IDs are Spanish snake_case (`light.luz_piscina`, `switch.interruptor_depuradora`,
+- Entity IDs are Spanish snake_case (`light.jardin_sur_luz_piscina`, `switch.interruptor_depuradora`,
   `alarm_control_panel.alarma_vivienda`, `weather.forecast_casa`).
 - Location: Molina de Segura (lat 38.0506, lon -1.2114). The plan is rotated 26° from true north.
 

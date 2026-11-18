@@ -400,7 +400,7 @@ export const ROOMS_DEF: RoomDef[] = [
     icon: mdiPineTree,
     rects: [],
     lights: [
-      { entity: "light.luz_piscina", name: "Piscina" },
+      { entity: "light.jardin_sur_luz_piscina", name: "Piscina" },
       { entity: "light.lampara_blanca_exterior", name: "Lámpara jardín" },
       { entity: "light.salon_esp_entrada_luz_exterior_barbacoa", name: "Barbacoa" },
       { entity: "light.salon_esp_entrada_luz_mamposteria_entrada", name: "Mampostería" },

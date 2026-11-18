@@ -74,8 +74,7 @@ const PRINTER_ES: Record<string, string> = {
 
 /** Icono de un dispositivo: por tipo, salvo las pantallas Shelly (tablet), el ambientador (flor) y la ventilación (ventilador). */
 export function deviceIcon(d: DeviceDef): string {
-  if ((d.type === "tv" && d.entity.includes("shelly")) || (d.type === "presence" && d.occupancy?.includes("shellywalldisplay")))
-    return mdiTablet;
+  if (d.type === "presence" && (d.occupancy ?? d.illuminance)?.includes("shelly")) return mdiTablet;
   if (d.type === "switch") {
     if (d.dose) return mdiFlower;
     if (d.entity.includes("ventilacion")) return mdiFan;
@@ -148,7 +147,7 @@ export function deviceBrief(h: HomeAssistant | undefined, d: DeviceDef): string 
       return `${d.name} · ${person ? "persona" : motion ? "movimiento" : "tranquila"}`;
     }
     case "presence":
-      return `${d.name} · ${isOn(h, d.occupancy) ? "hay alguien" : "vacío"}`;
+      return d.occupancy ? `${d.name} · ${isOn(h, d.occupancy) ? "hay alguien" : "vacío"}` : d.name;
     case "lock": {
       const s = st(h, d.entity)?.state;
       return `${d.name} · ${!s || s === "unavailable" ? "sin conexión" : s === "locked" ? "cerrado" : "abierto"}`;
@@ -609,9 +608,9 @@ export class DeviceCard extends LitElement {
         const lux = num(h, d.illuminance);
         const present = occ?.state === "on";
         return {
-          entity: d.occupancy,
+          entity: d.occupancy ?? d.illuminance,
           active: present,
-          status: present ? "Hay alguien" : `Sin presencia${occ ? ` · ${relTime(occ.last_changed)}` : ""}`,
+          status: !occ ? undefined : present ? "Hay alguien" : `Sin presencia · ${relTime(occ.last_changed)}`,
           body:
             lux !== undefined
               ? html`<div class="stats">${this.stat("Luz ambiente", `${fmt(lux, 0)}`, "lux")}</div>`

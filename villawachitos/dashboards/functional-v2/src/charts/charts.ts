@@ -602,7 +602,7 @@ export class EnergyFlow extends Sized {
   @property({ type: Number }) pv = 0;
   /** kW, positivo = cargando */
   @property({ type: Number }) battery = 0;
-  /** kW, positivo = importando de la red */
+  /** kW, positivo = vertiendo a la red (así lo reporta el sensor de Sigenergy), negativo = importando */
   @property({ type: Number }) grid = 0;
   @property({ type: Number }) load = 0;
   @property({ type: Number }) soc = 0;
@@ -652,7 +652,7 @@ export class EnergyFlow extends Sized {
       <svg width=${W} height=${H + 40} viewBox="0 -4 ${W} ${H + 40}">
         ${link(sun, home, this.pv, "var(--amber)", false)}
         ${link(bat, home, this.battery, "var(--sage)", this.battery > 0)}
-        ${link(grid, home, this.grid, "var(--lilac)", this.grid < 0)}
+        ${link(grid, home, this.grid, "var(--lilac)", this.grid > 0)}
         ${circle(sun, mdiSolarPower, "var(--amber)", "Solar", `${fmt(this.pv, 2)} kW`)}
         ${svg`
           <g transform="translate(${bat.x} ${bat.y})">
@@ -664,7 +664,7 @@ export class EnergyFlow extends Sized {
             <text y="44" text-anchor="middle" class="lbl">Batería ${Math.round(this.soc)} %</text>
             <text y="59" text-anchor="middle" class="v">${this.battery > 0.02 ? "▲ " : this.battery < -0.02 ? "▼ " : ""}${fmt(Math.abs(this.battery), 2)} kW</text>
           </g>`}
-        ${circle(grid, mdiTransmissionTower, "var(--lilac)", this.grid < -0.02 ? "Vertiendo" : "Red", `${fmt(Math.abs(this.grid), 2)} kW`)}
+        ${circle(grid, mdiTransmissionTower, "var(--lilac)", this.grid > 0.02 ? "Vertiendo" : "Red", `${fmt(Math.abs(this.grid), 2)} kW`)}
         ${circle(home, mdiHomeOutline, "var(--terracotta)", "Casa", `${fmt(this.load, 2)} kW`, 34)}
       </svg>
     `;

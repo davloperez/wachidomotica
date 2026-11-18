@@ -606,7 +606,7 @@ export class FunctionalDashboard extends LitElement {
       const on = r.lights.filter((l) => isOn(this.hass, l.entity)).length;
       out[`--glow-${r.id}`] = on ? String(0.32 + 0.4 * (on / r.lights.length)) : "0";
     }
-    out["--glow-pool"] = isOn(this.hass, "light.luz_piscina") ? "0.85" : "0";
+    out["--glow-pool"] = isOn(this.hass, "light.jardin_sur_luz_piscina") ? "0.85" : "0";
     return out;
   }
 

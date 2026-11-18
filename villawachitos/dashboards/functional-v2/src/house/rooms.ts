@@ -150,7 +150,7 @@ export const ROOMS_DEF: RoomDef[] = [
         type: "presence",
         name: "Panel del salón",
         occupancy: "binary_sensor.shellywalldisplay_0205030bbdd8_ocupacion",
-        illuminance: "sensor.shelly_salon_sur_iluminancia",
+        illuminance: "sensor.shellywalldisplay_0205030bbdd8_iluminancia",
       },
     ],
     leaks: ["binary_sensor.sensor_agua_dreame_water_leak"],
@@ -168,6 +168,7 @@ export const ROOMS_DEF: RoomDef[] = [
     ],
     covers: [],
     devices: [
+      { type: "presence", name: "Panel cocina", illuminance: "sensor.shelly_salon_sur_iluminancia" },
       { type: "fridge", name: "Frigorífico" },
       {
         type: "dishwasher",
@@ -406,7 +407,7 @@ export const ROOMS_DEF: RoomDef[] = [
     icon: mdiPineTree,
     rects: [],
     lights: [
-      { entity: "light.luz_piscina", name: "Piscina" },
+      { entity: "light.jardin_sur_luz_piscina", name: "Piscina" },
       { entity: "light.lampara_blanca_exterior", name: "Lámpara jardín" },
       { entity: "light.salon_esp_entrada_luz_exterior_barbacoa", name: "Barbacoa" },
       { entity: "light.salon_esp_entrada_luz_mamposteria_entrada", name: "Mampostería" },

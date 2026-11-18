@@ -387,7 +387,7 @@ export const LAMPS: Lamp[] = [
   { entity: "light.salon_esp_entrada_luz_exterior_barbacoa", kind: "wall", pos: [-6.79, 2.0, 3.6] },
   // Columna blanca de 1 m en la esquina suroeste del jardín (grupo de sus dos luces, arriba y abajo)
   { entity: "light.lampara_blanca_exterior", kind: "lamp", pos: [-8.75, 0.6, 13.1], column: 1.0 },
-  { entity: "light.luz_piscina", kind: "pool", pos: [-1.25, -0.7, 12.5] },
+  { entity: "light.jardin_sur_luz_piscina", kind: "pool", pos: [-1.25, -0.7, 12.5] },
 ];
 
 /* ------------------------------------------------------------------ */

@@ -13,7 +13,7 @@ Plano 3D interactivo de la vivienda (una planta) con el **estado real** de Home 
   Un tejado invisible hace que la luz solo entre por las ventanas, así que una persiana bajada oscurece la habitación.
 - **Parcela**: césped, piscina de 8 × 3 m al sur, playa, porche, aparcamiento y valla negra de 2 m, a escala
   del plano de la parcela. Las luces exteriores también son reales, y el agua de la piscina toma el color real
-  de `light.luz_piscina`.
+  de `light.jardin_sur_luz_piscina`.
 - **Puertas de los vehículos**: dos correderas que corren una sobre otra (la del oeste por dentro) y se abren o cierran según los
   sensores de contacto `binary_sensor.sensor_puerta_garaje_1_contact` / `_2_contact` (`GATES` en el plano).
   1 m al este, la puerta peatonal (`PEDESTRIAN_GATE`, aún sin sensor).

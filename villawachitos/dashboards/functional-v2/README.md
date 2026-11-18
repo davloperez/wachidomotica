@@ -154,7 +154,7 @@ Tras `idle_return_seconds` (180 s por defecto) sin tocar la pantalla vuelve a la
   "priority_alerts": true,
   "kiosk_toggle": true,
   "marker_positions": {
-    "light.luz_piscina": [-1.25, 11.3]
+    "light.jardin_sur_luz_piscina": [-1.25, 11.3]
   }
 }
 ```

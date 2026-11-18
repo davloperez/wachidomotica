@@ -436,7 +436,7 @@ export class FunctionalDashboard extends LitElement {
               .frameBox=${this.focusBox()}
               .lit=${this.litRooms()}
               .selected=${room?.rects.length ? room.id : undefined}
-              ?poolLit=${isOn(this.hass, "light.luz_piscina")}
+              ?poolLit=${isOn(this.hass, "light.jardin_sur_luz_piscina")}
               .padTop=${56}
               class=${this.layer ? "layer" : room ? "room" : "home"}
               @room-tap=${(e: CustomEvent<string>) => !this.layer && this.go(e.detail)}

@@ -87,7 +87,7 @@ export function createMockHass(getDarkMode: () => boolean, onUpdate: (hass: Home
   });
 
   for (const g of GATES) states[g.entity] = entity(g.entity, Math.random() < 0.5 ? "on" : "off");
-  states["light.luz_piscina"] = entity("light.luz_piscina", "on", {
+  states["light.jardin_sur_luz_piscina"] = entity("light.jardin_sur_luz_piscina", "on", {
     friendly_name: "Luz piscina",
     supported_color_modes: ["hs", "white"],
     color_mode: "hs",

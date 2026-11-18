@@ -87,15 +87,12 @@ export function coverSpot(entity: string): [number, number, number] | undefined 
 const SPOTS: Record<string, [number, number, number]> = {
   // Control del aire acondicionado: dentro del armario del recibidor (entrada)
   "climate.aidoo_28_cc_ff_82_82_6f": [-5.8, 1.4, -2.1],
-  // Pantallas de pared Shelly (presencia, luz, temperatura y altavoz)
+  // Pantallas de pared Shelly (presencia y luz ambiente)
   "binary_sensor.shellywalldisplay_0205030bbdd8_ocupacion": [1.15, 1.4, -0.85],
-  "media_player.shellywalldisplay_0205030bbdd8": [1.15, 1.4, -0.85],
   // Shelly Cocina, en la pared sur de la cocina (antes «salón sur»)
-  "media_player.shelly_salon_sur": [-5.6, 1.4, 4.4],
+  "sensor.shelly_salon_sur_iluminancia": [-5.6, 1.4, 4.4],
   "binary_sensor.oficina_1_shellywalldisplay_oficina1_ocupacion": [-3.7, 1.4, -3.0],
-  "media_player.oficina_1_shellywalldisplay_oficina1": [-3.7, 1.4, -3.0],
   "binary_sensor.oficina_2_shellywalldisplay_oficina2_ocupacion": [0.95, 1.4, -3.0],
-  "media_player.oficina_2_shellywalldisplay_oficina2": [0.95, 1.4, -3.0],
   "media_player.fire_tv_dormitorio": [3.4, 1.0, 2.35],
   "binary_sensor.sensor_movimiento_vestidor_occupancy": [2.9, 2.2, 0.5],
   // Fugas, puerta principal y alarma
@@ -110,20 +107,8 @@ const SPOTS: Record<string, [number, number, number]> = {
   "binary_sensor.cam_exterior_este_motion_2": [8.2, 2.2, 0],
 };
 
-/** Altavoces y pantallas que no son dispositivos de ninguna estancia (solo en la capa multimedia). */
+/** Pantallas que no son dispositivos de ninguna estancia (solo en la capa multimedia). */
 const MEDIA: { room: string; entity: string; name: string }[] = [
-  { room: "salon", entity: "media_player.shellywalldisplay_0205030bbdd8", name: "Pantalla salón este" },
-  { room: "cocina", entity: "media_player.shelly_salon_sur", name: "Shelly Cocina" },
-  {
-    room: "oficina_1",
-    entity: "media_player.oficina_1_shellywalldisplay_oficina1",
-    name: "Pantalla oficina 1",
-  },
-  {
-    room: "oficina_2",
-    entity: "media_player.oficina_2_shellywalldisplay_oficina2",
-    name: "Pantalla oficina 2",
-  },
   { room: "dormitorio_1", entity: "media_player.fire_tv_dormitorio", name: "Fire TV" },
 ];
 
@@ -163,7 +148,7 @@ const DEVICE_LAYER: Record<DeviceDef["type"], LayerId[]> = {
 /** Clave de entidad de un dispositivo (para su sitio y para no repetirlo). */
 function deviceEntity(d: DeviceDef): string | undefined {
   if ("entity" in d) return d.entity;
-  if (d.type === "presence") return d.occupancy;
+  if (d.type === "presence") return d.occupancy ?? d.illuminance;
   if (d.type === "cameras" && d.cameras.length === 1) return d.cameras[0].motion;
   return undefined;
 }
