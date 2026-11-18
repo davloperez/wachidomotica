@@ -3,10 +3,13 @@ import { customElement, property, state } from "lit/decorators.js";
 import { repeat } from "lit/directives/repeat.js";
 import {
   mdiArrowCollapseDown,
+  mdiArrowCollapseHorizontal,
   mdiArrowCollapseUp,
+  mdiArrowExpandHorizontal,
   mdiArrowLeft,
   mdiBlindsHorizontal,
   mdiChartTimelineVariant,
+  mdiCurtains,
   mdiLightbulbGroupOutline,
   mdiShieldHomeOutline,
   mdiThermometer,
@@ -25,6 +28,7 @@ import { WEATHER_ICON } from "./home-view";
 import "../charts/charts";
 import "../widgets/lights";
 import "../widgets/covers";
+import "../widgets/curtains";
 import "../widgets/devices";
 
 type Scene = "all" | "relax" | "night" | "off";
@@ -156,6 +160,7 @@ export class RoomView extends LitElement {
     const t = num(h, r.temperature);
     const hum = num(h, r.humidity);
     const pos = r.covers
+      .filter((c) => !c.curtain)
       .map((c) => st(h, c.entity)?.attributes.current_position as number | undefined)
       .filter((p): p is number => typeof p === "number");
     const avg = pos.length ? Math.round(pos.reduce((a, b) => a + b, 0) / pos.length) : undefined;
@@ -184,7 +189,8 @@ export class RoomView extends LitElement {
 
       <div class="col">
         ${this.washerDone()} ${r.lights.length ? this.lightsCard(lightsOn) : nothing}
-        ${r.covers.length ? this.coversCard(avg) : nothing} ${this.climateCard()}
+        ${r.covers.some((c) => !c.curtain) ? this.coversCard(avg) : nothing}
+        ${r.covers.some((c) => c.curtain) ? this.curtainsCard() : nothing} ${this.climateCard()}
       </div>
       <div class="col">
         ${this.sensorsCard(extras)}
@@ -254,7 +260,8 @@ export class RoomView extends LitElement {
 
   private coversCard(avg?: number) {
     const r = this.room!;
-    const ids = r.covers.map((c) => c.entity);
+    const covers = r.covers.filter((c) => !c.curtain);
+    const ids = covers.map((c) => c.entity);
     return html`
       <section class="glass card" style="--d:1">
         <header class="card-head">
@@ -284,7 +291,44 @@ export class RoomView extends LitElement {
               : nothing
           }
         </header>
-        ${r.covers.map((c) => html`<fv2-cover data-key=${c.entity} .hass=${this.hass} .entity=${c.entity} .name=${c.name}></fv2-cover>`)}
+        ${covers.map((c) => html`<fv2-cover data-key=${c.entity} .hass=${this.hass} .entity=${c.entity} .name=${c.name}></fv2-cover>`)}
+      </section>
+    `;
+  }
+
+  /** Cortinas: se abren en horizontal, así que llevan su propia tarjeta (abrir / cerrar en vez de subir / bajar). */
+  private curtainsCard() {
+    const curtains = this.room!.covers.filter((c) => c.curtain);
+    const ids = curtains.map((c) => c.entity);
+    return html`
+      <section class="glass card" style="--d:1">
+        <header class="card-head">
+          <span class="ico">${icon(mdiCurtains)}</span>
+          <div class="grow ttl">
+            <b>Cortinas</b>
+          </div>
+          ${
+            ids.length > 1
+              ? html`
+                  <button
+                    class="round sm"
+                    title="Abrir todas"
+                    @click=${() => call(this.hass, "cover", "open_cover", { entity_id: ids })}
+                  >
+                    ${icon(mdiArrowExpandHorizontal)}
+                  </button>
+                  <button
+                    class="round sm"
+                    title="Cerrar todas"
+                    @click=${() => call(this.hass, "cover", "close_cover", { entity_id: ids })}
+                  >
+                    ${icon(mdiArrowCollapseHorizontal)}
+                  </button>
+                `
+              : nothing
+          }
+        </header>
+        ${curtains.map((c) => html`<fv2-curtain data-key=${c.entity} .hass=${this.hass} .entity=${c.entity} .name=${c.name}></fv2-curtain>`)}
       </section>
     `;
   }

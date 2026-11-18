@@ -268,6 +268,11 @@ export function createMockHass(getDarkMode: () => boolean, onUpdate: (hass: Home
           set(c.motion, i === 1 ? "on" : "off", {}, ago(3 + i * 17));
           if (c.person) set(c.person, "off");
         });
+      if (d.type === "cameras")
+        d.cameras.forEach((c, i) => {
+          if (c.camera) set(c.camera, i === 4 ? "unavailable" : "recording", { entity_picture: mockPicture(c.name, i) });
+        });
+      if (d.type === "lock") set("camera.jardin_norte_portero_automatico_exterior_duox_doorbell_camera", "idle", { entity_picture: mockPicture("Portero", 5) });
       if (d.type === "presence") {
         if (d.occupancy) set(d.occupancy, Math.random() < 0.5 ? "on" : "off", {}, ago(12));
         if (d.illuminance) set(d.illuminance, String(Math.round(Math.random() * 400)));
@@ -283,6 +288,9 @@ export function createMockHass(getDarkMode: () => boolean, onUpdate: (hass: Home
       connection: {
         subscribeMessage: async (cb: (m: never) => void, msg: Record<string, unknown>) => {
           if (msg.type === "weather/subscribe_forecast") mockForecast(cb as never, msg.forecast_type as string);
+          // Sin go2rtc en la simulación: el directo falla enseguida y el visor usa las imágenes
+          if (msg.type === "camera/webrtc/offer")
+            window.setTimeout(() => (cb as (m: unknown) => void)({ type: "error", message: "Directo no disponible en la simulación" }), 300);
           return async () => {};
         },
       },
@@ -338,6 +346,17 @@ function mockForecast(cb: (m: { forecast: unknown[] }) => void, type: string): v
     };
   });
   setTimeout(() => cb({ forecast }), 0);
+}
+
+/** Imagen de una cámara simulada (SVG en línea con su nombre y un degradado distinto). */
+function mockPicture(name: string, i: number): string {
+  const hue = (i * 53 + 190) % 360;
+  const svg =
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180">` +
+    `<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="hsl(${hue} 35% 30%)"/>` +
+    `<stop offset="1" stop-color="hsl(${hue + 40} 30% 14%)"/></linearGradient></defs>` +
+    `<rect width="320" height="180" fill="url(#g)"/><text x="160" y="96" fill="#fff" font-size="20" font-family="sans-serif" text-anchor="middle">${name}</text></svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
 
 function mockWS(msg: Record<string, unknown>, states: Record<string, HassEntity>): unknown {

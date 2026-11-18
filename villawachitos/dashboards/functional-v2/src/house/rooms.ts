@@ -44,7 +44,22 @@ export interface LightDef {
 export interface CoverDef {
   entity: string;
   name: string;
+  /** Cortina (se abre en horizontal) en vez de persiana: otro icono y otra tarjeta */
+  curtain?: boolean;
 }
+
+/** Cámara (Frigate): sus sensores de movimiento y persona, y su entidad `camera.*` para la imagen y el directo. */
+export interface CameraDef {
+  name: string;
+  motion: string;
+  person?: string;
+  camera?: string;
+}
+
+/** Cámaras sin sensores de movimiento propios (solo imagen): el portero automático. */
+export const EXTRA_CAMERAS: { name: string; camera: string }[] = [
+  { name: "Portero", camera: "camera.jardin_norte_portero_automatico_exterior_duox_doorbell_camera" },
+];
 
 /** Dispositivos con tarjeta propia en la vista de la estancia. */
 export type DeviceDef =
@@ -93,7 +108,7 @@ export type DeviceDef =
   | { type: "energy"; name: string }
   | { type: "gates"; name: string; gates: { entity: string; name: string }[] }
   | { type: "lock"; name: string; entity: string }
-  | { type: "cameras"; name: string; cameras: { name: string; motion: string; person?: string }[] }
+  | { type: "cameras"; name: string; cameras: CameraDef[] }
   | { type: "presence"; name: string; occupancy?: string; illuminance?: string };
 
 export interface RoomDef {
@@ -135,6 +150,8 @@ export const ROOMS_DEF: RoomDef[] = [
       { entity: "cover.persiana_salon_1_persiana", name: "Persiana 1" },
       { entity: "cover.persiana_salon_2_persiana", name: "Persiana 2" },
       { entity: "cover.persiana_salon_3_persiana", name: "Persiana 3" },
+      { entity: "cover.cortina_grande_salon", name: "Cortina grande", curtain: true },
+      { entity: "cover.cortina_pequena_salon", name: "Cortina pequeña", curtain: true },
     ],
     temperature: "sensor.shelly_salon_sur_temperatura",
     humidity: "sensor.shelly_salon_sur_humedad",
@@ -446,26 +463,31 @@ export const ROOMS_DEF: RoomDef[] = [
         cameras: [
           {
             name: "Garaje",
+            camera: "camera.cam_garaje",
             motion: "binary_sensor.cam_garaje_motion",
             person: "binary_sensor.cam_garaje_person_occupancy",
           },
           {
             name: "Patio lavadero",
+            camera: "camera.cam_patio_lavadero",
             motion: "binary_sensor.cam_patio_lavadero_motion_2",
             person: "binary_sensor.cam_patio_lavadero_person_occupancy",
           },
           {
             name: "Piscina este",
+            camera: "camera.cam_piscina_este",
             motion: "binary_sensor.cam_piscina_este_motion",
             person: "binary_sensor.cam_piscina_este_person_occupancy",
           },
           {
             name: "Piscina oeste",
+            camera: "camera.cam_piscina_oeste",
             motion: "binary_sensor.cam_piscina_oeste_motion_2",
             person: "binary_sensor.cam_piscina_oeste_person_occupancy",
           },
           {
             name: "Exterior este",
+            camera: "camera.cam_exterior_este",
             motion: "binary_sensor.cam_exterior_este_motion_2",
             person: "binary_sensor.cam_exterior_este_person_occupancy",
           },

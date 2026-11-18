@@ -9,6 +9,8 @@ import {
   mdiCodeJson,
   mdiContentCopy,
   mdiPencilOutline,
+  mdiCurtains,
+  mdiCurtainsClosed,
   mdiRestore,
   mdiGarageOpenVariant,
   mdiGarageVariant,
@@ -49,6 +51,7 @@ import "./widgets/solar-sheet";
 import "./widgets/pump-sheet";
 import "./widgets/vacuum-sheet";
 import "./widgets/priority-alert";
+import "./widgets/camera-viewer";
 
 const HOME = "home";
 /** El modo Editar solo existe con ratón y pantalla grande (nunca en las Shelly ni en el móvil). */
@@ -116,6 +119,7 @@ export class FunctionalDashboard extends LitElement {
   @state() private view = HOME;
   @state() private sheet?: { entity: string; name: string };
   @state() private solarOpen = false;
+  @state() private cameras?: { entity: string; mode: "single" | "grid" };
   @state() private pumpOpen = false;
   @state() private vacuumOpen = false;
   /** Capa activa (todos los dispositivos de un tipo en la vista general) */
@@ -153,6 +157,7 @@ export class FunctionalDashboard extends LitElement {
   connectedCallback(): void {
     super.connectedCallback();
     window.addEventListener("keydown", this.onKey);
+    this.addEventListener("open-cameras", this.onOpenCameras as EventListener);
     window.addEventListener("resize", this.fit);
     // La cabecera de HA (modo no kiosko) tarda en colocarse: se recalcula también un poco después
     this.fitTimers = [0, 300, 1200].map((ms) => window.setTimeout(this.fit, ms));
@@ -168,6 +173,7 @@ export class FunctionalDashboard extends LitElement {
   disconnectedCallback(): void {
     super.disconnectedCallback();
     window.removeEventListener("keydown", this.onKey);
+    this.removeEventListener("open-cameras", this.onOpenCameras as EventListener);
     window.removeEventListener("resize", this.fit);
     this.fitTimers.forEach((t) => window.clearTimeout(t));
     this.mq?.removeEventListener("change", this.onMq);
@@ -310,10 +316,16 @@ export class FunctionalDashboard extends LitElement {
     window.setTimeout(() => (this.copied = false), 2000);
   }
 
+  private onOpenCameras = (e: CustomEvent<{ entity: string; mode?: "single" | "grid" }>) => {
+    this.lastTouch = Date.now();
+    this.cameras = { entity: e.detail.entity, mode: e.detail.mode ?? "single" };
+  };
+
   private onKey = (e: KeyboardEvent) => {
     this.lastTouch = Date.now();
     if (e.key === "Escape") {
-      if (this.exporting) this.exporting = false;
+      if (this.cameras) this.cameras = undefined;
+      else if (this.exporting) this.exporting = false;
       else if (this.sheet) this.sheet = undefined;
       else if (this.layer) this.layer = undefined;
       else this.go(HOME);
@@ -330,6 +342,7 @@ export class FunctionalDashboard extends LitElement {
     this.lastTouch = Date.now();
     if (view !== HOME && !ROOM_BY_ID.has(view)) return;
     this.sheet = undefined;
+    this.cameras = undefined;
     this.solarOpen = false;
     this.pumpOpen = false;
     this.vacuumOpen = false;
@@ -488,6 +501,17 @@ export class FunctionalDashboard extends LitElement {
               .name=${this.sheet.name}
               @close=${() => (this.sheet = undefined)}
             ></fv2-light-sheet>`
+          : nothing
+      }
+      ${
+        this.cameras
+          ? html`<fv2-camera-viewer
+              .hass=${this.hass}
+              .entity=${this.cameras.entity}
+              .mode=${this.cameras.mode}
+              .live=${this.desktop}
+              @close=${() => (this.cameras = undefined)}
+            ></fv2-camera-viewer>`
           : nothing
       }
       ${this.solarOpen ? html`<fv2-solar-sheet .hass=${this.hass} @close=${() => (this.solarOpen = false)}></fv2-solar-sheet>` : nothing}
@@ -693,7 +717,15 @@ export class FunctionalDashboard extends LitElement {
     const h = this.hass;
     const [x, , z] = it.pos!;
     const ico =
-      it.kind === "device" ? deviceIcon(it.device) : it.kind === "row" ? it.icon : LAYERS[1].icon;
+      it.kind === "device"
+        ? deviceIcon(it.device)
+        : it.kind === "row"
+          ? it.icon
+          : it.kind === "cover" && it.curtain
+            ? st(h, it.entity)?.state === "closed"
+              ? mdiCurtainsClosed
+              : mdiCurtains
+            : LAYERS[1].icon;
     const label =
       it.kind === "device"
         ? deviceBrief(h, it.device)

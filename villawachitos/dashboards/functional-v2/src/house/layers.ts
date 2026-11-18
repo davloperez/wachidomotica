@@ -19,7 +19,7 @@ import {
 import type { HomeAssistant } from "../types";
 import { ALARM_ES, fmt, isOn, num, st } from "../lib/ha";
 import { POOL, WALLS, type Rect } from "../../../house-3d-v1/src/scene/plan";
-import { EXTRA_LEAKS, ROOMS_DEF, TV, deviceSpot, lampPos, type DeviceDef, type RoomDef } from "./rooms";
+import { ENERGY, EXTRA_LEAKS, ROOMS_DEF, TV, deviceSpot, lampPos, type DeviceDef, type RoomDef } from "./rooms";
 
 export type LayerId = "luces" | "persianas" | "clima" | "energia" | "electro" | "seguridad" | "multimedia";
 
@@ -52,7 +52,7 @@ export type LayerItem = {
   pos?: [x: number, y: number, z: number];
 } & (
   | { kind: "light"; entity: string }
-  | { kind: "cover"; entity: string }
+  | { kind: "cover"; entity: string; curtain?: boolean }
   | { kind: "device"; device: DeviceDef }
   | { kind: "row"; row: RowKind; entity: string; second?: string; icon: string }
 );
@@ -95,6 +95,9 @@ const SPOTS: Record<string, [number, number, number]> = {
   "binary_sensor.oficina_2_shellywalldisplay_oficina2_ocupacion": [0.95, 1.4, -3.0],
   "media_player.fire_tv_dormitorio": [3.4, 1.0, 2.35],
   "binary_sensor.sensor_movimiento_vestidor_occupancy": [2.9, 2.2, 0.5],
+  // Cortinas del salón, delante de la puerta grande (balconeras 1 y 2) y de la pequeña (balconera 3)
+  "cover.cortina_grande_salon": [-3.6, 1.2, 3.4],
+  "cover.cortina_pequena_salon": [-0.07, 1.2, 3.4],
   // Fugas, puerta principal y alarma
   "binary_sensor.sensor_agua_dreame_water_leak": [0.6, 0.3, -1.25],
   "binary_sensor.sensor_puerta_principal_contact": [-4.8, 1.3, -4.04],
@@ -191,6 +194,7 @@ export function layerItems(layer: LayerId): LayerItem[] {
           name: cv.name,
           kind: "cover",
           entity: cv.entity,
+          curtain: cv.curtain,
           pos: spot(cv.entity, coverSpot(cv.entity)),
         });
 
@@ -351,6 +355,9 @@ export function itemActive(h: HomeAssistant | undefined, it: LayerItem): boolean
           return d.gates.some((g) => isOn(h, g.entity));
         case "lock":
           return st(h, d.entity)?.state === "unlocked";
+        case "energy":
+          // Potencia de red negativa = se está consumiendo de la red (positiva = vertiendo)
+          return (num(h, ENERGY.sensors.grid) ?? 0) < -0.05;
         default:
           return false;
       }

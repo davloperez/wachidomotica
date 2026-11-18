@@ -15,6 +15,8 @@ import {
   mdiShieldOffOutline,
   mdiSolarPowerVariant,
   mdiThermometer,
+  mdiVideoOutline,
+  mdiViewGridOutline,
   mdiWaterPercent,
   mdiWeatherCloudy,
   mdiWeatherFog,
@@ -30,7 +32,21 @@ import {
 } from "@mdi/js";
 import type { DashboardConfig, HassEntity, HomeAssistant } from "../types";
 import { shared } from "../styles/tokens";
-import { ALARM_ES, HVAC_ES, WEATHER_ES, call, fmt, icon, isOn, num, relTime, st } from "../lib/ha";
+import {
+  ALARM_ES,
+  HVAC_ES,
+  WEATHER_ES,
+  call,
+  fmt,
+  icon,
+  isOn,
+  isUnavailable,
+  num,
+  relTime,
+  st,
+} from "../lib/ha";
+import "../widgets/cam-thumb";
+import { allCameras } from "../lib/cameras";
 import { dailyTotals, hourlyMeans, type Point } from "../lib/data";
 import { computeAlerts, roomName } from "../lib/alerts";
 import { ALL_OFF_SCRIPT, ENERGY, PEOPLE, ROOMS_DEF } from "../house/rooms";
@@ -68,6 +84,8 @@ const cap = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
 const DAYS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 
 /** Tarjetas de la vista general, debajo (o al lado) del plano de la casa. */
+const CAMERAS = allCameras();
+
 @customElement("fv2-home")
 export class HomeView extends LitElement {
   @property({ attribute: false }) hass?: HomeAssistant;
@@ -129,7 +147,7 @@ export class HomeView extends LitElement {
       console.warn("[functional-v2] energía diaria", err);
     }
     try {
-      this.hours = await hourlyMeans(this.hass, [ENERGY.sensors.soc, INDOOR_T], 24);
+      this.hours = await hourlyMeans(this.hass, [ENERGY.sensors.soc, ENERGY.sensors.pv, INDOOR_T], 24);
     } catch (err) {
       console.warn("[functional-v2] medias horarias", err);
     }
@@ -218,7 +236,9 @@ export class HomeView extends LitElement {
     const td = this.daily.find((f) => new Date(f.datetime).toDateString() === today);
     if (!hours.length && !days.length && !td) return nothing;
     const rain = (f: Forecast) =>
-      f.precipitation_probability ? html`<span class="rain">${Math.round(f.precipitation_probability)}%</span>` : nothing;
+      f.precipitation_probability
+        ? html`<span class="rain">${Math.round(f.precipitation_probability)}%</span>`
+        : nothing;
     return html`
       <div class="fc">
         <div class="fc-head muted">
@@ -227,7 +247,9 @@ export class HomeView extends LitElement {
             td
               ? html`<span class="num"
                   >Hoy ${fmt(td.templow, 0)}° / <b>${fmt(td.temperature, 0)}°</b>${
-                    td.precipitation_probability ? html` · ☂ ${Math.round(td.precipitation_probability)}%` : nothing
+                    td.precipitation_probability
+                      ? html` · ☂ ${Math.round(td.precipitation_probability)}%`
+                      : nothing
                   }</span
                 >`
               : nothing
@@ -237,12 +259,13 @@ export class HomeView extends LitElement {
           hours.length
             ? html`<div class="fc-row">
                 ${hours.map(
-                  (f) => html`<div class="fc-it">
-                    <span class="faint">${new Date(f.datetime).getHours()}h</span>
-                    ${icon(WEATHER_ICON[f.condition ?? ""] ?? mdiWeatherPartlyCloudy)}
-                    <b class="num">${fmt(f.temperature, 0)}°</b>
-                    ${rain(f)}
-                  </div>`,
+                  (f) =>
+                    html`<div class="fc-it">
+                      <span class="faint">${new Date(f.datetime).getHours()}h</span>
+                      ${icon(WEATHER_ICON[f.condition ?? ""] ?? mdiWeatherPartlyCloudy)}
+                      <b class="num">${fmt(f.temperature, 0)}°</b>
+                      ${rain(f)}
+                    </div>`,
                 )}
               </div>`
             : nothing
@@ -251,13 +274,14 @@ export class HomeView extends LitElement {
           days.length
             ? html`<div class="fc-row days">
                 ${days.map(
-                  (f) => html`<div class="fc-it">
-                    <span class="faint">${DAYS[new Date(f.datetime).getDay()]}</span>
-                    ${icon(WEATHER_ICON[f.condition ?? ""] ?? mdiWeatherPartlyCloudy)}
-                    <b class="num">${fmt(f.temperature, 0)}°</b>
-                    <span class="faint num">${fmt(f.templow, 0)}°</span>
-                    ${rain(f)}
-                  </div>`,
+                  (f) =>
+                    html`<div class="fc-it">
+                      <span class="faint">${DAYS[new Date(f.datetime).getDay()]}</span>
+                      ${icon(WEATHER_ICON[f.condition ?? ""] ?? mdiWeatherPartlyCloudy)}
+                      <b class="num">${fmt(f.temperature, 0)}°</b>
+                      <span class="faint num">${fmt(f.templow, 0)}°</span>
+                      ${rain(f)}
+                    </div>`,
                 )}
               </div>`
             : nothing
@@ -352,6 +376,13 @@ export class HomeView extends LitElement {
           .digits=${0}
           .series=${[{ data: this.hours[s.soc] ?? [], color, unit: " %" }]}
         ></fv2-area-chart>
+        <span class="faint chart-lbl">${icon(mdiSolarPowerVariant)} Generación solar · 24 h</span>
+        <fv2-area-chart
+          .height=${70}
+          .digits=${1}
+          .trend=${false}
+          .series=${[{ data: this.hours[s.pv] ?? [], color: "var(--amber)", unit: " kW" }]}
+        ></fv2-area-chart>
       </section>
     `;
   }
@@ -411,7 +442,6 @@ export class HomeView extends LitElement {
     const openNames = names(a?.attributes.open_sensors);
     const bypassed = names(a?.attributes.bypassed_sensors);
     const gates = ROOMS_DEF.flatMap((r) => r.devices).flatMap((d) => (d.type === "gates" ? d.gates : []));
-    const openGates = gates.filter((g) => isOn(this.hass, g.entity));
     const door = st(this.hass, "binary_sensor.sensor_puerta_principal_contact");
     const cams = ROOMS_DEF.flatMap((r) => r.devices).flatMap((d) => (d.type === "cameras" ? d.cameras : []));
     const motion = cams.filter((c) => isOn(this.hass, c.person) || isOn(this.hass, c.motion));
@@ -452,12 +482,14 @@ export class HomeView extends LitElement {
             : nothing
         }
         <div class="sec-grid">
-          <div class="mini-stat ${openGates.length ? "warn" : ""}" @click=${() => this.go("exterior")}>
-            <span class="faint">Puertas calle</span>
-            <b
-              >${openGates.length ? `${openGates.length} abierta${openGates.length > 1 ? "s" : ""}` : "Cerradas"}</b
-            >
-          </div>
+          ${gates.map((g) => {
+            const e = st(this.hass, g.entity);
+            const open = e?.state === "on";
+            return html`<div class="mini-stat ${open ? "warn" : ""}" @click=${() => this.go("exterior")}>
+              <span class="faint">${g.name}</span>
+              <b>${!e || isUnavailable(e) ? "—" : open ? "Abierta" : "Cerrada"}</b>
+            </div>`;
+          })}
           <div class="mini-stat ${door?.state === "on" ? "warn" : ""}" @click=${() => this.go("entrada")}>
             <span class="faint">Puerta casa</span>
             <b
@@ -468,6 +500,30 @@ export class HomeView extends LitElement {
             <span class="faint">Cámaras</span>
             <b>${motion.length ? `${motion.length} con movimiento` : "Tranquilo"}</b>
           </div>
+        </div>
+        <div class="cam-head">
+          <span class="faint">${icon(mdiVideoOutline)} Cámaras</span>
+          <button class="chip" @click=${() => this.openCameras(CAMERAS[0]?.entity, "grid")}>
+            ${icon(mdiViewGridOutline)} Ver todas
+          </button>
+        </div>
+        <div class="cam-strip">
+          ${CAMERAS.map(
+            (c) =>
+              html`<button
+                class="cam-tile"
+                aria-label="Ver ${c.name} en directo"
+                @click=${() => this.openCameras(c.entity)}
+              >
+                <fv2-cam-thumb
+                  .hass=${this.hass}
+                  .entity=${c.entity}
+                  .name=${c.name}
+                  .interval=${30}
+                  .alert=${isOn(this.hass, c.person) ? "person" : isOn(this.hass, c.motion) ? "motion" : ""}
+                ></fv2-cam-thumb>
+              </button>`,
+          )}
         </div>
         <div class="sec-foot">
           <span class="faint"
@@ -484,6 +540,14 @@ export class HomeView extends LitElement {
         </div>
       </section>
     `;
+  }
+
+  /** Abre el visor de cámaras a pantalla completa (lo muestra el panel raíz). */
+  private openCameras(entity: string | undefined, mode: "single" | "grid" = "single") {
+    if (!entity) return;
+    this.dispatchEvent(
+      new CustomEvent("open-cameras", { detail: { entity, mode }, bubbles: true, composed: true }),
+    );
   }
 
   private alerts() {
@@ -567,7 +631,7 @@ export class HomeView extends LitElement {
   private quick() {
     const lights = ROOMS_DEF.flatMap((r) => r.lights.map((l) => l.entity));
     const on = lights.filter((l) => isOn(this.hass, l));
-    const covers = ROOMS_DEF.flatMap((r) => r.covers.map((c) => c.entity));
+    const covers = ROOMS_DEF.flatMap((r) => r.covers.filter((c) => !c.curtain).map((c) => c.entity));
     const pos = covers
       .map((c) => st(this.hass, c)?.attributes.current_position as number | undefined)
       .filter((p): p is number => typeof p === "number");
@@ -804,6 +868,13 @@ export class HomeView extends LitElement {
         font-size: 26px;
         font-weight: 600;
       }
+      .chart-lbl {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 8px;
+        font-size: var(--fs-label);
+      }
       .bat-txt {
         display: grid;
         gap: 6px;
@@ -839,6 +910,24 @@ export class HomeView extends LitElement {
       .alarm-note.muted {
         font-weight: 400;
       }
+      .cam-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-top: 4px;
+      }
+      .cam-strip {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+      }
+      .cam-tile {
+        padding: 0;
+        border: 0;
+        background: none;
+        cursor: pointer;
+      }
       .sec-foot {
         display: flex;
         align-items: center;
@@ -869,7 +958,7 @@ export class HomeView extends LitElement {
       }
       .sec-grid {
         display: grid;
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(2, 1fr);
         gap: 8px;
       }
       .mini-stat {

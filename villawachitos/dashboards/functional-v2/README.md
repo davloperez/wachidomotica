@@ -50,15 +50,32 @@ piscina, suelos de cada estancia, muros con sus puertas y ventanas, muebles, val
 
 ### Animaciones de lo que está activo
 
-| Qué                                                                 | Animación                           |
-| ------------------------------------------------------------------- | ----------------------------------- |
-| Luz encendida                                                       | Su color y un anillo que se expande |
-| Persiana subiendo / bajando                                         | El icono sube o baja                |
-| Lavadora, depuradora, ventilación                                   | El icono gira                       |
-| Lavavajillas                                                        | Se balancea                         |
-| Robot aspirador limpiando, toallero encendido                       | Sube y baja                         |
-| TV, enchufes, presencia, cámaras con movimiento, freidora…          | Late suavemente                     |
-| Persona en cámara, sensor con agua, puerta abierta, portero sonando | Tiembla, en ámbar                   |
+| Qué                                                                 | Animación                                     |
+| ------------------------------------------------------------------- | --------------------------------------------- |
+| Luz encendida                                                       | Su color y un anillo que se expande           |
+| Persiana subiendo / bajando                                         | El icono sube o baja                          |
+| Lavadora, depuradora, ventilación                                   | El icono gira                                 |
+| Lavavajillas                                                        | Se balancea                                   |
+| Robot aspirador limpiando, toallero encendido                       | Sube y baja                                   |
+| TV, enchufes, presencia, cámaras con movimiento, freidora…          | Late suavemente                               |
+| Instalación fotovoltaica mientras se consume de la red              | Late suavemente (también en la vista general) |
+| Persona en cámara, sensor con agua, puerta abierta, portero sonando | Tiembla, en ámbar                             |
+
+## Cámaras
+
+- **Instantáneas**: en el detalle de las cámaras (vista Exterior y capa Seguridad) cada cámara muestra su imagen, que se
+  renueva cada 20 s; en el panel de Seguridad de la vista general, cada 30 s. El borde se pone en ámbar con movimiento y en
+  rojo con una persona. Solo se actualizan con el panel visible.
+- **Visor a pantalla completa**: tocar una imagen abre esa cámara en grande. Abajo hay un selector para cambiar de
+  cámara y arriba el botón **Todas**, que muestra una cuadrícula con todas las cámaras; tocar una de ellas la abre en
+  grande. **Ver todas** en el panel de Seguridad abre directamente la cuadrícula.
+  - **Escritorio** (≥ 900 px con ratón): todas las cámaras **en directo y fluidas** (WebRTC a través de Home Assistant, sin
+    librerías ni transcodificación), también en la cuadrícula.
+  - **Shelly y móvil**: una **imagen que se renueva cada 3 s**, para no cargar la pantalla con vídeo.
+- Si en escritorio el directo no arranca (12 s) se cae, en la cámara grande, a vídeo MJPEG de HA y, si tampoco, a
+  imágenes cada segundo, con un botón **Reintentar directo**. El portero automático (sin vídeo en directo) solo muestra
+  imágenes.
+- Las cámaras salen de `ROOMS_DEF` (`camera` en cada cámara) y de `EXTRA_CAMERAS` en `src/house/rooms.ts`.
 
 ## Colocar los iconos a mano (modo Editar)
 
@@ -98,7 +115,7 @@ Las alertas descartadas se recuerdan en el navegador de cada pantalla. Para desa
 ## Vista general, estancias y capas
 
 Igual que en la v1 (ver su [README](../functional-v1/README.md)): saludo y tiempo, avisos, alarma, acciones de toda
-la casa, clima, energía y batería; en cada estancia iluminación con escenas, persianas, ambiente, seguridad,
+la casa, clima, energía y batería; en cada estancia iluminación con escenas, persianas y cortinas (estas se abren en horizontal, con su propio icono y tarjeta), ambiente, seguridad,
 dispositivos y actividad de hoy; y las capas Luces, Persianas, Clima, Energía, Electrodomésticos, Seguridad y
 Multimedia. Las hojas de detalle (luz, instalación solar, depuradora) ocupan toda la pantalla con fondo opaco.
 
@@ -109,7 +126,7 @@ Estancias y dispositivos: [`src/house/rooms.ts`](src/house/rooms.ts); capas: [`s
 lluvia) de la entidad `weather` configurada, que usa las coordenadas de la casa (Urbanización La Quinta, Molina de
 Segura). Se lee con `weather/subscribe_forecast`, así que la entidad debe soportar previsión diaria y por horas.
 
-**Avisos meteorológicos (AEMET)**: aparecen en *Avisos* (amarillo = info, naranja = aviso, rojo = importante) cuando
+**Avisos meteorológicos (AEMET)**: aparecen en _Avisos_ (amarillo = info, naranja = aviso, rojo = importante) cuando
 un sensor de alertas está activo. Home Assistant no trae las alertas de la AEMET por sí solo: hace falta la
 integración **Meteoalarm** (publica los avisos de la AEMET para España). Se detectan solos los `binary_sensor` con
 «meteoalarm» o «aemet» en el id, o se indican con `weather_alerts`.
@@ -117,12 +134,12 @@ integración **Meteoalarm** (publica los avisos de la AEMET para España). Se de
 **Tocar para ver más**: las filas de Seguridad (alarma, puertas, sensores de agua), cada puerta de la calle y cada
 cámara, el clima de la estancia y el tiempo abren el detalle de Home Assistant (la alarma se conecta o desconecta ahí).
 
-**Robot aspirador** (Dreame): además de *Limpiar* y *A la base*, el botón **Personalizar limpieza e historial** (o tocar su
+**Robot aspirador** (Dreame): además de _Limpiar_ y _A la base_, el botón **Personalizar limpieza e historial** (o tocar su
 marcador en el plano) abre una hoja con:
 
 - **Modo**: solo aspirar, solo fregar o aspirar y fregar a la vez; **potencia de aspirado** (silencio, estándar,
   fuerte, turbo) y **humedad de la mopa** (poco húmeda, húmeda, muy mojada). Sin mopa instalada solo deja aspirar.
-- **Estancias**: botones *Interior*, *Exterior* (el porche, lo único exterior del mapa del robot) y *Todo*, o *Elegir*
+- **Estancias**: botones _Interior_, _Exterior_ (el porche, lo único exterior del mapa del robot) y _Todo_, o _Elegir_
   y tocar las estancias en un plano sencillo: el número indica el orden de limpieza. Las del robot no coinciden con
   las del panel (p. ej. Salón y cocina son una sola).
 - **Últimas limpiezas**: fecha, duración, superficie, tipo, si se interrumpió y por qué, si llevaba mopa, método,

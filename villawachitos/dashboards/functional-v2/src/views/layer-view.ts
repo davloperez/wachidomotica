@@ -17,6 +17,7 @@ import {
 } from "../house/layers";
 import "../widgets/lights";
 import "../widgets/covers";
+import "../widgets/curtains";
 import "../widgets/devices";
 
 interface Group {
@@ -149,7 +150,10 @@ export class LayerView extends LitElement {
       </button>`;
     }
     if (this.layer === "persianas") {
-      const ids = this.items.map((it) => (it as { entity: string }).entity);
+      // Las cortinas se abren en horizontal: tienen sus propios botones en la vista de la estancia
+      const ids = this.items
+        .filter((it) => !(it.kind === "cover" && it.curtain))
+        .map((it) => (it as { entity: string }).entity);
       return html`<button
           class="btn ${this.armed === "up" ? "armed" : ""}"
           @click=${() => this.confirm("up", () => call(h, "cover", "open_cover", { entity_id: ids }))}
@@ -225,6 +229,13 @@ export class LayerView extends LitElement {
           .name=${it.name}
         ></fv2-light-tile>`;
       case "cover":
+        if (it.curtain)
+          return html`<fv2-curtain
+            data-key=${it.key}
+            .hass=${h}
+            .entity=${it.entity}
+            .name=${it.name}
+          ></fv2-curtain>`;
         return html`<fv2-cover
           data-key=${it.key}
           .hass=${h}

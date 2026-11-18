@@ -43,6 +43,7 @@ import { HVAC_ES, call, fmt, icon, isOn, isUnavailable, moreInfo, num, relTime, 
 import { hourlyMeans, type Point } from "../lib/data";
 import { ENERGY, FRIDGE, type DeviceDef } from "../house/rooms";
 import "../charts/charts";
+import "./cam-thumb";
 
 const DEVICE_ICONS: Record<DeviceDef["type"], string> = {
   hvac: mdiAirConditioner,
@@ -240,6 +241,13 @@ export class DeviceCard extends LitElement {
   }
 
   /** Acción con confirmación: el primer toque arma el botón 4 s, el segundo la ejecuta. */
+  /** Abre el visor de cámaras a pantalla completa (lo muestra el panel raíz). */
+  private openCameras(entity: string): void {
+    this.dispatchEvent(
+      new CustomEvent("open-cameras", { detail: { entity, mode: "single" }, bubbles: true, composed: true }),
+    );
+  }
+
   private confirm(key: string, action: () => void): void {
     if (this.armed === key) {
       this.armed = undefined;
@@ -588,7 +596,25 @@ export class DeviceCard extends LitElement {
         return {
           active: busy.length > 0,
           status: busy.length ? `Movimiento en ${busy.length}` : "Sin movimiento",
-          body: html`<div class="list">
+          body: html`<div class="cam-grid">
+              ${d.cameras
+                .filter((c) => c.camera)
+                .map(
+                  (c) => html`<button
+                    class="cam-tile"
+                    aria-label="Ver ${c.name} en directo"
+                    @click=${() => this.openCameras(c.camera!)}
+                  >
+                    <fv2-cam-thumb
+                      .hass=${h}
+                      .entity=${c.camera!}
+                      .name=${c.name}
+                      .alert=${isOn(h, c.person) ? "person" : isOn(h, c.motion) ? "motion" : ""}
+                    ></fv2-cam-thumb>
+                  </button>`,
+                )}
+            </div>
+            <div class="list">
             ${d.cameras.map((c) => {
               const person = isOn(h, c.person);
               const motion = isOn(h, c.motion);
@@ -1045,6 +1071,18 @@ export class DeviceCard extends LitElement {
       .list {
         display: grid;
         gap: 6px;
+      }
+      .cam-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 8px;
+        margin-bottom: 8px;
+      }
+      .cam-tile {
+        padding: 0;
+        border: 0;
+        background: none;
+        cursor: pointer;
       }
       .tap {
         cursor: pointer;
