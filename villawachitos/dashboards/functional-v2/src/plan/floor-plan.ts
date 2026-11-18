@@ -126,6 +126,12 @@ export class FloorPlan extends LitElement {
       this.frame(this.frameBox, true);
   }
 
+  /** Punto de la pantalla (clientX/Y) → píxeles de mundo del plano (para arrastrar iconos). */
+  worldPoint(clientX: number, clientY: number): [number, number] {
+    const r = this.getBoundingClientRect();
+    return [(clientX - r.left - this.tx) / this.s, (clientY - r.top - this.ty) / this.s];
+  }
+
   /** Vuelve a encuadrar la caja actual (botón y doble toque con mucho zoom). */
   reset(): void {
     this.frame(this.frameBox, true);

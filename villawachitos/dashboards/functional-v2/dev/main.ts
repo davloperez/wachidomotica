@@ -4,7 +4,7 @@ import type { DashboardConfig, HomeAssistant } from "../src/types";
 import { createMockHass } from "./mock-hass";
 
 const el = document.querySelector("functional-v2")!;
-el.setConfig(config as DashboardConfig);
+el.setConfig(config as unknown as DashboardConfig);
 
 let haDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
 const params = new URLSearchParams(location.search);

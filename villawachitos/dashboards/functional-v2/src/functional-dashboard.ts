@@ -3,6 +3,11 @@ import { customElement, property, state } from "lit/decorators.js";
 import { repeat } from "lit/directives/repeat.js";
 import {
   mdiBrightnessAuto,
+  mdiCheck,
+  mdiCodeJson,
+  mdiContentCopy,
+  mdiPencilOutline,
+  mdiRestore,
   mdiGarageOpenVariant,
   mdiGarageVariant,
   mdiHomeOutline,
@@ -28,7 +33,7 @@ import {
 import { DEVICE_ICONS, deviceBrief } from "./widgets/devices";
 import { lightIcon } from "./widgets/lights";
 import { GATES } from "../../house-3d-v1/src/scene/plan";
-import { HOME_BOX, roomAnchor, roomBox, toWorld, unionBox, type Box } from "./plan/geometry";
+import { HOME_BOX, fromWorld, roomAnchor, roomBox, toWorld, unionBox, type Box } from "./plan/geometry";
 import type { FloorPlan } from "./plan/floor-plan";
 import { DOORBELL, PriorityWatcher, type PriorityAlert } from "./lib/priority";
 import type { RoomView } from "./views/room-view";
@@ -43,6 +48,11 @@ import "./widgets/pump-sheet";
 import "./widgets/priority-alert";
 
 const HOME = "home";
+/** El modo Editar solo existe con ratón y pantalla grande (nunca en las Shelly ni en el móvil). */
+const DESKTOP_MQ = "(min-width: 900px) and (hover: hover) and (pointer: fine)";
+const DRAFT_KEY = "fv2-marker-draft";
+type Positions = Record<string, [number, number]>;
+const round2 = (n: number) => Math.round(n * 100) / 100;
 const HOLD_MS = 550;
 
 /**
@@ -108,6 +118,14 @@ export class FunctionalDashboard extends LitElement {
   @state() private layer?: LayerId;
   /** Refresco periódico (caducidad de las alertas prioritarias) */
   @state() private tick = 0;
+  /** Pantalla de escritorio: única en la que se puede editar la posición de los iconos */
+  @state() private desktop = false;
+  @state() private editing = false;
+  @state() private exporting = false;
+  @state() private copied = false;
+  /** Posiciones en edición (solo escritorio): sustituyen a las de la configuración hasta descartarlas */
+  @state() private draft?: Positions;
+  private mq?: MediaQueryList;
   private layerCache = new Map<LayerId, LayerItem[]>();
   private priority = new PriorityWatcher();
   private alerts: PriorityAlert[] = [];
@@ -131,6 +149,9 @@ export class FunctionalDashboard extends LitElement {
   connectedCallback(): void {
     super.connectedCallback();
     window.addEventListener("keydown", this.onKey);
+    this.mq = window.matchMedia(DESKTOP_MQ);
+    this.mq.addEventListener("change", this.onMq);
+    this.onMq();
     this.idleTimer = window.setInterval(() => {
       this.checkIdle();
       if (this.alerts.length) this.tick++;
@@ -140,13 +161,143 @@ export class FunctionalDashboard extends LitElement {
   disconnectedCallback(): void {
     super.disconnectedCallback();
     window.removeEventListener("keydown", this.onKey);
+    this.mq?.removeEventListener("change", this.onMq);
     window.clearInterval(this.idleTimer);
+  }
+
+  protected firstUpdated(): void {
+    // En captura y sobre el propio plano: en modo edición los iconos se arrastran en vez de pulsarse
+    const plan = this.renderRoot.querySelector("fv2-plan");
+    plan?.addEventListener("pointerdown", this.onEditDown as EventListener, true);
+    plan?.addEventListener("click", this.onEditClick, true);
+    plan?.addEventListener("dblclick", this.onEditDouble, true);
+  }
+
+  private onMq = () => {
+    this.desktop = !!this.mq?.matches;
+    if (!this.desktop) {
+      this.editing = false;
+      this.exporting = false;
+    } else if (!this.draft) {
+      try {
+        const v = localStorage.getItem(DRAFT_KEY);
+        if (v) this.draft = JSON.parse(v) as Positions;
+      } catch {
+        /* sin almacenamiento o borrador ilegible: se ignora */
+      }
+    }
+  };
+
+  /* ---------------------------------------------------------------- */
+  /* Edición de la posición de los iconos (solo escritorio)            */
+  /* ---------------------------------------------------------------- */
+
+  /** Posiciones vigentes: el borrador (solo escritorio) o, si no hay, las de la configuración. */
+  private overrides(): Positions {
+    return (this.desktop && this.draft) || this.config.marker_positions || {};
+  }
+
+  private setDraft(d?: Positions): void {
+    this.draft = d;
+    try {
+      if (d) localStorage.setItem(DRAFT_KEY, JSON.stringify(d));
+      else localStorage.removeItem(DRAFT_KEY);
+    } catch {
+      /* ignorar */
+    }
+  }
+
+  private markerAt(e: Event): HTMLElement | undefined {
+    return e
+      .composedPath()
+      .find(
+        (n): n is HTMLElement => n instanceof HTMLElement && n.classList.contains("mk") && !!n.dataset.key,
+      );
+  }
+
+  private inControls(e: Event): boolean {
+    return e.composedPath().some((n) => n instanceof HTMLElement && n.classList.contains("ctl"));
+  }
+
+  private onEditDown = (e: PointerEvent) => {
+    if (!this.editing || (e.pointerType === "mouse" && e.button !== 0)) return;
+    const mk = this.markerAt(e);
+    const plan = this.renderRoot.querySelector<FloorPlan>("fv2-plan");
+    if (!mk || !plan) return;
+    e.stopPropagation();
+    e.preventDefault();
+    // El icono sigue al puntero conservando el punto por el que se agarró
+    const [gx, gy] = plan.worldPoint(e.clientX, e.clientY);
+    const ox = parseFloat(mk.style.left) - gx;
+    const oy = parseFloat(mk.style.top) - gy;
+    mk.classList.add("dragging");
+    const move = (ev: PointerEvent) => {
+      const [x, y] = plan.worldPoint(ev.clientX, ev.clientY);
+      mk.style.left = `${(x + ox).toFixed(1)}px`;
+      mk.style.top = `${(y + oy).toFixed(1)}px`;
+    };
+    const end = (ev: PointerEvent, commit: boolean) => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", cancel);
+      mk.classList.remove("dragging");
+      if (!commit) return;
+      const [x, y] = plan.worldPoint(ev.clientX, ev.clientY);
+      const [mx, mz] = fromWorld(x + ox, y + oy);
+      this.setDraft({ ...this.overrides(), [mk.dataset.key!]: [round2(mx), round2(mz)] });
+    };
+    const up = (ev: PointerEvent) => end(ev, true);
+    const cancel = (ev: PointerEvent) => end(ev, false);
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", cancel);
+  };
+
+  /** En modo edición, ningún clic llega a los iconos ni a las estancias (salvo los botones del plano). */
+  private onEditClick = (e: Event) => {
+    if (!this.editing || this.inControls(e)) return;
+    e.stopPropagation();
+    e.preventDefault();
+  };
+
+  /** Doble clic sobre un icono: vuelve a su posición original. */
+  private onEditDouble = (e: Event) => {
+    if (!this.editing || this.inControls(e)) return;
+    e.stopPropagation();
+    const mk = this.markerAt(e);
+    if (!mk) return;
+    const next = { ...this.overrides() };
+    delete next[mk.dataset.key!];
+    this.setDraft(next);
+  };
+
+  private exportJson(): string {
+    const eff = this.overrides();
+    const keys = Object.keys(eff).sort();
+    if (!keys.length) return `"marker_positions": {}`;
+    const body = keys.map((k) => `    ${JSON.stringify(k)}: [${eff[k][0]}, ${eff[k][1]}]`).join(",\n");
+    return `"marker_positions": {\n${body}\n  }`;
+  }
+
+  private async copyJson(): Promise<void> {
+    const text = this.exportJson();
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      // Sin portapapeles (HA por http): se selecciona el texto y se copia a la antigua
+      const ta = this.renderRoot.querySelector<HTMLTextAreaElement>(".export textarea");
+      ta?.select();
+      document.execCommand("copy");
+    }
+    this.copied = true;
+    window.setTimeout(() => (this.copied = false), 2000);
   }
 
   private onKey = (e: KeyboardEvent) => {
     this.lastTouch = Date.now();
     if (e.key === "Escape") {
-      if (this.sheet) this.sheet = undefined;
+      if (this.exporting) this.exporting = false;
+      else if (this.sheet) this.sheet = undefined;
       else if (this.layer) this.layer = undefined;
       else this.go(HOME);
     }
@@ -154,7 +305,7 @@ export class FunctionalDashboard extends LitElement {
 
   private checkIdle(): void {
     const secs = this.config.idle_return_seconds ?? 180;
-    if (!secs || (this.view === HOME && !this.layer)) return;
+    if (!secs || this.editing || (this.view === HOME && !this.layer)) return;
     if (Date.now() - this.lastTouch > secs * 1000) this.go(HOME);
   }
 
@@ -248,7 +399,7 @@ export class FunctionalDashboard extends LitElement {
     return html`
       <div class="app" @pointerdown=${() => (this.lastTouch = Date.now())}>
         <div class="main">
-          <div class="planbox">
+          <div class="planbox ${this.editing ? "editing" : ""}">
             <fv2-plan
               .frameBox=${this.focusBox()}
               .lit=${this.litRooms()}
@@ -261,7 +412,7 @@ export class FunctionalDashboard extends LitElement {
             >
               ${this.layer ? this.layerMarkers(this.layer) : room ? this.roomMarkers(room) : this.homeMarkers()}
             </fv2-plan>
-            ${this.renderLayerBar()}
+            ${this.renderLayerBar()} ${this.desktop ? this.renderEditBar() : nothing}
           </div>
           <div class="content">
             ${
@@ -320,6 +471,7 @@ export class FunctionalDashboard extends LitElement {
             ></fv2-priority>`
           : nothing
       }
+      ${this.exporting ? this.renderExport() : nothing}
       ${this.hass && !this.hass.connected ? html`<div class="offline">Sin conexión con Home Assistant…</div>` : nothing}
     `;
   }
@@ -330,8 +482,10 @@ export class FunctionalDashboard extends LitElement {
 
   /** Posición de un elemento en el plano (píxeles de mundo), con su separación si hace falta. */
   private at(key: string, x: number, z: number): string {
+    // Posición personalizada (modo Editar / configuración) o, si no, la del plano con su separación
+    const o = this.overrides()[key];
     const n = NUDGE[key];
-    const [px, py] = toWorld(x + (n?.[0] ?? 0), z + (n?.[1] ?? 0));
+    const [px, py] = o ? toWorld(o[0], o[1]) : toWorld(x + (n?.[0] ?? 0), z + (n?.[1] ?? 0));
     return `left:${px.toFixed(1)}px;top:${py.toFixed(1)}px`;
   }
 
@@ -368,12 +522,17 @@ export class FunctionalDashboard extends LitElement {
       }
     // Accesos a las estancias
     ROOMS_DEF.forEach((r, i) => {
-      const [x, y] = roomAnchor(r);
+      const o = this.overrides()[`room:${r.id}`];
+      const [x, y] = o ? toWorld(o[0], o[1]) : roomAnchor(r);
       const on = r.lights.filter((l) => isOn(h, l.entity)).length;
       const t = num(h, r.temperature);
       const washerDone = r.devices.some((d) => d.type === "washer" && st(h, d.status)?.state === "Terminada");
       out.push(
-        html`<div class="mk spot" style="left:${x.toFixed(1)}px;top:${y.toFixed(1)}px;--i:${i}">
+        html`<div
+          class="mk spot"
+          data-key=${`room:${r.id}`}
+          style="left:${x.toFixed(1)}px;top:${y.toFixed(1)}px;--i:${i}"
+        >
           <button
             class="sp ${on ? "lit" : ""} ${washerDone ? "notify" : ""}"
             aria-label=${r.name}
@@ -462,6 +621,7 @@ export class FunctionalDashboard extends LitElement {
     const [x, , z] = it.pos!;
     return html`<div
       class="mk light ${on ? "on" : ""} ${named ? "named" : ""}"
+      data-key=${it.key}
       style="${this.at(it.key, x, z)};--lamp:${lightColor(e)}"
     >
       <button
@@ -508,6 +668,7 @@ export class FunctionalDashboard extends LitElement {
     const named = o.label === true || (o.label === "active" && (on || alert || !!o.anim));
     return html`<div
       class="mk dev ${on ? "active" : ""} ${alert ? "alert" : ""} ${named ? "named" : ""}"
+      data-key=${it.key}
       style=${this.at(it.key, x, z)}
     >
       <button class="b" aria-label=${it.name} @click=${o.onTap}>
@@ -526,6 +687,7 @@ export class FunctionalDashboard extends LitElement {
     const anyOpen = d.gates.some((g) => isOn(this.hass, g.entity));
     return html`<div
       class="mk dev named ${anyOpen ? "alert" : ""}"
+      data-key="gates"
       style=${this.at("gates", mid(xs), mid(zs) + 1)}
     >
       <button
@@ -551,6 +713,57 @@ export class FunctionalDashboard extends LitElement {
   /* ---------------------------------------------------------------- */
   /* Barras                                                            */
   /* ---------------------------------------------------------------- */
+
+  /** Modo Editar (solo escritorio): botones abajo, entre la rosa de los vientos y el zoom. */
+  private renderEditBar() {
+    if (!this.editing)
+      return html`<div class="editbar">
+        <button class="chip" title="Colocar los iconos en el plano" @click=${() => (this.editing = true)}>
+          ${icon(mdiPencilOutline)}<span>Editar</span>${this.draft ? html`<i class="pending"></i>` : nothing}
+        </button>
+      </div>`;
+    return html`<div class="editbar">
+      <span class="chip hint">Arrastra los iconos · doble clic: posición original</span>
+      <button class="chip" @click=${() => ((this.exporting = true), (this.copied = false))}>
+        ${icon(mdiCodeJson)}<span>Exportar JSON</span>
+      </button>
+      <button
+        class="chip"
+        title="Vuelve a lo que hay en dashboard.config.json"
+        ?disabled=${!this.draft}
+        @click=${() => this.setDraft(undefined)}
+      >
+        ${icon(mdiRestore)}<span>Descartar cambios</span>
+      </button>
+      <button class="chip" title="Todos los iconos a su sitio original" @click=${() => this.setDraft({})}>
+        <span>Por defecto</span>
+      </button>
+      <button class="chip on" @click=${() => (this.editing = false)}>
+        ${icon(mdiCheck)}<span>Listo</span>
+      </button>
+    </div>`;
+  }
+
+  private renderExport() {
+    const n = Object.keys(this.overrides()).length;
+    return html`<div class="export" role="dialog" aria-label="Exportar posiciones">
+      <div class="panel">
+        <h3>Exportar posiciones</h3>
+        <p>
+          ${n} icono${n === 1 ? "" : "s"} con posición personalizada. Pega este bloque dentro de
+          <b>dashboard.config.json</b>, junto a «theme», «weather»… (sin olvidar la coma) y despliega: las
+          pantallas de pared aplicarán estas posiciones.
+        </p>
+        <textarea readonly rows="12" spellcheck="false" .value=${this.exportJson()}></textarea>
+        <div class="row">
+          <button class="btn primary" @click=${this.copyJson}>
+            ${icon(this.copied ? mdiCheck : mdiContentCopy)} ${this.copied ? "Copiado" : "Copiar"}
+          </button>
+          <button class="btn" @click=${() => (this.exporting = false)}>Cerrar</button>
+        </div>
+      </div>
+    </div>`;
+  }
 
   /** Selector de capas, sobre el plano (arriba). */
   private renderLayerBar() {
@@ -875,6 +1088,111 @@ export class FunctionalDashboard extends LitElement {
         background: var(--sage);
         color: #fff;
         font-weight: 700;
+      }
+
+      /* ----- Modo Editar (solo escritorio) ----- */
+      .editbar {
+        position: absolute;
+        left: 64px;
+        right: 66px;
+        bottom: 10px;
+        z-index: 4;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 6px;
+        pointer-events: none;
+      }
+      .editbar .chip {
+        pointer-events: auto;
+      }
+      .editbar .chip.hint {
+        pointer-events: none;
+        color: var(--text-muted);
+        font-weight: 600;
+      }
+      .chip[disabled] {
+        opacity: 0.5;
+        cursor: default;
+      }
+      .chip .pending {
+        position: absolute;
+        top: 6px;
+        right: 6px;
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: var(--amber);
+        border: 2px solid var(--glass-strong);
+      }
+      .editing .mk[data-key] .dot,
+      .editing .mk[data-key] .sp {
+        outline: 2px dashed var(--sage);
+        outline-offset: 3px;
+        cursor: grab;
+      }
+      .editing .mk.dragging {
+        z-index: 5;
+      }
+      .editing .mk.dragging .dot,
+      .editing .mk.dragging .sp {
+        outline-style: solid;
+        cursor: grabbing;
+      }
+      /* Al editar se rotulan todos los iconos, para saber cuál es cuál */
+      .editing .mk .lbl:not(.gates) {
+        display: block !important;
+      }
+      .export {
+        position: absolute;
+        inset: 0;
+        z-index: 40;
+        display: grid;
+        place-items: center;
+        padding: var(--space-4);
+        background: var(--bg);
+      }
+      .export .panel {
+        width: min(720px, 100%);
+        display: grid;
+        gap: var(--space-3);
+        padding: var(--space-4);
+        border-radius: var(--radius);
+        background: var(--glass);
+        border: 1px solid var(--glass-border);
+      }
+      .export h3 {
+        margin: 0;
+        font-family: var(--font-display);
+        font-weight: 500;
+        font-size: var(--fs-title);
+      }
+      .export p {
+        margin: 0;
+        color: var(--text-muted);
+        font-size: var(--fs-small);
+      }
+      .export textarea {
+        width: 100%;
+        resize: vertical;
+        padding: 12px;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--glass-border);
+        background: var(--bg-2);
+        color: var(--text);
+        font:
+          13px/1.5 ui-monospace,
+          "SF Mono",
+          Menlo,
+          Consolas,
+          monospace;
+        user-select: text;
+        -webkit-user-select: text;
+      }
+      .export .row {
+        display: flex;
+        gap: 8px;
+        justify-content: flex-end;
       }
 
       /* ----- Selector de capas (sobre el plano) ----- */

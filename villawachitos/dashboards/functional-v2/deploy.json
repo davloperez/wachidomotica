@@ -11,11 +11,5 @@
     "title": "Casa",
     "path": "main"
   },
-  "kiosk": true,
-  "assets": [
-    {
-      "from": "public/textures",
-      "to": "textures"
-    }
-  ]
+  "kiosk": true
 }

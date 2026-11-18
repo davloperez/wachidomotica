@@ -61,6 +61,25 @@ piscina, suelos de cada estancia, muros con sus puertas y ventanas, muebles, val
 | TV, enchufes, presencia, cámaras con movimiento, freidora…          | Late suavemente                     |
 | Persona en cámara, sensor con agua, puerta abierta, portero sonando | Tiembla, en ámbar                   |
 
+## Colocar los iconos a mano (modo Editar)
+
+Solo en **pantallas de escritorio** (≥ 900 px de ancho, con ratón): abajo en el plano aparece el botón **Editar**. En
+las Shelly y el móvil no existe; ahí solo se aplica lo que ya esté guardado en `dashboard.config.json`.
+
+1. Pulsa **Editar**. Todos los iconos del plano se rotulan y se marcan con un borde discontinuo.
+2. **Arrastra** cada icono a donde quieras (el plano se sigue moviendo arrastrando el fondo y con el zoom). Mientras
+   editas, tocar un icono no enciende la luz ni abre nada. **Doble clic** sobre un icono lo devuelve a su sitio.
+   Funciona en cualquier vista (casa, estancia o capa) y la posición vale para todas.
+3. **Exportar JSON** abre un cuadro con el bloque `"marker_positions": {…}` (posiciones en metros del plano) y un
+   botón **Copiar**. Pégalo dentro de [`dashboard.config.json`](dashboard.config.json), junto a `theme`, `weather`…
+   (sin olvidar la coma), y despliega.
+4. Hasta entonces tus cambios se guardan en el navegador de escritorio (un punto ámbar en **Editar** avisa de que hay
+   cambios sin exportar). **Descartar cambios** vuelve a lo que hay en el archivo y **Por defecto** deja todos los
+   iconos en su sitio original.
+
+Se pueden mover las luces, persianas, dispositivos y sensores, las puertas del garaje y los accesos de las estancias.
+Las posiciones personalizadas tienen prioridad sobre las del plano; la geometría (muros, muebles) no se edita.
+
 ## Alertas prioritarias
 
 Ocupan toda la pantalla (fondo opaco) por encima de cualquier vista hasta que se descartan
@@ -99,7 +118,10 @@ Tras `idle_return_seconds` (180 s por defecto) sin tocar la pantalla vuelve a la
   "weather": "weather.forecast_casa",
   "alarm": "alarm_control_panel.alarma_vivienda",
   "idle_return_seconds": 180,
-  "priority_alerts": true
+  "priority_alerts": true,
+  "marker_positions": {
+    "light.luz_piscina": [-1.25, 11.3]
+  }
 }
 ```
 

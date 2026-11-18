@@ -40,4 +40,9 @@ export interface DashboardConfig {
   idle_return_seconds?: number;
   /** Alertas prioritarias a pantalla completa (timbre, fuga del robot). `false` las desactiva. */
   priority_alerts?: boolean;
+  /**
+   * Posiciones personalizadas de los iconos del plano, en metros del plano ([x, z]). Se generan con el modo
+   * «Editar» (solo en pantallas de escritorio) y su botón «Exportar JSON».
+   */
+  marker_positions?: Record<string, [x: number, z: number]>;
 }

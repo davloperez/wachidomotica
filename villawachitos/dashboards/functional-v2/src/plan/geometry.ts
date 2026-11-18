@@ -50,6 +50,8 @@ export interface Box {
 export const wx = (x: number) => (x - MIN_X) * PX;
 export const wz = (z: number) => (z - MIN_Z) * PX;
 export const toWorld = (x: number, z: number): [number, number] => [wx(x), wz(z)];
+/** Píxeles de mundo → metros del plano (inversa de `toWorld`). */
+export const fromWorld = (px: number, py: number): [number, number] => [px / PX + MIN_X, py / PX + MIN_Z];
 
 const f = (n: number) => n.toFixed(1);
 
