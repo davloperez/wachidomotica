@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Functional v2 · dev</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #ebe4da;
+      }
+      #devbar {
+        position: fixed;
+        z-index: 10;
+        bottom: 90px;
+        left: 50%;
+        transform: translateX(-50%);
+        font:
+          12px/1 system-ui,
+          sans-serif;
+        color: #fff;
+        background: rgba(0, 0, 0, 0.7);
+        border-radius: 999px;
+        padding: 6px 12px;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        opacity: 0.25;
+      }
+      #devbar:hover {
+        opacity: 1;
+      }
+      #devbar button {
+        font: inherit;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <functional-v2></functional-v2>
+    <div id="devbar">
+      <span id="mode"></span>
+      <button id="toggle-ha-dark">HA dark: <b id="ha-dark"></b></button>
+      <button id="ring" title="Solo con ?mock">Timbre</button>
+      <button id="leak" title="Solo con ?mock">Fuga robot</button>
+    </div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

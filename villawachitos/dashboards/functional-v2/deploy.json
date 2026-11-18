@@ -1,0 +1,21 @@
+{
+  "bundle": "dist/functional-v2.js",
+  "wwwDir": "/config/www/functional-v2",
+  "card": "dashboard.config.json",
+  "dashboard": {
+    "url_path": "functional-v2",
+    "title": "Functional v2",
+    "icon": "mdi:home-heart"
+  },
+  "view": {
+    "title": "Casa",
+    "path": "main"
+  },
+  "kiosk": true,
+  "assets": [
+    {
+      "from": "public/textures",
+      "to": "textures"
+    }
+  ]
+}

@@ -18,7 +18,7 @@ Verification = `typecheck` + `lint` (+ `build` when touching bundling/config). T
 
 ## Dev preview
 
-`preview_start` with name `functional-v1` (or `house-3d-v1`, `analytics-dashboard-v1`), then open
+`preview_start` with name `functional-v1` (or `functional-v2`, `house-3d-v1`, `analytics-dashboard-v1`), then open
 `/dev/index.html`. Query params: `?mock` (simulated data), `?dark` / `?light`, `?time=HH:MM` (fixes the sun).
 Without `?mock` it uses live HA if `dashboards/.env` has `HA_URL` + `HA_TOKEN` — **live mode calls real services**,
 so prefer `?mock` when clicking controls to test.
@@ -62,3 +62,20 @@ Custom element `functional-v1`; sub-elements prefixed `fv1-`. Big files — read
 Conventions: reuse `src/lib/ha.ts` helpers instead of reading `hass.states` directly; icons come from `@mdi/js`
 rendered with `icon()`; numbers formatted in `es` locale with `fmt`; respect `prefers-reduced-motion`; keep
 rendering cheap (it runs on a wall tablet — render-on-demand, no continuous repaints).
+
+## functional-v2 map
+
+A fork of functional-v1 (element `functional-v2`, sub-elements `fv2-`) for low-power portrait wall panels. Same
+`house/rooms.ts`, `house/layers.ts`, views and widgets (duplicated: a new device must be added to both dashboards),
+but **no three.js**, and hard rules for performance: opaque colors only (no `rgba`/`color-mix` with transparency,
+no `backdrop-filter`/`filter`), animate only `transform`/`opacity` (never `box-shadow`), fonts ≥ 13 px.
+
+| File | Role |
+| --- | --- |
+| `src/functional-dashboard.ts` | Root: layout (plan on top / left, cards below / right, room dock), plan markers, routing, priority alerts |
+| `src/plan/geometry.ts` | 2D geometry from the shared plan (world px, `PX` per metre), static SVG strings, framing boxes |
+| `src/plan/floor-plan.ts` | `fv2-plan`: pan/pinch/wheel/double-tap zoom on a single transformed layer; markers are slotted and keep size via `--inv` |
+| `src/lib/priority.ts`, `src/widgets/priority-alert.ts` | Full-screen priority alerts (Fermax doorbell, Dreame leak) |
+| `src/styles/tokens.ts` | Opaque tokens, plan colors (`--p-*`) and the `.anim-*` keyframes for active devices |
+
+Mock preview (`?mock`) has dev-bar buttons to fire the doorbell and the leak.

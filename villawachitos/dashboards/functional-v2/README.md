@@ -1,0 +1,118 @@
+# Functional v2
+
+Versión **ligera** de [Functional v1](../functional-v1/README.md) para pantallas pequeñas y verticales de poca
+potencia, como las **Shelly Wall Display X2i** de la casa. Mismas estancias, capas, tarjetas y controles que la v1,
+con los mismos colores tranquilos (lino, salvia, terracota y ámbar), pero:
+
+- **Sin 3D**: en lugar de la maqueta hay un **plano 2D** navegable (sin three.js; el bundle pasa de ~1 MB + texturas
+  a ~350 KB, casi todo tipografías).
+- **Sin transparencias ni desenfoques**: todas las tarjetas, barras y paneles son de color opaco (los tonos suaves
+  ya van mezclados sobre el color de la tarjeta).
+- **Animaciones baratas**: solo `transform` y `opacity` (las anima la GPU sin repintar). Nada de sombras animadas,
+  degradados en movimiento ni filtros.
+- **Letra grande**: nada por debajo de 13 px y botones de al menos 44 px.
+- Respeta «reducir movimiento» del sistema (se paran todas las animaciones).
+
+Tema claro, oscuro o auto (botón «Tema» al final de la barra inferior).
+
+## Disposición
+
+- **Pantalla vertical** (la de las Shelly): arriba el plano (algo más de media pantalla), debajo las tarjetas de la
+  vista actual y abajo del todo la barra de estancias. Al deslizar sobre las tarjetas el plano se va hacia arriba y
+  queda toda la pantalla para ellas.
+- **Pantalla apaisada y ancha** (≥ 900 px): el plano a la izquierda y las tarjetas a la derecha.
+- Las tarjetas se reparten en una o dos columnas según el ancho disponible.
+
+## Plano 2D
+
+Se dibuja a partir del plano compartido con House 3D v1
+([`../house-3d-v1/src/scene/plan.ts`](../house-3d-v1/src/scene/plan.ts)): parcela, césped, pavimentos, porche,
+piscina, suelos de cada estancia, muros con sus puertas y ventanas, muebles, valla y portones
+([`src/plan/geometry.ts`](src/plan/geometry.ts), [`src/plan/floor-plan.ts`](src/plan/floor-plan.ts)).
+
+- **Navegable**: arrastrar para moverlo, pellizcar (o rueda del ratón) para el zoom, **doble toque** para acercar
+  (con mucho zoom, el doble toque vuelve al encuadre) y botones **+**, **−** y **encuadrar**. Abajo a la izquierda,
+  la rosa con el norte real.
+- **Encuadre automático**: vista general = casa y piscina; estancia = la estancia con algo de alrededor; exterior =
+  toda la parcela; capa = todo lo que tiene marcador.
+- **Tocar una estancia** del plano lleva a su vista; la estancia elegida se marca con un borde discontinuo.
+- **Estancias con luz encendida**: el suelo se tiñe de ámbar; la piscina se ilumina con su luz.
+- Los marcadores mantienen su tamaño al hacer zoom. Con poco zoom solo se ve el icono de cada estancia (y cuántas
+  luces tiene encendidas); al acercarse aparecen el nombre y la temperatura.
+- Todo el dibujo es una sola capa que se mueve con un `transform`: moverlo o hacer zoom no repinta nada.
+
+### Qué se ve en cada vista
+
+| Vista    | Marcadores                                                                                                                                                                                                          |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Casa     | Acceso de cada estancia, luces encendidas (punto que late), lo que está en marcha, persianas moviéndose y avisos. Tocar uno lleva a su estancia                                                                     |
+| Estancia | Todas sus luces (tocar enciende/apaga, mantener pulsado abre el detalle) y todos sus dispositivos, persianas y sensores. Solo se rotula lo encendido o con aviso; tocar un marcador lleva a su tarjeta y la resalta |
+| Capa     | Todo lo de la capa en la casa (con muchos elementos, puntos más pequeños y, de lejos, solo se rotula lo activo)                                                                                                     |
+
+### Animaciones de lo que está activo
+
+| Qué                                                                 | Animación                           |
+| ------------------------------------------------------------------- | ----------------------------------- |
+| Luz encendida                                                       | Su color y un anillo que se expande |
+| Persiana subiendo / bajando                                         | El icono sube o baja                |
+| Lavadora, depuradora, ventilación                                   | El icono gira                       |
+| Lavavajillas                                                        | Se balancea                         |
+| Robot aspirador limpiando, toallero encendido                       | Sube y baja                         |
+| TV, enchufes, presencia, cámaras con movimiento, freidora…          | Late suavemente                     |
+| Persona en cámara, sensor con agua, puerta abierta, portero sonando | Tiembla, en ámbar                   |
+
+## Alertas prioritarias
+
+Ocupan toda la pantalla (fondo opaco) por encima de cualquier vista hasta que se descartan
+([`src/lib/priority.ts`](src/lib/priority.ts), [`src/widgets/priority-alert.ts`](src/widgets/priority-alert.ts)):
+
+- **Llaman a la puerta** (portero Fermax DuoX): salta cuando cambia `event.jardin_norte_portero_automatico_exterior_duox_doorbell`
+  (o `binary_sensor.…_duox_doorbell_zero` se pone a `on`). Botones **Abrir puerta** (pide un segundo toque; llama a
+  `lock.unlock` sobre `lock.jardin_norte_portero_automatico_exterior_duox_zero` y se cierra sola al abrir) y
+  **Descartar**. Si nadie la toca, desaparece a los 2 minutos. De momento sin imagen de la cámara.
+- **Fuga de agua en el limpiasuelos** (`binary_sensor.sensor_agua_dreame_water_leak`): mientras el sensor esté mojado.
+  Botones **Ver en el plano** (lleva al salón), **Pausar el robot** (si está limpiando) y **Descartar**. Descartada,
+  no vuelve hasta que el sensor se seque y se moje otra vez.
+
+Las alertas descartadas se recuerdan en el navegador de cada pantalla. Para desactivarlas en una pantalla concreta:
+`"priority_alerts": false` en la configuración de la tarjeta.
+
+## Vista general, estancias y capas
+
+Igual que en la v1 (ver su [README](../functional-v1/README.md)): saludo y tiempo, avisos, alarma, acciones de toda
+la casa, clima, energía y batería; en cada estancia iluminación con escenas, persianas, ambiente, seguridad,
+dispositivos y actividad de hoy; y las capas Luces, Persianas, Clima, Energía, Electrodomésticos, Seguridad y
+Multimedia. Las hojas de detalle (luz, instalación solar, depuradora) ocupan toda la pantalla con fondo opaco.
+
+Estancias y dispositivos: [`src/house/rooms.ts`](src/house/rooms.ts); capas: [`src/house/layers.ts`](src/house/layers.ts)
+(copias de las de la v1: un dispositivo nuevo hay que añadirlo en las dos).
+
+Tras `idle_return_seconds` (180 s por defecto) sin tocar la pantalla vuelve a la vista general.
+
+## Configuración de la tarjeta
+
+```json
+{
+  "type": "custom:functional-v2",
+  "title": "Villawachitos",
+  "theme": "auto",
+  "weather": "weather.forecast_casa",
+  "alarm": "alarm_control_panel.alarma_vivienda",
+  "idle_return_seconds": 180,
+  "priority_alerts": true
+}
+```
+
+## Desarrollo y despliegue
+
+| Tarea de VSCode                            | Qué hace                                                                                     |
+| ------------------------------------------ | -------------------------------------------------------------------------------------------- |
+| **Functional v2: servidor de desarrollo**  | `http://localhost:5176/dev/index.html` (datos reales; `?mock` simulados; `?dark` / `?light`) |
+| **Functional v2: deploy a Home Assistant** | Build → SSH → recurso `?v=<hash>` → dashboard `functional-v2`                                |
+| Functional v2: typecheck y lint            | Comprobaciones                                                                               |
+
+Con `?mock`, la barra de desarrollo tiene los botones **Timbre** y **Fuga robot** para probar las alertas; las
+persianas simuladas tardan unos segundos en moverse (para ver su animación) y el portero se vuelve a cerrar solo.
+
+Usa el `.env` compartido de `villawachitos/dashboards/.env` y el script común de
+[`../shared/scripts/deploy.mjs`](../shared/scripts/deploy.mjs), configurado en [`deploy.json`](deploy.json).

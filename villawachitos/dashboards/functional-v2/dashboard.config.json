@@ -1,0 +1,9 @@
+{
+  "type": "custom:functional-v2",
+  "title": "Villawachitos",
+  "theme": "auto",
+  "weather": "weather.forecast_casa",
+  "alarm": "alarm_control_panel.alarma_vivienda",
+  "idle_return_seconds": 180,
+  "priority_alerts": true
+}

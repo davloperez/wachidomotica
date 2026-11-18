@@ -171,6 +171,58 @@
     },
 
     /* =====================================================================
+     * Functional v2  (villawachitos/dashboards/functional-v2)
+     * ===================================================================== */
+    {
+      "label": "Functional v2: instalar dependencias",
+      "type": "shell",
+      "command": "npm ci",
+      "options": { "cwd": "${workspaceFolder}/villawachitos/dashboards/functional-v2" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Functional v2: servidor de desarrollo",
+      "detail": "Vite en http://localhost:5176/dev/index.html (datos reales si hay .env; ?mock para simulados)",
+      "type": "shell",
+      "command": "npm run dev",
+      "options": {
+        "cwd": "${workspaceFolder}/villawachitos/dashboards/functional-v2",
+        "env": { "VITE_USE_POLLING": "1" }
+      },
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "vite",
+        "pattern": { "regexp": "^__never_matches__$" },
+        "background": { "activesBegin": ".", "beginsPattern": "VITE v", "endsPattern": "Local:" }
+      }
+    },
+    {
+      "label": "Functional v2: build",
+      "type": "shell",
+      "command": "npm run build",
+      "options": { "cwd": "${workspaceFolder}/villawachitos/dashboards/functional-v2" },
+      "group": "build",
+      "problemMatcher": ["$tsc"]
+    },
+    {
+      "label": "Functional v2: deploy a Home Assistant",
+      "detail": "Build + subida por SSH + recurso Lovelace con ?v=hash + dashboard functional-v2",
+      "type": "shell",
+      "command": "npm run deploy",
+      "options": { "cwd": "${workspaceFolder}/villawachitos/dashboards/functional-v2" },
+      "problemMatcher": ["$tsc"],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
+    },
+    {
+      "label": "Functional v2: typecheck y lint",
+      "type": "shell",
+      "command": "npm run typecheck && npm run lint",
+      "options": { "cwd": "${workspaceFolder}/villawachitos/dashboards/functional-v2" },
+      "group": "test",
+      "problemMatcher": ["$tsc", "$eslint-stylish"]
+    },
+
+    /* =====================================================================
      * ESPHome  (villawachitos/esphome)
      * ===================================================================== */
     {
