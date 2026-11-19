@@ -1,8 +1,8 @@
 # Functional v2
 
-Versión **ligera** de [Functional v1](../functional-v1/README.md) para pantallas pequeñas y verticales de poca
-potencia, como las **Shelly Wall Display X2i** de la casa. Mismas estancias, capas, tarjetas y controles que la v1,
-con los mismos colores tranquilos (lino, salvia, terracota y ámbar), pero:
+Panel de pared **ligero** para pantallas pequeñas y verticales de poca
+potencia, como las **Shelly Wall Display X2i** de la casa. Estancias, capas, tarjetas y controles
+con colores tranquilos (lino, salvia, terracota y ámbar), pero:
 
 - **Sin 3D**: en lugar de la maqueta hay un **plano 2D** navegable (sin three.js; el bundle pasa de ~1 MB + texturas
   a ~350 KB, casi todo tipografías).
@@ -25,8 +25,8 @@ Tema claro, oscuro o auto (botón «Tema» al final de la barra inferior).
 
 ## Plano 2D
 
-Se dibuja a partir del plano compartido con House 3D v1
-([`../house-3d-v1/src/scene/plan.ts`](../house-3d-v1/src/scene/plan.ts)): parcela, césped, pavimentos, porche,
+Se dibuja a partir del plano de la casa
+([`src/plan/house-plan.ts`](src/plan/house-plan.ts)): parcela, césped, pavimentos, porche,
 piscina, suelos de cada estancia, muros con sus puertas y ventanas, muebles, valla y portones
 ([`src/plan/geometry.ts`](src/plan/geometry.ts), [`src/plan/floor-plan.ts`](src/plan/floor-plan.ts)).
 
@@ -114,13 +114,13 @@ Las alertas descartadas se recuerdan en el navegador de cada pantalla. Para desa
 
 ## Vista general, estancias y capas
 
-Igual que en la v1 (ver su [README](../functional-v1/README.md)): saludo y tiempo, avisos, alarma, acciones de toda
+Saludo y tiempo, avisos, alarma, acciones de toda
 la casa, clima, energía y batería; en cada estancia iluminación con escenas, persianas y cortinas (estas se abren en horizontal, con su propio icono y tarjeta), ambiente, seguridad,
 dispositivos y actividad de hoy; y las capas Luces, Persianas, Clima, Energía, Electrodomésticos, Seguridad y
 Multimedia. Las hojas de detalle (luz, instalación solar, depuradora) ocupan toda la pantalla con fondo opaco.
 
 Estancias y dispositivos: [`src/house/rooms.ts`](src/house/rooms.ts); capas: [`src/house/layers.ts`](src/house/layers.ts)
-(copias de las de la v1: un dispositivo nuevo hay que añadirlo en las dos).
+(un dispositivo nuevo se añade ahí).
 
 **Previsión**: bajo el saludo, las próximas horas de hoy y los siguientes 5 días (mínima, máxima y probabilidad de
 lluvia) de la entidad `weather` configurada, que usa las coordenadas de la casa (Urbanización La Quinta, Molina de

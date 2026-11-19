@@ -1,6 +1,6 @@
 /**
  * Plano 2D de la casa, calculado una sola vez a partir del plano compartido con House 3D v1
- * (`../house-3d-v1/src/scene/plan.ts`). Todo se dibuja en "píxeles de mundo": 1 m = `PX` px,
+ * (`src/plan/house-plan.ts`). Todo se dibuja en "píxeles de mundo": 1 m = `PX` px,
  * con el origen en la esquina noroeste de la parcela. El zoom y el desplazamiento los pone
  * después `fv2-plan` con un único `transform` sobre todo el dibujo.
  */
@@ -23,7 +23,7 @@ import {
   INTERIOR_THICKNESS,
   type Point,
   type Rect,
-} from "../../../house-3d-v1/src/scene/plan";
+} from "./house-plan";
 import { ROOMS_DEF, type RoomDef } from "../house/rooms";
 
 /** Píxeles de mundo por metro */

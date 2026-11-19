@@ -26,7 +26,6 @@ export default defineConfig(({ command, mode }) => {
     server: {
       host: true,
       port: 5176,
-      // El plano de la casa se comparte con house-3d-v1 (../house-3d-v1/src/scene/plan.ts).
       fs: { allow: [".."] },
       // Si el sistema agota los "file watchers" de inotify (ENOSPC), arrancar con VITE_USE_POLLING=1.
       watch: env.VITE_USE_POLLING === "1" ? { usePolling: true, interval: 300 } : undefined,

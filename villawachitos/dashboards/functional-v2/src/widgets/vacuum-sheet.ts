@@ -17,7 +17,7 @@ import type { HassEntity, HomeAssistant } from "../types";
 import { shared } from "../styles/tokens";
 import { fmt, icon, num, st } from "../lib/ha";
 import { VACUUM } from "../house/rooms";
-import { PORCH, ROOMS } from "../../../house-3d-v1/src/scene/plan";
+import { PORCH, ROOMS } from "../plan/house-plan";
 import { sheetStyles } from "./solar-sheet";
 
 const V = {

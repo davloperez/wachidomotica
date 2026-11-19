@@ -44,11 +44,16 @@
   },
 
   /* ---------- Dashboard (TypeScript / Lit) ---------- */
-  "typescript.tsdk": "villawachitos/dashboards/analytics-dashboard-v1/node_modules/typescript/lib",
+  "typescript.tsdk": "villawachitos/dashboards/functional-v2/node_modules/typescript/lib",
   "typescript.enablePromptUseWorkspaceTsdk": true,
-  "eslint.workingDirectories": [{ "directory": "villawachitos/dashboards/analytics-dashboard-v1", "changeProcessCWD": true }],
+  "eslint.workingDirectories": [
+    {
+      "directory": "villawachitos/dashboards/functional-v2",
+      "changeProcessCWD": true
+    }
+  ],
   "eslint.useFlatConfig": true,
-  "prettier.prettierPath": "villawachitos/dashboards/analytics-dashboard-v1/node_modules/prettier",
+  "prettier.prettierPath": "villawachitos/dashboards/functional-v2/node_modules/prettier",
   "[typescript]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
   "[javascript]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
   "[json]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
@@ -70,5 +75,6 @@
     "villawachitos",
     "wachidomotica",
     "wallpanel"
-  ]
+  ],
+  "python.terminal.useEnvFile": true
 }

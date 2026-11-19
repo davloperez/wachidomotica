@@ -36,7 +36,7 @@ import {
 } from "./house/layers";
 import { deviceIcon, deviceBrief } from "./widgets/devices";
 import { lightIcon } from "./widgets/lights";
-import { GATES } from "../../house-3d-v1/src/scene/plan";
+import { GATES } from "./plan/house-plan";
 import { HOME_BOX, fromWorld, roomAnchor, roomBox, toWorld, unionBox, type Box } from "./plan/geometry";
 import type { FloorPlan } from "./plan/floor-plan";
 import { DOORBELL, PriorityWatcher, type PriorityAlert } from "./lib/priority";

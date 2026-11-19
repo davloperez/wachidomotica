@@ -18,7 +18,7 @@ import {
 } from "@mdi/js";
 import type { HomeAssistant } from "../types";
 import { ALARM_ES, fmt, isOn, num, st } from "../lib/ha";
-import { POOL, WALLS, type Rect } from "../../../house-3d-v1/src/scene/plan";
+import { POOL, WALLS, type Rect } from "../plan/house-plan";
 import { ENERGY, EXTRA_LEAKS, ROOMS_DEF, TV, deviceSpot, lampPos, type DeviceDef, type RoomDef } from "./rooms";
 
 export type LayerId = "luces" | "persianas" | "clima" | "energia" | "electro" | "seguridad" | "multimedia";

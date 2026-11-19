@@ -2,7 +2,7 @@
  * Estancias y espacios del panel, con sus dispositivos reales de Home Assistant.
  *
  * La forma de la casa (rectángulos, muros, luces y muebles) sale del plano compartido con
- * House 3D v1 (`../house-3d-v1/src/scene/plan.ts`); aquí solo se decide qué se controla
+ * House 3D v1 (`src/plan/house-plan.ts`); aquí solo se decide qué se controla
  * y se muestra en cada estancia. Para añadir un dispositivo, basta con añadirlo a su estancia.
  */
 import {
@@ -32,7 +32,7 @@ import {
   WASHER,
   type Rect,
   type LampKind,
-} from "../../../house-3d-v1/src/scene/plan";
+} from "../plan/house-plan";
 
 export { ENERGY, FRIDGE, PRINTER, PUMP, TV, VACUUM, WASHER };
 

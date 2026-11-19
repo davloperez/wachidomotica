@@ -2,28 +2,12 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Analytics v1: depurar en Chrome",
+      "name": "Functional v2: depurar en Chrome",
       "type": "chrome",
       "request": "launch",
-      "url": "http://localhost:5173/dev/index.html",
-      "webRoot": "${workspaceFolder}/villawachitos/dashboards/analytics-dashboard-v1",
-      "preLaunchTask": "Analytics v1: servidor de desarrollo"
-    },
-    {
-      "name": "Analytics v1: depurar script de deploy",
-      "type": "node",
-      "request": "launch",
-      "program": "${workspaceFolder}/villawachitos/dashboards/shared/scripts/deploy.mjs",
-      "cwd": "${workspaceFolder}/villawachitos/dashboards/analytics-dashboard-v1",
-      "console": "integratedTerminal"
-    },
-    {
-      "name": "Casa 3D: depurar en Chrome",
-      "type": "chrome",
-      "request": "launch",
-      "url": "http://localhost:5174/dev/index.html",
-      "webRoot": "${workspaceFolder}/villawachitos/dashboards/house-3d-v1",
-      "preLaunchTask": "Casa 3D: servidor de desarrollo"
+      "url": "http://localhost:5176/dev/index.html",
+      "webRoot": "${workspaceFolder}/villawachitos/dashboards/functional-v2",
+      "preLaunchTask": "Functional v2: servidor de desarrollo"
     }
   ]
 }

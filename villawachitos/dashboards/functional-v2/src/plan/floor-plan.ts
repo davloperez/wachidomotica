@@ -2,7 +2,7 @@ import { LitElement, css, html, svg, nothing, type PropertyValues } from "lit";
 import { customElement, property } from "lit/decorators.js";
 import { unsafeSVG } from "lit/directives/unsafe-svg.js";
 import { shared } from "../styles/tokens";
-import { POOL } from "../../../house-3d-v1/src/scene/plan";
+import { POOL } from "./house-plan";
 import {
   FLOORS,
   HOME_BOX,
