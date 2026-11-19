@@ -612,6 +612,12 @@ export class RoomView extends LitElement {
         gap: 8px;
         flex-wrap: wrap;
       }
+      /* Vertical / móvil (lo contrario del modo escritorio): los chips siempre debajo del título */
+      @media (max-width: 899px), (max-aspect-ratio: 1/1) {
+        .summary {
+          flex-basis: 100%;
+        }
+      }
       .glass-pill {
         font-size: var(--fs-small);
         padding: 8px 14px;

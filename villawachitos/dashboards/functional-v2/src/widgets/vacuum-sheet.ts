@@ -72,7 +72,9 @@ type Rect = [number, number, number, number];
 const PLAN_RECTS = new Map<number, Rect[]>(
   ROBOT_ROOMS.map((r) => [
     r.id,
-    r.exterior ? [PORCH as Rect] : (r.plan.flatMap((n) => ROOMS.filter((x) => x.name === n).map((x) => x.rect)) as Rect[]),
+    r.exterior
+      ? [PORCH as Rect]
+      : (r.plan.flatMap((n) => ROOMS.filter((x) => x.name === n).map((x) => x.rect)) as Rect[]),
   ]),
 );
 const ALL_RECTS = [...PLAN_RECTS.values()].flat();
@@ -131,7 +133,7 @@ const BLOCK_ES: Record<string, string> = {
 const INTERRUPT_ES: Record<string, string> = {
   "Robot lifted": "robot levantado",
   "Low battery": "batería baja",
-  "Stuck": "atascado",
+  Stuck: "atascado",
 };
 
 interface Task {
@@ -198,7 +200,9 @@ export class VacuumSheet extends LitElement {
 
   private preset(zone: "interior" | "exterior" | "todo"): number[] {
     const ext = (id: number) => ROBOT_ROOMS.find((r) => r.id === id)?.exterior;
-    return this.sequence().filter((id) => (zone === "todo" ? true : zone === "exterior" ? ext(id) : !ext(id)));
+    return this.sequence().filter((id) =>
+      zone === "todo" ? true : zone === "exterior" ? ext(id) : !ext(id),
+    );
   }
 
   private zone(): "interior" | "exterior" | "todo" | "elegir" {
@@ -219,7 +223,8 @@ export class VacuumSheet extends LitElement {
 
   /** Nombre de una estancia según el mapa del robot (para el historial). */
   private mapRoom(id: number): string {
-    const rooms = st(this.hass, V.vacuum)?.attributes.rooms as Record<string, { id: number; name: string }[]> | undefined;
+    const rooms = st(this.hass, V.vacuum)?.attributes.rooms as
+      Record<string, { id: number; name: string }[]> | undefined;
     const hit = Object.values(rooms ?? {})
       .flat()
       .find((r) => r.id === id);
@@ -259,7 +264,8 @@ export class VacuumSheet extends LitElement {
     await sleep(1500);
     await this.svc("switch", "turn_off", { entity_id: V.customized });
     await sleep(500);
-    if (!(await this.svc("select", "select_option", { entity_id: V.mode, option: mode.select }))) failed.push("modo");
+    if (!(await this.svc("select", "select_option", { entity_id: V.mode, option: mode.select })))
+      failed.push("modo");
     if (!(await this.svc("vacuum", "set_fan_speed", { entity_id: V.vacuum, fan_speed: power.fan })))
       failed.push("potencia");
     if (this.mode !== "sweeping")
@@ -300,14 +306,15 @@ export class VacuumSheet extends LitElement {
         area: String(t.cleaned_area ?? "—"),
         kind: TASK_ES[String(t.status)] ?? String(t.status ?? ""),
         completed: t.completed !== false,
-        interrupt: t.interrupt_reason ? (INTERRUPT_ES[String(t.interrupt_reason)] ?? String(t.interrupt_reason)) : undefined,
+        interrupt: t.interrupt_reason
+          ? (INTERRUPT_ES[String(t.interrupt_reason)] ?? String(t.interrupt_reason))
+          : undefined,
         mop: t.mop_pad === "Installed",
         method: METHOD_ES[String(t.cleanup_method)] ?? String(t.cleanup_method ?? ""),
         pet: t.pet === true,
-        blocked: Object.entries((t.blocked_rooms as Record<string, string> | undefined) ?? {}).map(([id, why]) => [
-          Number(id),
-          BLOCK_ES[why] ?? why,
-        ]),
+        blocked: Object.entries((t.blocked_rooms as Record<string, string> | undefined) ?? {}).map(
+          ([id, why]) => [Number(id), BLOCK_ES[why] ?? why],
+        ),
       });
     }
     return out.sort((x, y) => y.at.getTime() - x.at.getTime());
@@ -319,7 +326,8 @@ export class VacuumSheet extends LitElement {
 
   /** Mapa de una limpieza pasada: la cámara del robot publica una imagen por tarea (el `v=` es su marca de tiempo). */
   private taskMap(ts: number): string | undefined {
-    const pics = st(this.hass, V.map)?.attributes.cleaning_history_picture as Record<string, string> | undefined;
+    const pics = st(this.hass, V.map)?.attributes.cleaning_history_picture as
+      Record<string, string> | undefined;
     const hit = Object.values(pics ?? {}).find((u) => new RegExp(`[?&]v=${ts}(&|$)`).test(u));
     return this.url(hit);
   }
@@ -353,19 +361,22 @@ export class VacuumSheet extends LitElement {
         const big = [...rects].sort((a, b) => area(b) - area(a))[0];
         const n = this.order.indexOf(r.id);
         return rects.map(
-          (rc) => html`<button
-            class="rm ${n >= 0 ? "sel" : ""} ${r.exterior ? "ext" : ""}"
-            style="left:${((rc[0] - BOX.x1) / w) * 100}%;top:${((rc[1] - BOX.z1) / hgt) * 100}%;width:${((rc[2] - rc[0]) / w) * 100}%;height:${((rc[3] - rc[1]) / hgt) * 100}%"
-            title=${r.name}
-            aria-pressed=${n >= 0}
-            @click=${() => this.toggleRoom(r.id)}
-          >
-            ${
-              rc === big
-                ? html`<span class="lab">${n >= 0 ? html`<i class="num">${n + 1}</i>` : nothing}${r.short ?? r.name}</span>`
-                : nothing
-            }
-          </button>`,
+          (rc) =>
+            html`<button
+              class="rm ${n >= 0 ? "sel" : ""} ${r.exterior ? "ext" : ""}"
+              style="left:${((rc[0] - BOX.x1) / w) * 100}%;top:${((rc[1] - BOX.z1) / hgt) * 100}%;width:${((rc[2] - rc[0]) / w) * 100}%;height:${((rc[3] - rc[1]) / hgt) * 100}%"
+              title=${r.name}
+              aria-pressed=${n >= 0}
+              @click=${() => this.toggleRoom(r.id)}
+            >
+              ${
+                rc === big
+                  ? html`<span class="lab"
+                      >${n >= 0 ? html`<i class="num">${n + 1}</i>` : nothing}${r.short ?? r.name}</span
+                    >`
+                  : nothing
+              }
+            </button>`,
         );
       })}
     </div>`;
@@ -381,7 +392,9 @@ export class VacuumSheet extends LitElement {
     if (!live && !src) return nothing;
     return html`<div class="panel wide mapbox">
       <div class="head">
-        <span class="sub">${showingLive ? (active ? "Mapa en directo" : "Mapa actual") : "Mapa de la limpieza"}</span>
+        <span class="sub"
+          >${showingLive ? (active ? "Mapa en directo" : "Mapa actual") : "Mapa de la limpieza"}</span
+        >
         <div class="seg small">
           <button class=${showingLive ? "on" : ""} @click=${() => this.pick("live")}>Ahora</button>
           ${tasks[0] ? html`<button class=${!showingLive ? "on" : ""} @click=${() => this.pick(task?.ts ?? tasks[0].ts)}>Limpieza</button>` : nothing}
@@ -389,8 +402,13 @@ export class VacuumSheet extends LitElement {
       </div>
       ${
         task && !showingLive
-          ? html`<span class="muted note">${this.when(task.at)} · ${task.minutes} · ${task.area} · ${task.kind}</span>`
-          : html`<span class="muted note">${active ? "Se actualiza mientras limpia." : "Último estado del mapa del robot."} Toca una limpieza del historial para ver su recorrido.</span>`
+          ? html`<span class="muted note"
+              >${this.when(task.at)} · ${task.minutes} · ${task.area} · ${task.kind}</span
+            >`
+          : html`<span class="muted note"
+              >${active ? "Se actualiza mientras limpia." : "Último estado del mapa del robot."} Toca una
+              limpieza del historial para ver su recorrido.</span
+            >`
       }
       ${
         src && !this.mapFailed
@@ -441,7 +459,9 @@ export class VacuumSheet extends LitElement {
               ? html`<button class="btn" @click=${() => this.live(running ? "pause" : "start")}>
                     ${icon(running ? mdiPause : mdiPlay)} ${running ? "Pausar" : "Reanudar"}
                   </button>
-                  <button class="btn danger" @click=${() => this.live("stop")}>${icon(mdiStop)} Parar</button>`
+                  <button class="btn danger" @click=${() => this.live("stop")}>
+                    ${icon(mdiStop)} Parar
+                  </button>`
               : nothing
           }
           <button class="btn" @click=${() => this.live("return_to_base")}>
@@ -462,9 +482,14 @@ export class VacuumSheet extends LitElement {
                 ] as const
               ).map(
                 ([z, label]) =>
-                  html`<button class=${zone === z ? "on" : ""} @click=${() => (this.order = this.preset(z))}>${label}</button>`,
+                  html`<button class=${zone === z ? "on" : ""} @click=${() => (this.order = this.preset(z))}>
+                    ${label}
+                  </button>`,
               )}
-              <button class=${zone === "elegir" ? "on" : ""} @click=${() => (this.order = zone === "elegir" ? this.order : [])}>
+              <button
+                class=${zone === "elegir" ? "on" : ""}
+                @click=${() => (this.order = zone === "elegir" ? this.order : [])}
+              >
                 Elegir
               </button>
             </div>
@@ -472,7 +497,8 @@ export class VacuumSheet extends LitElement {
             <p class="note muted">
               ${
                 this.order.length
-                  ? html`Orden: ${this.order.map((id, i) => html`<b>${i + 1}</b> ${this.roomName(id)}${i < this.order.length - 1 ? " → " : ""}`)}`
+                  ? html`Orden:
+                    ${this.order.map((id, i) => html`<b>${i + 1}</b> ${this.roomName(id)}${i < this.order.length - 1 ? " → " : ""}`)}`
                   : "Toca las estancias del plano en el orden en que quieres limpiarlas."
               }
               ${this.order.length ? html`<button class="link" @click=${() => (this.order = [])}>Quitar todas</button>` : nothing}
@@ -483,14 +509,15 @@ export class VacuumSheet extends LitElement {
             <span class="sub">Cómo limpiar</span>
             <div class="modes">
               ${MODES.map(
-                (m) => html`<button
-                  class="mode ${this.mode === m.id ? "on" : ""}"
-                  ?disabled=${!modeOk(m.id)}
-                  @click=${() => (this.mode = m.id)}
-                >
-                  ${icon(m.id === "sweeping" ? mdiBroom : m.id === "mopping" ? mdiWater : mdiRobotVacuum)}
-                  <b>${m.label}</b><span>${m.sub}</span>
-                </button>`,
+                (m) =>
+                  html`<button
+                    class="mode ${this.mode === m.id ? "on" : ""}"
+                    ?disabled=${!modeOk(m.id)}
+                    @click=${() => (this.mode = m.id)}
+                  >
+                    ${icon(m.id === "sweeping" ? mdiBroom : m.id === "mopping" ? mdiWater : mdiRobotVacuum)}
+                    <b>${m.label}</b><span>${m.sub}</span>
+                  </button>`,
               )}
             </div>
             ${hasMop ? nothing : html`<span class="note warn">Sin mopa instalada: solo se puede aspirar.</span>`}
@@ -500,7 +527,10 @@ export class VacuumSheet extends LitElement {
                 : html`<span class="sub">Potencia de aspirado</span>
                     <div class="seg">
                       ${POWERS.map(
-                        (p, i) => html`<button class=${this.power === i ? "on" : ""} @click=${() => (this.power = i)}>${p.label}</button>`,
+                        (p, i) =>
+                          html`<button class=${this.power === i ? "on" : ""} @click=${() => (this.power = i)}>
+                            ${p.label}
+                          </button>`,
                       )}
                     </div>`
             }
@@ -512,7 +542,11 @@ export class VacuumSheet extends LitElement {
                     </div>`
                 : nothing
             }
-            <button class="btn primary go" ?disabled=${!this.order.length || !!this.busy || !e || s === "unavailable"} @click=${this.start}>
+            <button
+              class="btn primary go"
+              ?disabled=${!this.order.length || !!this.busy || !e || s === "unavailable"}
+              @click=${this.start}
+            >
               ${icon(mdiPlay)}
               ${
                 this.busy ??
@@ -540,51 +574,64 @@ export class VacuumSheet extends LitElement {
             ${
               shown.length
                 ? html`<div class="tasks">
-                    ${shown.map(
-                      (t) => html`<div
-                        class="task ${t.completed ? "" : "bad"} ${this.mapTask === t.ts ? "sel" : ""}"
-                        @click=${() => this.pick(t.ts)}
-                      >
-                        <span class="t-ico">${icon(t.completed ? mdiCheckCircleOutline : mdiAlertCircleOutline)}</span>
-                        <div class="t-main">
-                          <b>${this.when(t.at)}</b>
-                          <span class="muted"
-                            >${t.minutes} · ${t.area} · ${t.kind}${t.completed ? "" : ` · interrumpida${t.interrupt ? ` (${t.interrupt})` : ""}`}</span
+                      ${shown.map(
+                        (t) =>
+                          html`<div
+                            class="task ${t.completed ? "" : "bad"} ${this.mapTask === t.ts ? "sel" : ""}"
+                            @click=${() => this.pick(t.ts)}
                           >
-                          <span class="tags">
-                            <i>${t.mop ? "Con mopa" : "Solo aspirado"}</i>
-                            ${t.method ? html`<i>${t.method}</i>` : nothing}
-                            ${t.pet ? html`<i>Mascotas</i>` : nothing}
-                          </span>
-                          ${
-                            t.blocked.length
-                              ? html`<span class="muted blocked"
-                                  >No pudo entrar: ${t.blocked.map(([id, why]) => `${this.mapRoom(id)} (${why})`).join(", ")}</span
-                                >`
-                              : nothing
-                          }
-                        </div>
-                        ${
-                          this.taskMap(t.ts)
-                            ? html`<img class="thumb" loading="lazy" alt="Mapa" src=${this.taskMap(t.ts)!} @error=${(e: Event) => ((e.target as HTMLElement).style.display = "none")} />`
-                            : nothing
-                        }
-                      </div>`,
-                    )}
-                  </div>
-                  ${
-                    tasks.length > HISTORY_SHOWN
-                      ? html`<button class="btn" @click=${() => (this.more = !this.more)}>
-                          ${this.more ? "Ver menos" : `Ver más (${Math.min(tasks.length, 20) - HISTORY_SHOWN})`}
-                        </button>`
-                      : nothing
-                  }`
+                            <span class="t-ico"
+                              >${icon(t.completed ? mdiCheckCircleOutline : mdiAlertCircleOutline)}</span
+                            >
+                            <div class="t-main">
+                              <b>${this.when(t.at)}</b>
+                              <span class="muted"
+                                >${t.minutes} · ${t.area} ·
+                                ${t.kind}${t.completed ? "" : ` · interrumpida${t.interrupt ? ` (${t.interrupt})` : ""}`}</span
+                              >
+                              <span class="tags">
+                                <i>${t.mop ? "Con mopa" : "Solo aspirado"}</i>
+                                ${t.method ? html`<i>${t.method}</i>` : nothing}
+                                ${t.pet ? html`<i>Mascotas</i>` : nothing}
+                              </span>
+                              ${
+                                t.blocked.length
+                                  ? html`<span class="muted blocked"
+                                      >No pudo entrar:
+                                      ${t.blocked.map(([id, why]) => `${this.mapRoom(id)} (${why})`).join(", ")}</span
+                                    >`
+                                  : nothing
+                              }
+                            </div>
+                            ${
+                              this.taskMap(t.ts)
+                                ? html`<img
+                                    class="thumb"
+                                    loading="lazy"
+                                    alt="Mapa"
+                                    src=${this.taskMap(t.ts)!}
+                                    @error=${(e: Event) => ((e.target as HTMLElement).style.display = "none")}
+                                  />`
+                                : nothing
+                            }
+                          </div>`,
+                      )}
+                    </div>
+                    ${
+                      tasks.length > HISTORY_SHOWN
+                        ? html`<button class="btn" @click=${() => (this.more = !this.more)}>
+                            ${this.more ? "Ver menos" : `Ver más (${Math.min(tasks.length, 20) - HISTORY_SHOWN})`}
+                          </button>`
+                        : nothing
+                    }`
                 : html`<p class="muted">Sin historial disponible.</p>`
             }
             <div class="cons">
               ${V.consumables.map(([label, id]) => {
                 const v = num(h, id);
-                return html`<span class=${v !== undefined && v < 25 ? "low" : ""}>${label} <b class="num">${fmt(v, 0)} %</b></span>`;
+                return html`<span class=${v !== undefined && v < 25 ? "low" : ""}
+                  >${label} <b class="num">${fmt(v, 0)} %</b></span
+                >`;
               })}
             </div>
           </div>

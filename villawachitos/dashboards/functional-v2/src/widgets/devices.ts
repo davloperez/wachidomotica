@@ -39,6 +39,8 @@ import {
 } from "@mdi/js";
 import type { HomeAssistant } from "../types";
 import { shared } from "../styles/tokens";
+import type { Slider } from "./slider";
+import "./slider";
 import { HVAC_ES, call, fmt, icon, isOn, isUnavailable, moreInfo, num, relTime, st } from "../lib/ha";
 import { hourlyMeans, type Point } from "../lib/data";
 import { ENERGY, FRIDGE, type DeviceDef } from "../house/rooms";
@@ -600,33 +602,34 @@ export class DeviceCard extends LitElement {
               ${d.cameras
                 .filter((c) => c.camera)
                 .map(
-                  (c) => html`<button
-                    class="cam-tile"
-                    aria-label="Ver ${c.name} en directo"
-                    @click=${() => this.openCameras(c.camera!)}
-                  >
-                    <fv2-cam-thumb
-                      .hass=${h}
-                      .entity=${c.camera!}
-                      .name=${c.name}
-                      .alert=${isOn(h, c.person) ? "person" : isOn(h, c.motion) ? "motion" : ""}
-                    ></fv2-cam-thumb>
-                  </button>`,
+                  (c) =>
+                    html`<button
+                      class="cam-tile"
+                      aria-label="Ver ${c.name} en directo"
+                      @click=${() => this.openCameras(c.camera!)}
+                    >
+                      <fv2-cam-thumb
+                        .hass=${h}
+                        .entity=${c.camera!}
+                        .name=${c.name}
+                        .alert=${isOn(h, c.person) ? "person" : isOn(h, c.motion) ? "motion" : ""}
+                      ></fv2-cam-thumb>
+                    </button>`,
                 )}
             </div>
             <div class="list">
-            ${d.cameras.map((c) => {
-              const person = isOn(h, c.person);
-              const motion = isOn(h, c.motion);
-              return html`<div class="li tap" @click=${() => moreInfo(this, c.motion)}>
-                <span class="dot ${person ? "bad" : motion ? "warn" : "ok"}"></span><b>${c.name}</b>
-                <span class="muted"
-                  >${person ? "Persona" : motion ? "Movimiento" : "Tranquilo"} ·
-                  ${relTime(st(h, c.motion)?.last_changed)}</span
-                >
-              </div>`;
-            })}
-          </div>`,
+              ${d.cameras.map((c) => {
+                const person = isOn(h, c.person);
+                const motion = isOn(h, c.motion);
+                return html`<div class="li tap" @click=${() => moreInfo(this, c.motion)}>
+                  <span class="dot ${person ? "bad" : motion ? "warn" : "ok"}"></span><b>${c.name}</b>
+                  <span class="muted"
+                    >${person ? "Persona" : motion ? "Movimiento" : "Tranquilo"} ·
+                    ${relTime(st(h, c.motion)?.last_changed)}</span
+                  >
+                </div>`;
+              })}
+            </div>`,
         };
       }
       case "presence": {
@@ -713,18 +716,17 @@ export class DeviceCard extends LitElement {
         </button>
         <div class="dose-iv">
           <span class="muted">Cada <b class="num">${hm(val)}</b></span>
-          <input
-            type="range"
-            class="slider thin"
+          <fv2-slider
+            variant="thin"
             min=${min}
             max=${max}
             step=${step}
-            aria-label="Intervalo entre dosis"
-            .value=${String(val)}
-            style="--pct:${((val - min) / (max - min)) * 100}%; --fill: var(--sky)"
-            @input=${(ev: Event) => (this.doseDraft = Number((ev.target as HTMLInputElement).value))}
-            @change=${(ev: Event) => setInterval(Number((ev.target as HTMLInputElement).value))}
-          />
+            label="Intervalo entre dosis"
+            .value=${val}
+            fill="var(--sky)"
+            @input=${(ev: Event) => (this.doseDraft = Number((ev.target as Slider).value))}
+            @change=${(ev: Event) => setInterval(Number((ev.target as Slider).value))}
+          ></fv2-slider>
         </div>
         <div class="line-ctl">
           <span class="muted">Automático${c.hours ? ` · ${c.hours}` : ""}</span>

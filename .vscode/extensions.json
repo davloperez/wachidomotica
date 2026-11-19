@@ -16,6 +16,7 @@
     "editorconfig.editorconfig",
     "streetsidesoftware.code-spell-checker",
     "streetsidesoftware.code-spell-checker-spanish",
-    "eamodio.gitlens"
+    "eamodio.gitlens",
+    "jkearins.action-buttons-ext"
   ]
 }

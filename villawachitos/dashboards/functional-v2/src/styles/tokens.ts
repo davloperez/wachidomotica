@@ -355,47 +355,6 @@ export const shared = css`
     box-shadow: inset 0 0 0 1px var(--glass-border);
   }
 
-  /* Deslizador grueso con relleno (usa --pct y --fill) */
-  input[type="range"].slider {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 100%;
-    height: 34px;
-    margin: 0;
-    border-radius: 999px;
-    background: linear-gradient(
-      90deg,
-      var(--fill, var(--amber)) 0 var(--pct, 0%),
-      var(--track) var(--pct, 0%) 100%
-    );
-    outline: none;
-    cursor: pointer;
-    touch-action: pan-y;
-  }
-  input[type="range"].slider::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    width: 34px;
-    height: 34px;
-    border-radius: 50%;
-    background: #fff;
-    border: 6px solid var(--fill, var(--amber));
-  }
-  input[type="range"].slider::-moz-range-thumb {
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    background: #fff;
-    border: 6px solid var(--fill, var(--amber));
-  }
-  input[type="range"].slider.thin {
-    height: 12px;
-  }
-  input[type="range"].slider.thin::-webkit-slider-thumb {
-    width: 24px;
-    height: 24px;
-    border-width: 5px;
-  }
-
   .scroll {
     overflow-y: auto;
     overscroll-behavior: contain;

@@ -481,7 +481,7 @@ export class FunctionalDashboard extends LitElement {
                       @open-light=${(e: CustomEvent<{ entity: string; name: string }>) => (this.sheet = e.detail)}
                       @open-solar=${() => (this.solarOpen = true)}
                       @open-pump=${() => (this.pumpOpen = true)}
-                    @open-vacuum=${() => (this.vacuumOpen = true)}
+                      @open-vacuum=${() => (this.vacuumOpen = true)}
                     ></fv2-layer>`
                   : html`<fv2-home
                       .hass=${this.hass}
@@ -666,7 +666,7 @@ export class FunctionalDashboard extends LitElement {
                   this.lastTouch = Date.now();
                   if (it.kind === "device" && it.device.type === "energy") this.solarOpen = true;
                   else if (it.kind === "device" && it.device.type === "pump") this.pumpOpen = true;
-              else if (it.kind === "device" && it.device.type === "vacuum") this.vacuumOpen = true;
+                  else if (it.kind === "device" && it.device.type === "vacuum") this.vacuumOpen = true;
                   else panel()?.focusItem(it.key);
                 },
               }),
@@ -837,18 +837,20 @@ export class FunctionalDashboard extends LitElement {
   /** Selector de capas, sobre el plano (arriba). */
   private renderLayerBar() {
     return html`<nav class="layers scroll-x" aria-label="Capas">
-      ${LAYERS.map((l) => {
-        const busy = this.items(l.id).some((it) => itemAlert(this.hass, it));
-        const on = this.layer === l.id;
-        return html`<button
-          class="chip ${on ? "on" : ""} ${busy ? "alert" : ""}"
-          title=${l.name}
-          aria-pressed=${on}
-          @click=${() => this.setLayer(l.id)}
-        >
-          ${icon(l.icon)}${on ? html`<span>${l.name}</span>` : nothing}
-        </button>`;
-      })}
+      <div class="layers-bar">
+        ${LAYERS.map((l) => {
+          const busy = this.items(l.id).some((it) => itemAlert(this.hass, it));
+          const on = this.layer === l.id;
+          return html`<button
+            class="chip ${on ? "on" : ""} ${busy ? "alert" : ""}"
+            title=${l.name}
+            aria-pressed=${on}
+            @click=${() => this.setLayer(l.id)}
+          >
+            ${icon(l.icon)}${on ? html`<span>${l.name}</span>` : nothing}
+          </button>`;
+        })}
+      </div>
     </nav>`;
   }
 
@@ -879,7 +881,9 @@ export class FunctionalDashboard extends LitElement {
               title=${this.kioskOff ? "Volver al modo kiosko (oculta la barra lateral de Home Assistant)" : "Mostrar la barra lateral y los ajustes de Home Assistant"}
               @click=${this.toggleKiosk}
             >
-              ${icon(this.kioskOff ? mdiFullscreen : mdiCogOutline)}<span>${this.kioskOff ? "Kiosko" : "Ajustes"}</span>
+              ${icon(this.kioskOff ? mdiFullscreen : mdiCogOutline)}<span
+                >${this.kioskOff ? "Kiosko" : "Ajustes"}</span
+              >
             </button>`
       }
     </nav>`;
@@ -1278,12 +1282,12 @@ export class FunctionalDashboard extends LitElement {
       /* ----- Selector de capas (sobre el plano) ----- */
       .layers {
         position: absolute;
-        left: 8px;
-        right: 8px;
+        left: 0;
+        right: 0;
         top: 8px;
         z-index: 3;
         display: flex;
-        gap: 6px;
+        justify-content: safe center;
         overflow-x: auto;
         scrollbar-width: none;
         pointer-events: none;
@@ -1292,6 +1296,17 @@ export class FunctionalDashboard extends LitElement {
       .dock::-webkit-scrollbar {
         display: none;
       }
+      /* Barra de iconos: un rectángulo con esquinas suaves, distinto de los marcadores redondos del plano */
+      .layers-bar {
+        flex: none;
+        display: flex;
+        gap: 2px;
+        padding: 4px;
+        border-radius: 16px;
+        background: var(--glass-strong);
+        border: 1px solid var(--glass-border);
+        pointer-events: auto;
+      }
       .chip {
         position: relative;
         flex: none;
@@ -1299,24 +1314,20 @@ export class FunctionalDashboard extends LitElement {
         align-items: center;
         gap: 6px;
         min-width: 44px;
-        height: 44px;
+        height: 40px;
         justify-content: center;
-        padding: 0 11px;
-        border-radius: 999px;
-        background: var(--glass-strong);
-        border: 1px solid var(--glass-border);
+        padding: 0 10px;
+        border-radius: 12px;
         color: var(--text-muted);
         font-size: var(--fs-small);
         font-weight: 700;
-        pointer-events: auto;
       }
       .chip svg {
-        width: 22px;
-        height: 22px;
+        width: 24px;
+        height: 24px;
       }
       .chip.on {
         background: var(--text);
-        border-color: var(--text);
         color: var(--bg);
       }
       .chip.alert::after,

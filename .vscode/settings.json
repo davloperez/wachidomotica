@@ -76,5 +76,17 @@
     "wachidomotica",
     "wallpanel"
   ],
-  "python.terminal.useEnvFile": true
+  "python.terminal.useEnvFile": true,
+
+  /* ---------- Botón de la barra de estado (extensión Action Buttons) ---------- */
+  "actionButtons": {
+    "commands": [
+      {
+        "name": "$(cloud-upload) Deploy v2",
+        "tooltip": "Functional v2: deploy a Home Assistant (sobrescribe el dashboard en vivo)",
+        "command": "npm --prefix villawachitos/dashboards/functional-v2 run deploy",
+        "singleInstance": true
+      }
+    ]
+  }
 }

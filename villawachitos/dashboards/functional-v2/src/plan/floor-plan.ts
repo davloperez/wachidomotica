@@ -141,7 +141,8 @@ export class FloorPlan extends LitElement {
   private frame(b: Box, animate: boolean): void {
     if (!this.w) return;
     // Sin pasar de FRAME_MAX px/m: en estancias pequeñas se ve también lo que las rodea
-    const s = this.clampS(Math.min(this.fitScale(b), FRAME_MAX / PX));
+    // La vista general de la casa se deja más alejada, con aire alrededor y sitio para los marcadores
+    const s = this.clampS(Math.min(this.fitScale(b, b === HOME_BOX ? 0.8 : 0.96), FRAME_MAX / PX));
     this.s = s;
     this.tx = this.w / 2 - s * (b.x + b.w / 2);
     this.ty = this.padTop + (this.h - this.padTop) / 2 - s * (b.y + b.h / 2);

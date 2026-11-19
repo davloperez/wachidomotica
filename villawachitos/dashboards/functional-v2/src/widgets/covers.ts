@@ -1,9 +1,12 @@
-import { LitElement, css, html, type PropertyValues } from "lit";
-import { customElement, property, state } from "lit/decorators.js";
+import { LitElement, css, html } from "lit";
+import { customElement, property } from "lit/decorators.js";
 import { mdiArrowCollapseDown, mdiArrowCollapseUp, mdiStop } from "@mdi/js";
 import type { HomeAssistant } from "../types";
 import { shared } from "../styles/tokens";
 import { call, icon, isUnavailable, st } from "../lib/ha";
+
+/** Posiciones rápidas (% de apertura). */
+const PRESETS = [0, 25, 50, 75, 100];
 
 const LABEL: Record<string, string> = {
   open: "Abierta",
@@ -18,21 +21,12 @@ export class CoverControl extends LitElement {
   @property({ attribute: false }) hass?: HomeAssistant;
   @property() entity = "";
   @property() name = "";
-  @state() private draft?: number;
-
-  protected willUpdate(changed: PropertyValues<this>): void {
-    if (changed.has("hass") && this.draft !== undefined) {
-      const prev = (changed.get("hass") as HomeAssistant | undefined)?.states[this.entity];
-      const next = this.hass?.states[this.entity];
-      if (prev?.attributes.current_position !== next?.attributes.current_position) this.draft = undefined;
-    }
-  }
 
   render() {
     const e = st(this.hass, this.entity);
     const na = isUnavailable(e);
     const real = (e?.attributes.current_position as number | undefined) ?? (e?.state === "open" ? 100 : 0);
-    const pos = this.draft ?? real;
+    const pos = real;
     const moving = e?.state === "opening" || e?.state === "closing";
     const svc = (s: string, data: Record<string, unknown> = {}) =>
       call(this.hass, "cover", s, { entity_id: this.entity, ...data });
@@ -47,19 +41,6 @@ export class CoverControl extends LitElement {
           <span class="muted"
             >${na ? "Sin conexión" : `${LABEL[e!.state] ?? e!.state} · ${Math.round(pos)} %`}</span
           >
-          <input
-            type="range"
-            class="slider thin"
-            min="0"
-            max="100"
-            step="5"
-            aria-label="Apertura ${this.name}"
-            .value=${String(pos)}
-            style="--pct:${pos}%; --fill: var(--sky)"
-            ?disabled=${na}
-            @input=${(ev: Event) => (this.draft = Number((ev.target as HTMLInputElement).value))}
-            @change=${(ev: Event) => svc("set_cover_position", { position: Number((ev.target as HTMLInputElement).value) })}
-          />
         </div>
         <div class="btns">
           <button class="round" title="Subir" @click=${() => svc("open_cover")}>
@@ -70,6 +51,18 @@ export class CoverControl extends LitElement {
             ${icon(mdiArrowCollapseDown)}
           </button>
         </div>
+      </div>
+      <div class="presets ${na ? "na" : ""}">
+        ${PRESETS.map(
+          (p) =>
+            html`<button
+              class="preset ${Math.round(real) === p ? "on" : ""}"
+              aria-label="${this.name} al ${p} %"
+              @click=${() => svc("set_cover_position", { position: p })}
+            >
+              ${p} %
+            </button>`,
+        )}
       </div>
     `;
   }
@@ -137,6 +130,33 @@ export class CoverControl extends LitElement {
       .btns {
         display: flex;
         gap: 4px;
+      }
+      .presets {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 6px;
+        margin-top: 10px;
+      }
+      .preset {
+        display: grid;
+        place-items: center;
+        padding: 0;
+        text-align: center;
+        line-height: 1;
+        min-height: 36px;
+        border-radius: 999px;
+        background: var(--glass-strong);
+        color: var(--text);
+        font-size: var(--fs-label);
+        font-weight: 600;
+        transition: transform 200ms var(--ease);
+      }
+      .preset:active {
+        transform: scale(0.94);
+      }
+      .preset.on {
+        background: var(--sky);
+        color: #fff;
       }
       .btns .round {
         width: 36px;

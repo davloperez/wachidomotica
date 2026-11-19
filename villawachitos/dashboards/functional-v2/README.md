@@ -48,6 +48,14 @@ piscina, suelos de cada estancia, muros con sus puertas y ventanas, muebles, val
 | Estancia | Todas sus luces (tocar enciende/apaga, mantener pulsado abre el detalle) y todos sus dispositivos, persianas y sensores. Solo se rotula lo encendido o con aviso; tocar un marcador lleva a su tarjeta y la resalta |
 | Capa     | Todo lo de la capa en la casa (con muchos elementos, puntos más pequeños y, de lejos, solo se rotula lo activo)                                                                                                     |
 
+### Deslizadores y scroll en la pantalla táctil
+
+Para que al hacer scroll con el dedo no se mueva nada sin querer, los deslizadores (intensidad, temperatura y tono de
+las luces, intervalo de dosificación) **no responden a un simple toque ni a un arrastre vertical**. Para cambiarlos hay
+que agarrar el pomo y arrastrar en horizontal, o mantener pulsado ~0,3 s sobre la barra (el pomo crece al activarse).
+Con ratón funcionan como siempre. Las persianas y cortinas no llevan deslizador: tienen los botones de abrir, parar y
+cerrar y los de posición rápida 0, 25, 50, 75 y 100 %.
+
 ### Animaciones de lo que está activo
 
 | Qué                                                                 | Animación                                     |

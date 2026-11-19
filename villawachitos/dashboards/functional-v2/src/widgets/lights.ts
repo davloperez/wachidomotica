@@ -19,6 +19,8 @@ import type { HomeAssistant } from "../types";
 import { shared } from "../styles/tokens";
 import { brightnessPct, call, icon, isDimmable, isUnavailable, lightColor, moreInfo, st } from "../lib/ha";
 import { lampKind } from "../house/rooms";
+import type { Slider } from "./slider";
+import "./slider";
 
 /** Iconos que no salen del tipo de luminaria del plano: se eligen por entidad. */
 const ICON_OVERRIDE: [RegExp, string][] = [
@@ -108,21 +110,21 @@ export class LightTile extends LitElement {
       </div>
       ${
         dim && !off
-          ? html`<input
-              type="range"
-              class="slider thin"
+          ? html`<fv2-slider
+              variant="thin"
               min="1"
               max="100"
-              aria-label="Intensidad ${this.name}"
-              .value=${String(Math.max(1, pct))}
-              style="--pct:${on ? pct : 0}%; --fill:${on ? "var(--amber)" : "var(--text-faint)"}"
-              @input=${(ev: Event) => (this.draft = Number((ev.target as HTMLInputElement).value))}
+              label="Intensidad ${this.name}"
+              .value=${Math.max(1, pct)}
+              .pct=${on ? pct : 0}
+              fill=${on ? "var(--amber)" : "var(--text-faint)"}
+              @input=${(ev: Event) => (this.draft = Number((ev.target as Slider).value))}
               @change=${(ev: Event) =>
                 call(this.hass, "light", "turn_on", {
                   entity_id: this.entity,
-                  brightness_pct: Number((ev.target as HTMLInputElement).value),
+                  brightness_pct: Number((ev.target as Slider).value),
                 })}
-            />`
+            ></fv2-slider>`
           : nothing
       }
     `;
@@ -283,16 +285,14 @@ export class LightSheet extends LitElement {
           modes.some((m) => m !== "onoff")
             ? html`<label class="field">
                 <span>Intensidad <b class="num">${pct} %</b></span>
-                <input
-                  type="range"
-                  class="slider"
+                <fv2-slider
                   min="1"
                   max="100"
-                  .value=${String(Math.max(1, pct))}
-                  style="--pct:${pct}%"
+                  label="Intensidad"
+                  .value=${Math.max(1, pct)}
                   @input=${(ev: Event) => (this.draft = { ...this.draft, b: val(ev) })}
                   @change=${(ev: Event) => this.turnOn({ brightness_pct: val(ev) })}
-                />
+                ></fv2-slider>
               </label>`
             : nothing
         }
@@ -300,16 +300,16 @@ export class LightSheet extends LitElement {
           hasTemp
             ? html`<label class="field">
                 <span>Temperatura <b class="num">${kelvin} K</b></span>
-                <input
-                  type="range"
-                  class="slider temp"
+                <fv2-slider
+                  variant="temp"
                   min=${minK}
                   max=${maxK}
                   step="50"
-                  .value=${String(kelvin)}
+                  label="Temperatura"
+                  .value=${kelvin}
                   @input=${(ev: Event) => (this.draft = { ...this.draft, k: val(ev) })}
                   @change=${(ev: Event) => this.turnOn({ color_temp_kelvin: val(ev) })}
-                />
+                ></fv2-slider>
               </label>`
             : nothing
         }
@@ -343,16 +343,15 @@ export class LightSheet extends LitElement {
                       ></button>`,
                   )}
                 </div>
-                <input
-                  type="range"
-                  class="slider hue"
+                <fv2-slider
+                  variant="hue"
                   min="0"
                   max="359"
-                  aria-label="Tono"
-                  .value=${String(Math.round(hue))}
+                  label="Tono"
+                  .value=${Math.round(hue)}
                   @input=${(ev: Event) => (this.draft = { ...this.draft, h: val(ev) })}
                   @change=${(ev: Event) => this.turnOn({ hs_color: [val(ev), 75] })}
-                />
+                ></fv2-slider>
               </div>`
             : nothing
         }
@@ -455,25 +454,6 @@ export class LightSheet extends LitElement {
       .field b {
         color: var(--text);
       }
-      input[type="range"].slider.temp {
-        background: linear-gradient(90deg, #ffb46b, #fff3e0, #cfe2ff);
-      }
-      .slider.temp::-webkit-slider-thumb,
-      .slider.hue::-webkit-slider-thumb {
-        border-color: #fff;
-      }
-      input[type="range"].slider.hue {
-        background: linear-gradient(
-          90deg,
-          hsl(0 75% 62%),
-          hsl(60 75% 62%),
-          hsl(120 75% 62%),
-          hsl(180 75% 62%),
-          hsl(240 75% 62%),
-          hsl(300 75% 62%),
-          hsl(359 75% 62%)
-        );
-      }
       .swatches {
         display: flex;
         flex-wrap: wrap;
@@ -503,7 +483,7 @@ export class LightSheet extends LitElement {
   ];
 }
 
-const val = (ev: Event) => Number((ev.target as HTMLInputElement).value);
+const val = (ev: Event) => Number((ev.target as Slider).value);
 
 declare global {
   interface HTMLElementTagNameMap {
