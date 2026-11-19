@@ -762,7 +762,7 @@ export class VacuumSheet extends LitElement {
       }
       .task {
         display: grid;
-        grid-template-columns: auto 1fr;
+        grid-template-columns: auto minmax(0, 1fr);
         gap: 10px;
         padding: 10px 12px;
         border-radius: var(--radius-sm);
@@ -781,7 +781,7 @@ export class VacuumSheet extends LitElement {
       .task {
         align-items: start;
         cursor: pointer;
-        grid-template-columns: auto 1fr auto;
+        grid-template-columns: auto minmax(0, 1fr) auto;
       }
       .task.sel {
         box-shadow: inset 0 0 0 2px var(--sage);

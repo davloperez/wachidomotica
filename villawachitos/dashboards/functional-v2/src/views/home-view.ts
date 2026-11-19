@@ -7,6 +7,7 @@ import {
   mdiBatteryHigh,
   mdiCheckCircleOutline,
   mdiChevronRight,
+  mdiFormatListChecks,
   mdiInformationOutline,
   mdiLightbulbGroupOutline,
   mdiLightbulbOffOutline,
@@ -582,6 +583,12 @@ export class HomeView extends LitElement {
                 ${list.length > 5 ? html`<span class="muted more">y ${list.length - 5} más…</span>` : nothing}
               </div>`
         }
+        <button
+          class="btn all-alerts"
+          @click=${() => this.dispatchEvent(new CustomEvent("open-alerts", { bubbles: true, composed: true }))}
+        >
+          ${icon(mdiFormatListChecks)} Ver todos los avisos
+        </button>
       </section>
     `;
   }
@@ -919,7 +926,7 @@ export class HomeView extends LitElement {
       }
       .cam-strip {
         display: grid;
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 8px;
       }
       .cam-tile {
@@ -958,7 +965,7 @@ export class HomeView extends LitElement {
       }
       .sec-grid {
         display: grid;
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 8px;
       }
       .mini-stat {
@@ -1031,6 +1038,10 @@ export class HomeView extends LitElement {
       .more {
         font-size: var(--fs-label);
         padding-left: 6px;
+      }
+      .all-alerts {
+        margin-top: 6px;
+        width: 100%;
       }
       .chips {
         display: flex;

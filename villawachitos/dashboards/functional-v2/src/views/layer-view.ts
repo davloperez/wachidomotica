@@ -348,7 +348,7 @@ export class LayerView extends LitElement {
       .row {
         cursor: pointer;
         display: grid;
-        grid-template-columns: auto 1fr auto;
+        grid-template-columns: auto minmax(0, 1fr) auto;
         align-items: center;
         gap: 10px;
         padding: 10px 12px;

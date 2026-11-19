@@ -63,11 +63,17 @@ const NAMES: Record<string, string> = {
  * el id). Se entiende el formato de Meteoalarm (`awareness_level` = «2; yellow; Moderate», `awareness_type`,
  * `headline`, `description`), que publica los avisos de la AEMET para España.
  */
-export function weatherAlerts(hass: HomeAssistant | undefined, entities?: string[]): WeatherAlert[] {
+/** Sensores de avisos meteorológicos: los indicados en `weather_alerts` o, si no, los detectados por el id. */
+export function weatherSensorIds(hass: HomeAssistant | undefined, entities?: string[]): string[] {
   if (!hass) return [];
-  const ids = entities?.length
+  return entities?.length
     ? entities
     : Object.keys(hass.states).filter((id) => id.startsWith("binary_sensor.") && /meteoalarm|aemet/.test(id));
+}
+
+export function weatherAlerts(hass: HomeAssistant | undefined, entities?: string[]): WeatherAlert[] {
+  if (!hass) return [];
+  const ids = weatherSensorIds(hass, entities);
   const out: WeatherAlert[] = [];
   for (const id of ids) {
     const e = st(hass, id);
@@ -75,9 +81,21 @@ export function weatherAlerts(hass: HomeAssistant | undefined, entities?: string
     const a = e.attributes as Record<string, unknown>;
     const lvl = String(a.awareness_level ?? a.severity ?? "").toLowerCase();
     const level = /red|rojo|extreme/.test(lvl) ? "bad" : /orange|naranja|severe/.test(lvl) ? "warn" : "info";
-    const color = /red|rojo/.test(lvl) ? "rojo" : /orange|naranja/.test(lvl) ? "naranja" : /yellow|amarillo/.test(lvl) ? "amarillo" : "";
-    const type = String(a.awareness_type ?? "").split(";").pop()?.trim().toLowerCase() ?? "";
-    const what = NAMES[type] ?? String(a.event ?? a.headline ?? e.attributes.friendly_name ?? "Aviso meteorológico");
+    const color = /red|rojo/.test(lvl)
+      ? "rojo"
+      : /orange|naranja/.test(lvl)
+        ? "naranja"
+        : /yellow|amarillo/.test(lvl)
+          ? "amarillo"
+          : "";
+    const type =
+      String(a.awareness_type ?? "")
+        .split(";")
+        .pop()
+        ?.trim()
+        .toLowerCase() ?? "";
+    const what =
+      NAMES[type] ?? String(a.event ?? a.headline ?? e.attributes.friendly_name ?? "Aviso meteorológico");
     out.push({
       level,
       title: `Aviso ${color ? color + " " : ""}por ${what.charAt(0).toLowerCase() + what.slice(1)}`,

@@ -339,7 +339,7 @@ export class PumpSheet extends LitElement {
       }
       .day {
         display: grid;
-        grid-template-columns: 34px 1fr 64px;
+        grid-template-columns: 34px minmax(0, 1fr) 64px;
         align-items: center;
         gap: 8px;
         font-size: var(--fs-label);

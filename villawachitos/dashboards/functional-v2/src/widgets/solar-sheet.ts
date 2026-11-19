@@ -61,6 +61,8 @@ export const sheetStyles = css`
     overflow-y: auto;
     padding: var(--space-4);
     display: grid;
+    /* minmax(0, …): sin esto el contenido ancho (textos, gráficas) ensancha la hoja más allá de la pantalla */
+    grid-template-columns: minmax(0, 1fr);
     gap: var(--space-3);
     background: var(--glass-strong);
     animation: rise 300ms var(--ease);
@@ -73,6 +75,7 @@ export const sheetStyles = css`
   .ttl {
     flex: 1;
     display: grid;
+    min-width: 0;
   }
   h3 {
     margin: 0;
@@ -95,7 +98,7 @@ export const sheetStyles = css`
   }
   .grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--space-3);
   }
   .panel {
@@ -167,10 +170,46 @@ export const sheetStyles = css`
   }
   .stat .faint {
     font-size: var(--fs-label);
+    overflow-wrap: anywhere;
+  }
+  .panel .note,
+  .panel .legend {
+    overflow-wrap: anywhere;
   }
   @media (max-width: 720px) {
     .grid {
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr);
+      gap: var(--space-2);
+    }
+    /* Móvil: hoja casi a pantalla completa, menos relleno y cabecera en dos filas
+       (icono, título y cerrar arriba; acción principal debajo, a todo el ancho) */
+    .sheet {
+      width: calc(100% - 16px);
+      max-height: calc(100% - 16px);
+      padding: var(--space-3);
+      gap: var(--space-2);
+    }
+    .panel {
+      padding: 10px;
+      gap: 8px;
+    }
+    header {
+      flex-wrap: wrap;
+      gap: 8px 12px;
+    }
+    header .round {
+      order: 1;
+    }
+    header .btn {
+      order: 2;
+      flex: 1 1 100%;
+    }
+    .halo {
+      width: 44px;
+      height: 44px;
+    }
+    .stat b {
+      font-size: 18px;
     }
   }
 `;

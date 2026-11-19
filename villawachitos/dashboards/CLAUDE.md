@@ -48,8 +48,30 @@ no `backdrop-filter`/`filter`), animate only `transform`/`opacity` (never `box-s
 | `src/plan/house-plan.ts` | Floor-plan geometry: rooms, walls, lamps, furniture, gates, pool |
 | `src/plan/geometry.ts` | 2D geometry from the plan (world px, `PX` per metre), static SVG strings, framing boxes |
 | `src/plan/floor-plan.ts` | `fv2-plan`: pan/pinch/wheel/double-tap zoom on a single transformed layer; markers are slotted and keep size via `--inv` |
+| `src/lib/alerts.ts` | **Catálogo de avisos** (`ALERT_RULES`): cada aviso posible es una regla (grupo, niveles, «cuándo salta», entidades que vigila, `check`). `computeAlerts` (panel _Avisos_) y `alertCatalog` (hoja «Todos los avisos») salen de ahí |
+| `src/widgets/alerts-sheet.ts` | `fv2-alerts-sheet`: hoja con todo el catálogo, activos arriba y el resto agrupado. Se abre con `open-alerts` desde el botón del panel _Avisos_ (`home-view.ts`) |
 | `src/lib/priority.ts`, `src/widgets/priority-alert.ts` | Full-screen priority alerts (Fermax doorbell, Dreame leak) |
 | `src/styles/tokens.ts` | Opaque tokens, plan colors (`--p-*`) and the `.anim-*` keyframes for active devices |
 | `marker_positions` (card config) | Per-marker `[x, z]` metre overrides (key = `LayerItem.key`, `gates`, `room:<id>`). Authored with the desktop-only "Editar" mode in `functional-dashboard.ts` (drag, then "Exportar JSON" → paste into `dashboard.config.json`); wall panels only read the config |
 
 Mock preview (`?mock`) has dev-bar buttons to fire the doorbell and the leak.
+
+## Avisos: mantener el catálogo al día
+
+La hoja «Todos los avisos» muestra **todos** los avisos posibles aunque no estén activos, así que el
+catálogo (`ALERT_RULES` en `src/lib/alerts.ts`) debe reflejar siempre lo que hay en Home Assistant:
+
+- **Aviso nuevo** (o cambia un umbral, un nivel o un texto): añadir o editar su `AlertRule` — `group`, `levels`,
+  `title`, `when` (frase «Salta si…», en español), `entities` y `check`. Nunca crear avisos fuera de `ALERT_RULES`
+  (no sumarlos a mano en `home-view.ts`), o no aparecerían en la hoja.
+- **Aviso eliminado**: borrar la regla; si era una alerta a pantalla completa, también `priority.ts` y
+  `priority-alert.ts`.
+- **Dispositivo nuevo o quitado en `house/rooms.ts`**: las reglas por tipo (`leaks`, `doors`, `gates`, `dishwasher`,
+  `washer`, `litter`) lo recogen solas. Si es un tipo de dispositivo **nuevo** que debe avisar (p. ej. un sensor de
+  humo, una batería baja de otro aparato), hace falta una regla nueva. Si cambia un `entity_id`, comprobar que la
+  regla que lo usa (`FRIDGE`, `ENERGY`, `DOORBELL`, `VACUUM_LEAK`…) sigue apuntando a él.
+- Las reglas `fullscreen: true` reflejan las alertas de `priority.ts` (timbre y fuga del limpiasuelos): mantenerlas
+  sincronizadas con ese archivo.
+- El orden de `ALERT_RULES` fija el orden de los avisos del mismo nivel en el panel _Avisos_.
+- Tras cualquier cambio de avisos: `npm run typecheck && npm run lint`, probar la hoja con `?mock` y actualizar el
+  `README.md` del dashboard si cambia algo visible para el usuario.

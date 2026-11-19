@@ -149,7 +149,7 @@ export class CurtainControl extends LitElement {
       }
       .presets {
         display: grid;
-        grid-template-columns: repeat(5, 1fr);
+        grid-template-columns: repeat(5, minmax(0, 1fr));
         gap: 6px;
         margin-top: 10px;
       }

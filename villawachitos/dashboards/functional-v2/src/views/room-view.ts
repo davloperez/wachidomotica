@@ -547,7 +547,7 @@ export class RoomView extends LitElement {
       }
       .done-grid {
         display: grid;
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 8px;
       }
       .done-grid div {
@@ -683,7 +683,7 @@ export class RoomView extends LitElement {
       }
       .srow {
         display: grid;
-        grid-template-columns: auto 1fr auto;
+        grid-template-columns: auto minmax(0, 1fr) auto;
         align-items: center;
         gap: 10px;
         padding: 10px 12px;

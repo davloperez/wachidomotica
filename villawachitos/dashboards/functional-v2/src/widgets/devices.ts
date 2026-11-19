@@ -1003,11 +1003,11 @@ export class DeviceCard extends LitElement {
       }
       .stats {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 90px), 1fr));
         gap: 8px;
       }
       .stats.four {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(2, minmax(0, 1fr));
       }
       .stat {
         display: grid;
@@ -1076,7 +1076,7 @@ export class DeviceCard extends LitElement {
       }
       .cam-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(min(100%, 150px), 1fr));
         gap: 8px;
         margin-bottom: 8px;
       }
@@ -1091,7 +1091,7 @@ export class DeviceCard extends LitElement {
       }
       .li {
         display: grid;
-        grid-template-columns: 10px auto 1fr;
+        grid-template-columns: 10px auto minmax(0, 1fr);
         align-items: center;
         gap: 8px;
         font-size: var(--fs-small);
@@ -1142,7 +1142,7 @@ export class DeviceCard extends LitElement {
       }
       .inks {
         display: grid;
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: repeat(4, minmax(0, 1fr));
         gap: var(--space-2);
         text-align: center;
       }

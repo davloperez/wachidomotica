@@ -134,6 +134,12 @@ Estancias y dispositivos: [`src/house/rooms.ts`](src/house/rooms.ts); capas: [`s
 lluvia) de la entidad `weather` configurada, que usa las coordenadas de la casa (Urbanización La Quinta, Molina de
 Segura). Se lee con `weather/subscribe_forecast`, así que la entidad debe soportar previsión diaria y por horas.
 
+**Todos los avisos**: el botón _Ver todos los avisos_ del panel _Avisos_ abre una hoja con el catálogo completo de
+avisos posibles, se cumplan o no. Arriba, _Activos ahora_ (en el color de su gravedad; tocar uno lleva a su
+estancia); debajo, agrupados (Seguridad, Agua, Puertas, Cocina, Electrodomésticos, Meteorología, Energía, Sistema y
+A pantalla completa), los que podrían saltar, cada uno con su condición y su gravedad. Tocar una fila despliega las
+entidades de Home Assistant que vigila. Se abre aunque no haya ningún aviso.
+
 **Avisos meteorológicos (AEMET)**: aparecen en _Avisos_ (amarillo = info, naranja = aviso, rojo = importante) cuando
 un sensor de alertas está activo. Home Assistant no trae las alertas de la AEMET por sí solo: hace falta la
 integración **Meteoalarm** (publica los avisos de la AEMET para España). Se detectan solos los `binary_sensor` con

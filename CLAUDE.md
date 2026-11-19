@@ -31,6 +31,8 @@ Never read or search inside `node_modules/`, `dist/`, `venv/`, `.esphome/`, `pac
   (services, config, automations, restarts) needs the user's OK.
 - Entity IDs are Spanish snake_case (`light.jardin_sur_luz_piscina`, `switch.interruptor_depuradora`,
   `alarm_control_panel.alarma_vivienda`, `weather.forecast_casa`).
+- When devices or alerts are added/removed in HA, keep the dashboard catalogs in sync (esp. `ALERT_RULES` in
+  `functional-v2/src/lib/alerts.ts`, which feeds the "Todos los avisos" sheet) — see `villawachitos/dashboards/CLAUDE.md`.
 - Location: Molina de Segura (lat 38.0506, lon -1.2114). The plan is rotated 26° from true north.
 
 ## Outward-facing actions — ask first

@@ -48,6 +48,7 @@ import "./views/room-view";
 import "./views/layer-view";
 import "./widgets/lights";
 import "./widgets/solar-sheet";
+import "./widgets/alerts-sheet";
 import "./widgets/pump-sheet";
 import "./widgets/vacuum-sheet";
 import "./widgets/priority-alert";
@@ -119,6 +120,7 @@ export class FunctionalDashboard extends LitElement {
   @state() private view = HOME;
   @state() private sheet?: { entity: string; name: string };
   @state() private solarOpen = false;
+  @state() private alertsOpen = false;
   @state() private cameras?: { entity: string; mode: "single" | "grid" };
   @state() private pumpOpen = false;
   @state() private vacuumOpen = false;
@@ -346,6 +348,7 @@ export class FunctionalDashboard extends LitElement {
     this.solarOpen = false;
     this.pumpOpen = false;
     this.vacuumOpen = false;
+    this.alertsOpen = false;
     this.layer = undefined;
     if (view !== this.view) {
       this.view = view;
@@ -360,6 +363,7 @@ export class FunctionalDashboard extends LitElement {
     this.solarOpen = false;
     this.pumpOpen = false;
     this.vacuumOpen = false;
+    this.alertsOpen = false;
     this.view = HOME;
     this.layer = id === this.layer ? undefined : id;
     this.toTop();
@@ -487,6 +491,7 @@ export class FunctionalDashboard extends LitElement {
                       .hass=${this.hass}
                       .config=${this.config}
                       @go=${(e: CustomEvent<string>) => this.go(e.detail)}
+                      @open-alerts=${() => (this.alertsOpen = true)}
                     ></fv2-home>`
             }
           </div>
@@ -515,6 +520,16 @@ export class FunctionalDashboard extends LitElement {
           : nothing
       }
       ${this.solarOpen ? html`<fv2-solar-sheet .hass=${this.hass} @close=${() => (this.solarOpen = false)}></fv2-solar-sheet>` : nothing}
+      ${
+        this.alertsOpen
+          ? html`<fv2-alerts-sheet
+              .hass=${this.hass}
+              .config=${this.config}
+              @go=${(e: CustomEvent<string>) => this.go(e.detail)}
+              @close=${() => (this.alertsOpen = false)}
+            ></fv2-alerts-sheet>`
+          : nothing
+      }
       ${this.pumpOpen ? html`<fv2-pump-sheet .hass=${this.hass} @close=${() => (this.pumpOpen = false)}></fv2-pump-sheet>` : nothing}
       ${this.vacuumOpen ? html`<fv2-vacuum-sheet .hass=${this.hass} @close=${() => (this.vacuumOpen = false)}></fv2-vacuum-sheet>` : nothing}
       ${
@@ -836,22 +851,25 @@ export class FunctionalDashboard extends LitElement {
 
   /** Selector de capas, sobre el plano (arriba). */
   private renderLayerBar() {
+    const activeLayer = LAYERS.find((l) => l.id === this.layer);
     return html`<nav class="layers scroll-x" aria-label="Capas">
-      <div class="layers-bar">
-        ${LAYERS.map((l) => {
-          const busy = this.items(l.id).some((it) => itemAlert(this.hass, it));
-          const on = this.layer === l.id;
-          return html`<button
-            class="chip ${on ? "on" : ""} ${busy ? "alert" : ""}"
-            title=${l.name}
-            aria-pressed=${on}
-            @click=${() => this.setLayer(l.id)}
-          >
-            ${icon(l.icon)}${on ? html`<span>${l.name}</span>` : nothing}
-          </button>`;
-        })}
-      </div>
-    </nav>`;
+        <div class="layers-bar">
+          ${LAYERS.map((l) => {
+            const busy = this.items(l.id).some((it) => itemAlert(this.hass, it));
+            const on = this.layer === l.id;
+            return html`<button
+              class="chip ${on ? "on" : ""} ${busy ? "alert" : ""}"
+              title=${l.name}
+              aria-label=${l.name}
+              aria-pressed=${on}
+              @click=${() => this.setLayer(l.id)}
+            >
+              ${icon(l.icon)}
+            </button>`;
+          })}
+        </div>
+      </nav>
+      ${activeLayer ? html`<span class="layer-name">${activeLayer.name}</span>` : nothing}`;
   }
 
   private renderDock(theme: ThemeMode) {
@@ -1280,6 +1298,23 @@ export class FunctionalDashboard extends LitElement {
       }
 
       /* ----- Selector de capas (sobre el plano) ----- */
+      .layer-name {
+        position: absolute;
+        top: 56px;
+        left: 50%;
+        transform: translateX(-50%);
+        max-width: calc(100% - 16px);
+        padding: 4px 12px;
+        border-radius: 8px;
+        background: var(--text);
+        color: var(--bg);
+        font-size: var(--fs-small);
+        font-weight: 700;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        pointer-events: none;
+      }
       .layers {
         position: absolute;
         left: 0;
