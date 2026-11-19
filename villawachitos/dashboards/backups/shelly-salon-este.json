@@ -1,0 +1,1063 @@
+{
+  "dashboard": {
+    "id": "shelly_salon_este",
+    "url_path": "shelly-salon-este",
+    "title": "Shelly Salón Este",
+    "icon": "mdi:sofa",
+    "require_admin": false,
+    "show_in_sidebar": false,
+    "mode": "storage"
+  },
+  "config": {
+    "kiosk_mode": {
+      "hide_header": true
+    },
+    "views": [
+      {
+        "title": "Salón",
+        "path": "salon",
+        "icon": "mdi:sofa",
+        "type": "sections",
+        "max_columns": 1,
+        "sections": [
+          {
+            "type": "grid",
+            "cards": [
+              {
+                "type": "heading",
+                "heading": "Salón",
+                "heading_style": "title",
+                "icon": "mdi:sofa",
+                "badges": [
+                  {
+                    "type": "button",
+                    "icon": "mdi:sofa",
+                    "text": "Salón",
+                    "color": "primary",
+                    "tap_action": {
+                      "action": "navigate",
+                      "navigation_path": "/shelly-salon-este/salon"
+                    }
+                  },
+                  {
+                    "type": "button",
+                    "icon": "mdi:desk",
+                    "text": "Oficina 1",
+                    "color": "disabled",
+                    "tap_action": {
+                      "action": "navigate",
+                      "navigation_path": "/shelly-x2i-oficina-1/oficina-1"
+                    }
+                  },
+                  {
+                    "type": "button",
+                    "icon": "mdi:laptop",
+                    "text": "Oficina 2",
+                    "color": "disabled",
+                    "tap_action": {
+                      "action": "navigate",
+                      "navigation_path": "/shelly-x2i-oficina-2/oficina-2"
+                    }
+                  }
+                ]
+              },
+              {
+                "type": "markdown",
+                "content": "<ha-alert alert-type=\"error\" title=\"¡Fuga de agua!\">Se ha detectado una fuga de agua en casa.</ha-alert>",
+                "visibility": [
+                  {
+                    "condition": "state",
+                    "entity": "input_boolean.alerta_fuga_agua",
+                    "state": "on"
+                  }
+                ],
+                "grid_options": {
+                  "columns": 12,
+                  "rows": "auto"
+                }
+              },
+              {
+                "type": "markdown",
+                "content": "<ha-alert alert-type=\"warning\" title=\"Robot aspirador con error\">{{ state_attr('vacuum.limpiasuelos', 'error') or 'Revisa el Limpiasuelos.' }}</ha-alert>",
+                "visibility": [
+                  {
+                    "condition": "state",
+                    "entity": "vacuum.limpiasuelos",
+                    "state": "error"
+                  }
+                ],
+                "grid_options": {
+                  "columns": 12,
+                  "rows": "auto"
+                }
+              },
+              {
+                "type": "markdown",
+                "content": "<ha-alert alert-type=\"info\" title=\"Alarma armada\">Estado: {{ states('alarm_control_panel.alarma_vivienda') | replace('armed_away','Total') | replace('armed_home','En casa') | replace('armed_night','Noche') | replace('triggered','¡DISPARADA!') }}</ha-alert>",
+                "visibility": [
+                  {
+                    "condition": "state",
+                    "entity": "alarm_control_panel.alarma_vivienda",
+                    "state_not": "disarmed"
+                  }
+                ],
+                "grid_options": {
+                  "columns": 12,
+                  "rows": "auto"
+                }
+              },
+              {
+                "type": "markdown",
+                "content": "<ha-alert alert-type=\"info\" title=\"Modo silencio activado\">Las notificaciones sonoras están silenciadas.</ha-alert>",
+                "visibility": [
+                  {
+                    "condition": "state",
+                    "entity": "input_boolean.modo_silencio",
+                    "state": "on"
+                  }
+                ],
+                "grid_options": {
+                  "columns": 12,
+                  "rows": "auto"
+                }
+              },
+              {
+                "type": "heading",
+                "heading": "Llaman a la puerta",
+                "heading_style": "title",
+                "icon": "mdi:doorbell-video",
+                "visibility": [
+                  {
+                    "condition": "or",
+                    "conditions": [
+                      {
+                        "condition": "state",
+                        "entity": "binary_sensor.jardin_norte_portero_automatico_exterior_duox_doorbell_zero",
+                        "state": "on"
+                      },
+                      {
+                        "condition": "template",
+                        "value_template": "{{ (now() - as_datetime(states('event.jardin_norte_portero_automatico_exterior_duox_doorbell'), now())).total_seconds() < 180 }}"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "custom:duox-autoconnect-card",
+                "entry_id": "01M6RCMBFVKXBW4DKH7S0WJ1RD",
+                "camera_entity": "camera.jardin_norte_portero_automatico_exterior_duox_doorbell_camera",
+                "lock_entity": "lock.jardin_norte_portero_automatico_exterior_duox_zero",
+                "wifi_entity": "sensor.jardin_norte_portero_automatico_exterior_duox_wifi_signal",
+                "device_name": "Puerta exterior",
+                "ring_entity": "binary_sensor.jardin_norte_portero_automatico_exterior_duox_doorbell_zero",
+                "hide_history": true,
+                "visibility": [
+                  {
+                    "condition": "or",
+                    "conditions": [
+                      {
+                        "condition": "state",
+                        "entity": "binary_sensor.jardin_norte_portero_automatico_exterior_duox_doorbell_zero",
+                        "state": "on"
+                      },
+                      {
+                        "condition": "template",
+                        "value_template": "{{ (now() - as_datetime(states('event.jardin_norte_portero_automatico_exterior_duox_doorbell'), now())).total_seconds() < 180 }}"
+                      }
+                    ]
+                  }
+                ],
+                "grid_options": {
+                  "columns": 12,
+                  "rows": "auto"
+                }
+              },
+              {
+                "type": "heading",
+                "heading": "Luces",
+                "heading_style": "title",
+                "icon": "mdi:lightbulb-group",
+                "badges": [
+                  {
+                    "type": "button",
+                    "icon": "mdi:lightbulb-group-off",
+                    "text": "Salón",
+                    "color": "red",
+                    "tap_action": {
+                      "action": "perform-action",
+                      "perform_action": "light.turn_off",
+                      "target": {
+                        "area_id": "salon"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "type": "shortcut",
+                "label": "Apagar todo",
+                "description": "Luces de salón, cocina, oficinas, lavadero y exterior oeste + pantallas",
+                "icon": "mdi:power",
+                "color": "red",
+                "tap_action": {
+                  "action": "perform-action",
+                  "perform_action": "script.apagar_todo"
+                },
+                "grid_options": {
+                  "columns": 12,
+                  "rows": 1
+                }
+              },
+              {
+                "type": "tile",
+                "entity": "light.salon_persiana_salon_3_luz_techo_salon",
+                "name": "Techo salón",
+                "icon": "mdi:ceiling-light",
+                "vertical": true,
+                "tap_action": {
+                  "action": "toggle"
+                },
+                "hold_action": {
+                  "action": "more-info"
+                },
+                "icon_tap_action": {
+                  "action": "toggle"
+                },
+                "grid_options": {
+                  "columns": 4,
+                  "rows": 2
+                }
+              },
+              {
+                "type": "tile",
+                "entity": "light.salon_persiana_salon_3_luz_pasillo_salon",
+                "name": "Pasillo",
+                "icon": "mdi:light-recessed",
+                "vertical": true,
+                "tap_action": {
+                  "action": "toggle"
+                },
+                "hold_action": {
+                  "action": "more-info"
+                },
+                "icon_tap_action": {
+                  "action": "toggle"
+                },
+                "grid_options": {
+                  "columns": 4,
+                  "rows": 2
+                }
+              },
+              {
+                "type": "tile",
+                "entity": "light.salon_persiana_salon_3_luz_aplique_pasillo_salon",
+                "name": "Aplique",
+                "icon": "mdi:wall-sconce-flat",
+                "vertical": true,
+                "tap_action": {
+                  "action": "toggle"
+                },
+                "hold_action": {
+                  "action": "more-info"
+                },
+                "icon_tap_action": {
+                  "action": "toggle"
+                },
+                "grid_options": {
+                  "columns": 4,
+                  "rows": 2
+                }
+              },
+              {
+                "type": "tile",
+                "entity": "light.salon_esp_entrada_luz_techo_entrada",
+                "name": "Techo entrada",
+                "icon": "mdi:ceiling-light-outline",
+                "vertical": true,
+                "tap_action": {
+                  "action": "toggle"
+                },
+                "hold_action": {
+                  "action": "more-info"
+                },
+                "icon_tap_action": {
+                  "action": "toggle"
+                },
+                "grid_options": {
+                  "columns": 6,
+                  "rows": 2
+                }
+              },
+              {
+                "type": "tile",
+                "entity": "light.salon_esp_entrada_luz_cuadro_entrada",
+                "name": "Cuadro entrada",
+                "icon": "mdi:image-frame",
+                "vertical": true,
+                "tap_action": {
+                  "action": "toggle"
+                },
+                "hold_action": {
+                  "action": "more-info"
+                },
+                "icon_tap_action": {
+                  "action": "toggle"
+                },
+                "grid_options": {
+                  "columns": 6,
+                  "rows": 2
+                }
+              },
+              {
+                "type": "shortcut",
+                "label": "Cálido",
+                "icon": "mdi:candle",
+                "color": "deep-orange",
+                "vertical": true,
+                "tap_action": {
+                  "action": "perform-action",
+                  "perform_action": "script.wled_cortinero_modo",
+                  "data": {
+                    "luz": "light.wled_gledopto",
+                    "paleta": "select.wled_gledopto_paleta_de_color",
+                    "velocidad": "number.wled_gledopto_velocidad",
+                    "intensidad": "number.wled_gledopto_intensidad",
+                    "modo": "blanco_calido",
+                    "color_calido": [
+                      255,
+                      70,
+                      0,
+                      20
+                    ]
+                  }
+                },
+                "grid_options": {
+                  "columns": 3,
+                  "rows": 2
+                }
+              },
+              {
+                "type": "shortcut",
+                "label": "Aurora",
+                "icon": "mdi:waves",
+                "color": "teal",
+                "vertical": true,
+                "tap_action": {
+                  "action": "perform-action",
+                  "perform_action": "script.wled_cortinero_modo",
+                  "data": {
+                    "luz": "light.wled_gledopto",
+                    "paleta": "select.wled_gledopto_paleta_de_color",
+                    "velocidad": "number.wled_gledopto_velocidad",
+                    "intensidad": "number.wled_gledopto_intensidad",
+                    "modo": "pacifica_aurora"
+                  }
+                },
+                "grid_options": {
+                  "columns": 3,
+                  "rows": 2
+                }
+              },
+              {
+                "type": "shortcut",
+                "label": "Cine",
+                "icon": "mdi:movie-open-outline",
+                "color": "indigo",
+                "vertical": true,
+                "tap_action": {
+                  "action": "perform-action",
+                  "perform_action": "script.wled_cortinero_modo",
+                  "data": {
+                    "luz": "light.wled_gledopto",
+                    "paleta": "select.wled_gledopto_paleta_de_color",
+                    "velocidad": "number.wled_gledopto_velocidad",
+                    "intensidad": "number.wled_gledopto_intensidad",
+                    "modo": "cine"
+                  }
+                },
+                "grid_options": {
+                  "columns": 3,
+                  "rows": 2
+                }
+              },
+              {
+                "type": "shortcut",
+                "label": "Fuerte",
+                "icon": "mdi:lightbulb-on",
+                "color": "amber",
+                "vertical": true,
+                "tap_action": {
+                  "action": "perform-action",
+                  "perform_action": "script.wled_cortinero_modo",
+                  "data": {
+                    "luz": "light.wled_gledopto",
+                    "paleta": "select.wled_gledopto_paleta_de_color",
+                    "velocidad": "number.wled_gledopto_velocidad",
+                    "intensidad": "number.wled_gledopto_intensidad",
+                    "modo": "fuerte"
+                  }
+                },
+                "grid_options": {
+                  "columns": 3,
+                  "rows": 2
+                }
+              },
+              {
+                "type": "tile",
+                "entity": "light.wled_gledopto",
+                "name": "Cortinero LED",
+                "icon": "mdi:led-strip-variant",
+                "tap_action": {
+                  "action": "more-info"
+                },
+                "icon_tap_action": {
+                  "action": "toggle"
+                },
+                "features": [
+                  {
+                    "type": "light-brightness"
+                  }
+                ],
+                "grid_options": {
+                  "columns": 12,
+                  "rows": 2
+                }
+              },
+              {
+                "type": "heading",
+                "heading": "Persianas",
+                "heading_style": "title",
+                "icon": "mdi:blinds-horizontal",
+                "badges": [
+                  {
+                    "type": "entity",
+                    "entity": "sensor.shellywalldisplay_0205030bbdd8_iluminancia",
+                    "show_state": true,
+                    "show_icon": true,
+                    "icon": "mdi:white-balance-sunny",
+                    "color": "amber"
+                  }
+                ]
+              },
+              {
+                "type": "tile",
+                "entity": "cover.persianas_salon",
+                "name": "Las 3 persianas",
+                "icon": "mdi:blinds-horizontal",
+                "tap_action": {
+                  "action": "more-info"
+                },
+                "features": [
+                  {
+                    "type": "cover-open-close"
+                  },
+                  {
+                    "type": "cover-position"
+                  }
+                ],
+                "grid_options": {
+                  "columns": 12,
+                  "rows": 3
+                }
+              },
+              {
+                "type": "tile",
+                "entity": "cover.persiana_salon_1_persiana",
+                "name": "Salón 1",
+                "icon": "mdi:blinds-horizontal",
+                "vertical": true,
+                "tap_action": {
+                  "action": "more-info"
+                },
+                "features": [
+                  {
+                    "type": "cover-open-close"
+                  }
+                ],
+                "grid_options": {
+                  "columns": 4,
+                  "rows": 3
+                }
+              },
+              {
+                "type": "tile",
+                "entity": "cover.persiana_salon_2_persiana",
+                "name": "Salón 2",
+                "icon": "mdi:blinds-horizontal",
+                "vertical": true,
+                "tap_action": {
+                  "action": "more-info"
+                },
+                "features": [
+                  {
+                    "type": "cover-open-close"
+                  }
+                ],
+                "grid_options": {
+                  "columns": 4,
+                  "rows": 3
+                }
+              },
+              {
+                "type": "tile",
+                "entity": "cover.persiana_salon_3_persiana",
+                "name": "Salón 3",
+                "icon": "mdi:blinds-horizontal",
+                "vertical": true,
+                "tap_action": {
+                  "action": "more-info"
+                },
+                "features": [
+                  {
+                    "type": "cover-open-close"
+                  }
+                ],
+                "grid_options": {
+                  "columns": 4,
+                  "rows": 3
+                }
+              },
+              {
+                "type": "heading",
+                "heading": "Limpiasuelos",
+                "heading_style": "title",
+                "icon": "mdi:robot-vacuum",
+                "badges": [
+                  {
+                    "type": "entity",
+                    "entity": "sensor.limpiasuelos_battery_level",
+                    "show_state": true,
+                    "show_icon": true,
+                    "color": "green"
+                  },
+                  {
+                    "type": "entity",
+                    "entity": "sensor.limpiasuelos_current_room",
+                    "show_state": true,
+                    "show_icon": true,
+                    "icon": "mdi:map-marker",
+                    "visibility": [
+                      {
+                        "condition": "state",
+                        "entity": "vacuum.limpiasuelos",
+                        "state": "cleaning"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "tile",
+                "entity": "vacuum.limpiasuelos",
+                "name": "Robot Dreame",
+                "icon": "mdi:robot-vacuum",
+                "tap_action": {
+                  "action": "more-info"
+                },
+                "grid_options": {
+                  "columns": 12,
+                  "rows": 1
+                }
+              },
+              {
+                "type": "picture-entity",
+                "entity": "camera.limpiasuelos_map",
+                "camera_view": "auto",
+                "show_name": false,
+                "show_state": false,
+                "tap_action": {
+                  "action": "more-info"
+                },
+                "visibility": [
+                  {
+                    "condition": "state",
+                    "entity": "vacuum.limpiasuelos",
+                    "state_not": "docked"
+                  }
+                ],
+                "grid_options": {
+                  "columns": 12,
+                  "rows": "auto"
+                }
+              },
+              {
+                "type": "shortcut",
+                "label": "Todo el interior",
+                "icon": "mdi:home-outline",
+                "color": "blue",
+                "vertical": true,
+                "tap_action": {
+                  "action": "perform-action",
+                  "perform_action": "script.robot_limpiar",
+                  "data": {
+                    "segmentos": [
+                      11,
+                      2,
+                      5,
+                      3,
+                      8,
+                      6,
+                      9,
+                      13,
+                      10,
+                      15,
+                      20
+                    ]
+                  }
+                },
+                "grid_options": {
+                  "columns": 4,
+                  "rows": 2
+                }
+              },
+              {
+                "type": "shortcut",
+                "label": "Interior + exterior",
+                "icon": "mdi:home-export-outline",
+                "color": "green",
+                "vertical": true,
+                "tap_action": {
+                  "action": "perform-action",
+                  "perform_action": "script.robot_limpiar",
+                  "data": {
+                    "segmentos": [
+                      17,
+                      11,
+                      2,
+                      5,
+                      3,
+                      8,
+                      6,
+                      9,
+                      13,
+                      10,
+                      15,
+                      20
+                    ]
+                  }
+                },
+                "grid_options": {
+                  "columns": 4,
+                  "rows": 2
+                }
+              },
+              {
+                "type": "shortcut",
+                "label": "Cancelar y a casa",
+                "icon": "mdi:home-import-outline",
+                "color": "red",
+                "vertical": true,
+                "tap_action": {
+                  "action": "perform-action",
+                  "perform_action": "script.robot_cancelar_y_volver"
+                },
+                "grid_options": {
+                  "columns": 4,
+                  "rows": 2
+                }
+              },
+              {
+                "type": "heading",
+                "heading": "Elegir estancias y orden",
+                "heading_style": "subtitle",
+                "icon": "mdi:format-list-numbered"
+              },
+              {
+                "type": "markdown",
+                "content": "{% set ids = states('input_text.robot_estancias_seleccion') | regex_findall('\\d+') %}{% if ids %}**Orden de limpieza:** {% for i in ids %}{{ loop.index }}. {{ states('select.limpiasuelos_room_' ~ i ~ '_name') }}{{ '  →  ' if not loop.last }}{% endfor %}{% else %}Toca las estancias en el orden en que quieres que se limpien (otro toque la quita).{% endif %}",
+                "grid_options": {
+                  "columns": 12,
+                  "rows": "auto"
+                }
+              },
+              {
+                "type": "shortcut",
+                "label": "Salón",
+                "icon": "mdi:sofa-outline",
+                "tap_action": {
+                  "action": "perform-action",
+                  "perform_action": "script.robot_estancia_alternar",
+                  "data": {
+                    "estancia": 11
+                  }
+                },
+                "grid_options": {
+                  "columns": 3,
+                  "rows": 1
+                }
+              },
+              {
+                "type": "shortcut",
+                "label": "Oficina 1",
+                "icon": "mdi:desk",
+                "tap_action": {
+                  "action": "perform-action",
+                  "perform_action": "script.robot_estancia_alternar",
+                  "data": {
+                    "estancia": 5
+                  }
+                },
+                "grid_options": {
+                  "columns": 3,
+                  "rows": 1
+                }
+              },
+              {
+                "type": "shortcut",
+                "label": "Oficina 2",
+                "icon": "mdi:laptop",
+                "tap_action": {
+                  "action": "perform-action",
+                  "perform_action": "script.robot_estancia_alternar",
+                  "data": {
+                    "estancia": 3
+                  }
+                },
+                "grid_options": {
+                  "columns": 3,
+                  "rows": 1
+                }
+              },
+              {
+                "type": "shortcut",
+                "label": "Pasillo",
+                "icon": "mdi:foot-print",
+                "tap_action": {
+                  "action": "perform-action",
+                  "perform_action": "script.robot_estancia_alternar",
+                  "data": {
+                    "estancia": 15
+                  }
+                },
+                "grid_options": {
+                  "columns": 3,
+                  "rows": 1
+                }
+              },
+              {
+                "type": "shortcut",
+                "label": "Dorm. 1",
+                "icon": "mdi:bed-king-outline",
+                "tap_action": {
+                  "action": "perform-action",
+                  "perform_action": "script.robot_estancia_alternar",
+                  "data": {
+                    "estancia": 9
+                  }
+                },
+                "grid_options": {
+                  "columns": 3,
+                  "rows": 1
+                }
+              },
+              {
+                "type": "shortcut",
+                "label": "Dorm. 2",
+                "icon": "mdi:bed-outline",
+                "tap_action": {
+                  "action": "perform-action",
+                  "perform_action": "script.robot_estancia_alternar",
+                  "data": {
+                    "estancia": 8
+                  }
+                },
+                "grid_options": {
+                  "columns": 3,
+                  "rows": 1
+                }
+              },
+              {
+                "type": "shortcut",
+                "label": "Dorm. 3",
+                "icon": "mdi:bed-single-outline",
+                "tap_action": {
+                  "action": "perform-action",
+                  "perform_action": "script.robot_estancia_alternar",
+                  "data": {
+                    "estancia": 10
+                  }
+                },
+                "grid_options": {
+                  "columns": 3,
+                  "rows": 1
+                }
+              },
+              {
+                "type": "shortcut",
+                "label": "Vestidor",
+                "icon": "mdi:hanger",
+                "tap_action": {
+                  "action": "perform-action",
+                  "perform_action": "script.robot_estancia_alternar",
+                  "data": {
+                    "estancia": 6
+                  }
+                },
+                "grid_options": {
+                  "columns": 3,
+                  "rows": 1
+                }
+              },
+              {
+                "type": "shortcut",
+                "label": "Baño 1",
+                "icon": "mdi:shower",
+                "tap_action": {
+                  "action": "perform-action",
+                  "perform_action": "script.robot_estancia_alternar",
+                  "data": {
+                    "estancia": 13
+                  }
+                },
+                "grid_options": {
+                  "columns": 3,
+                  "rows": 1
+                }
+              },
+              {
+                "type": "shortcut",
+                "label": "Baño 2",
+                "icon": "mdi:bathtub-outline",
+                "tap_action": {
+                  "action": "perform-action",
+                  "perform_action": "script.robot_estancia_alternar",
+                  "data": {
+                    "estancia": 20
+                  }
+                },
+                "grid_options": {
+                  "columns": 3,
+                  "rows": 1
+                }
+              },
+              {
+                "type": "shortcut",
+                "label": "Servicio",
+                "icon": "mdi:washing-machine",
+                "tap_action": {
+                  "action": "perform-action",
+                  "perform_action": "script.robot_estancia_alternar",
+                  "data": {
+                    "estancia": 2
+                  }
+                },
+                "grid_options": {
+                  "columns": 3,
+                  "rows": 1
+                }
+              },
+              {
+                "type": "shortcut",
+                "label": "Porche",
+                "icon": "mdi:pine-tree",
+                "tap_action": {
+                  "action": "perform-action",
+                  "perform_action": "script.robot_estancia_alternar",
+                  "data": {
+                    "estancia": 17
+                  }
+                },
+                "grid_options": {
+                  "columns": 3,
+                  "rows": 1
+                }
+              },
+              {
+                "type": "shortcut",
+                "label": "Limpiar selección",
+                "icon": "mdi:play",
+                "color": "green",
+                "tap_action": {
+                  "action": "perform-action",
+                  "perform_action": "script.robot_limpiar"
+                },
+                "grid_options": {
+                  "columns": 8,
+                  "rows": 1
+                }
+              },
+              {
+                "type": "shortcut",
+                "label": "Borrar",
+                "icon": "mdi:close",
+                "color": "grey",
+                "tap_action": {
+                  "action": "perform-action",
+                  "perform_action": "input_text.set_value",
+                  "target": {
+                    "entity_id": "input_text.robot_estancias_seleccion"
+                  },
+                  "data": {
+                    "value": ""
+                  }
+                },
+                "grid_options": {
+                  "columns": 4,
+                  "rows": 1
+                }
+              },
+              {
+                "type": "heading",
+                "heading": "Clima y TV",
+                "heading_style": "title",
+                "icon": "mdi:thermostat",
+                "badges": [
+                  {
+                    "type": "entity",
+                    "entity": "sensor.shelly_salon_sur_temperatura",
+                    "show_state": true,
+                    "show_icon": true,
+                    "color": "orange"
+                  },
+                  {
+                    "type": "entity",
+                    "entity": "sensor.shelly_salon_sur_humedad",
+                    "show_state": true,
+                    "show_icon": true,
+                    "color": "blue"
+                  }
+                ]
+              },
+              {
+                "type": "button",
+                "entity": "climate.aidoo_28_cc_ff_82_82_6f",
+                "name": "Aire",
+                "icon": "mdi:power",
+                "show_name": true,
+                "show_state": true,
+                "tap_action": {
+                  "action": "toggle"
+                },
+                "hold_action": {
+                  "action": "more-info"
+                },
+                "grid_options": {
+                  "columns": 4,
+                  "rows": 2
+                }
+              },
+              {
+                "type": "tile",
+                "entity": "climate.aidoo_28_cc_ff_82_82_6f",
+                "name": "Temperatura",
+                "icon": "mdi:air-conditioner",
+                "tap_action": {
+                  "action": "more-info"
+                },
+                "features": [
+                  {
+                    "type": "target-temperature"
+                  }
+                ],
+                "grid_options": {
+                  "columns": 8,
+                  "rows": 2
+                }
+              },
+              {
+                "type": "tile",
+                "entity": "media_player.salon_tv_samsung_salon_85",
+                "name": "TV Salón",
+                "icon": "mdi:television",
+                "tap_action": {
+                  "action": "more-info"
+                },
+                "icon_tap_action": {
+                  "action": "toggle"
+                },
+                "features": [
+                  {
+                    "type": "media-player-volume-buttons",
+                    "step": 1,
+                    "show_mute_button": true
+                  }
+                ],
+                "grid_options": {
+                  "columns": 12,
+                  "rows": 2
+                }
+              },
+              {
+                "type": "tile",
+                "entity": "input_number.volumen_tv_salon",
+                "name": "Volumen",
+                "icon": "mdi:volume-high",
+                "features": [
+                  {
+                    "type": "numeric-input",
+                    "style": "slider"
+                  }
+                ],
+                "features_position": "inline",
+                "grid_options": {
+                  "columns": 12,
+                  "rows": 1
+                }
+              },
+              {
+                "type": "heading",
+                "heading": "Energía",
+                "heading_style": "title",
+                "icon": "mdi:solar-power-variant",
+                "badges": [
+                  {
+                    "type": "entity",
+                    "entity": "sensor.david_lopez_perez_daily_pv_generation",
+                    "show_state": true,
+                    "show_icon": true,
+                    "icon": "mdi:calendar-today",
+                    "color": "amber"
+                  }
+                ]
+              },
+              {
+                "type": "tile",
+                "entity": "sensor.david_lopez_perez_pv_power",
+                "name": "Solar",
+                "icon": "mdi:solar-power",
+                "color": "amber",
+                "grid_options": {
+                  "columns": 6,
+                  "rows": 1
+                }
+              },
+              {
+                "type": "tile",
+                "entity": "sensor.david_lopez_perez_load_power",
+                "name": "Consumo casa",
+                "icon": "mdi:home-lightning-bolt",
+                "color": "blue",
+                "grid_options": {
+                  "columns": 6,
+                  "rows": 1
+                }
+              },
+              {
+                "type": "tile",
+                "entity": "sensor.david_lopez_perez_battery_state_of_charge",
+                "name": "Batería",
+                "color": "green",
+                "grid_options": {
+                  "columns": 6,
+                  "rows": 1
+                }
+              },
+              {
+                "type": "tile",
+                "entity": "sensor.david_lopez_perez_grid_power",
+                "name": "Red (+ exporta)",
+                "icon": "mdi:transmission-tower",
+                "color": "purple",
+                "grid_options": {
+                  "columns": 6,
+                  "rows": 1
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

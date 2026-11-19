@@ -38,7 +38,7 @@
     },
     {
       "label": "Functional v2: deploy a Home Assistant",
-      "detail": "Build + subida por SSH + recurso Lovelace con ?v=hash + dashboard functional-v2",
+      "detail": "Build + subida por SSH + recurso Lovelace con ?v=hash + dashboards de deploy.json (Casa General y paneles Shelly)",
       "type": "shell",
       "command": "npm run deploy",
       "options": { "cwd": "${workspaceFolder}/villawachitos/dashboards/functional-v2" },

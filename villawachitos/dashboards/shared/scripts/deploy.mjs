@@ -8,6 +8,9 @@
  *     "wwwDir": "/config/www/mi-dashboard",          // destino en HA (/config/www → /local)
  *     "card": "dashboard.config.json",               // configuración de la tarjeta
  *     "dashboard": { "url_path": "mi-dash", "title": "Mi dash", "icon": "mdi:…" },
+ *     // …o varios dashboards con la misma tarjeta (mismo bundle y misma configuración):
+ *     "dashboards": [{ "url_path": "mi-dash", "title": "Mi dash", "icon": "mdi:…", "show_in_sidebar": false }, …],
+ *     // (cada uno puede llevar su `view` para conservar la ruta antigua: { "view": { "path": "salon" } })
  *     "view": { "title": "Main", "path": "main" },
  *     "kiosk": true,                                 // kiosk-mode: sin cabecera ni barra lateral
  *     "assets": [{ "from": "public/textures", "to": "textures" }]  // opcional: carpetas extra
@@ -16,7 +19,8 @@
  *  1. Sube el bundle por SSH (app "Terminal & SSH"; solo necesita `ssh`), con escritura atómica,
  *     y las carpetas de `assets` (texturas, imágenes…) junto a él, con `tar` por la misma conexión.
  *  2. Registra/actualiza el recurso de Lovelace con `?v=<hash>` (HA cachea /local 31 días).
- *  3. Crea el dashboard si no existe y publica su configuración (el repositorio es la fuente de verdad).
+ *  3. Para cada dashboard: lo crea si no existe (o actualiza título, icono y visibilidad si han cambiado) y
+ *     publica su configuración (el repositorio es la fuente de verdad: sobrescribe lo que hubiera).
  *
  * Credenciales en `.env` de la carpeta del dashboard o, si no existe, en `villawachitos/dashboards/.env`.
  */
@@ -82,13 +86,16 @@ const bundle = readFileSync(BUNDLE);
 const hash = createHash("sha256").update(bundle).digest("hex").slice(0, 12);
 const localUrlBase = `/local/${WWW_DIR.slice("/config/www/".length)}/${FILE_NAME}`;
 const resourceUrl = `${localUrlBase}?v=${hash}`;
-const DASHBOARD = {
-  show_in_sidebar: true,
-  require_admin: false,
-  mode: "storage",
-  ...deploy.dashboard,
-};
-const VIEW = { title: "Main", path: "main", ...deploy.view };
+const DASHBOARDS = (deploy.dashboards ?? [deploy.dashboard]).map(
+  ({ view, ...d }) => ({
+    show_in_sidebar: true,
+    require_admin: false,
+    ...d,
+    view: { title: "Main", path: "main", ...deploy.view, ...view },
+  }),
+);
+if (!DASHBOARDS.length || DASHBOARDS.some((d) => !d?.url_path))
+  c.fail("deploy.json necesita `dashboard` o `dashboards` con `url_path`");
 
 /* ---------- 1. Subida por SSH ---------- */
 
@@ -235,23 +242,36 @@ async function registerResource(ha) {
   return first.url === resourceUrl ? "sin cambios" : "actualizado";
 }
 
-async function publishDashboard(ha) {
-  const dashboards = await ha.call({ type: "lovelace/dashboards/list" });
-  let created = false;
-  if (!dashboards.some((d) => d.url_path === DASHBOARD.url_path)) {
-    await ha.call({ type: "lovelace/dashboards/create", ...DASHBOARD });
-    created = true;
+const META = ["title", "icon", "show_in_sidebar", "require_admin"];
+
+async function publishDashboard(ha, dash, existing) {
+  const { view: _view, ...meta } = dash;
+  const current = existing.find((d) => d.url_path === dash.url_path);
+  let result = "actualizado";
+  if (!current) {
+    await ha.call({ type: "lovelace/dashboards/create", mode: "storage", ...meta });
+    result = "creado";
+  } else {
+    const changed = META.filter((k) => k in dash && dash[k] !== current[k]);
+    if (changed.length) {
+      await ha.call({
+        type: "lovelace/dashboards/update",
+        dashboard_id: current.id,
+        ...Object.fromEntries(changed.map((k) => [k, dash[k]])),
+      });
+      result = `actualizado (${changed.join(", ")})`;
+    }
   }
   await ha.call({
     type: "lovelace/config/save",
-    url_path: DASHBOARD.url_path,
+    url_path: dash.url_path,
     config: {
       // kiosk-mode (Marketplace): oculta cabecera y barra lateral. Para salir: añade ?disable_km a la URL.
       ...(deploy.kiosk === false ? {} : { kiosk_mode: { kiosk: true } }),
-      views: [{ ...VIEW, type: "panel", cards: [cardConfig] }],
+      views: [{ ...dash.view, type: "panel", cards: [cardConfig] }],
     },
   });
-  return created ? "creado" : "actualizado";
+  return result;
 }
 
 /* ---------- Main ---------- */
@@ -271,9 +291,11 @@ try {
   c.step(`Conectando con ${HA_URL}`);
   await ha.open();
   c.ok(`Recurso Lovelace ${await registerResource(ha)} → ${resourceUrl}`);
-  c.ok(
-    `Dashboard ${await publishDashboard(ha)} → ${HA_URL}/${DASHBOARD.url_path}/${VIEW.path}`,
-  );
+  const existing = await ha.call({ type: "lovelace/dashboards/list" });
+  for (const dash of DASHBOARDS)
+    c.ok(
+      `Dashboard «${dash.title ?? dash.url_path}» ${await publishDashboard(ha, dash, existing)} → ${HA_URL}/${dash.url_path}/${dash.view.path}`,
+    );
   ha.close();
 
   console.log(

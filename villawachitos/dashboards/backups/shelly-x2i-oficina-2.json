@@ -1,0 +1,534 @@
+{
+  "dashboard": {
+    "id": "shelly_x2i_oficina_2",
+    "url_path": "shelly-x2i-oficina-2",
+    "title": "Shelly X2i Oficina 2",
+    "icon": "mdi:laptop",
+    "require_admin": false,
+    "show_in_sidebar": false,
+    "mode": "storage"
+  },
+  "config": {
+    "kiosk_mode": {
+      "hide_header": true
+    },
+    "views": [
+      {
+        "title": "Oficina 2",
+        "path": "oficina-2",
+        "icon": "mdi:laptop",
+        "type": "sections",
+        "max_columns": 1,
+        "sections": [
+          {
+            "type": "grid",
+            "cards": [
+              {
+                "type": "heading",
+                "heading": "Oficina 2",
+                "heading_style": "title",
+                "icon": "mdi:laptop",
+                "badges": [
+                  {
+                    "type": "button",
+                    "icon": "mdi:sofa",
+                    "text": "Salón",
+                    "color": "disabled",
+                    "tap_action": {
+                      "action": "navigate",
+                      "navigation_path": "/shelly-salon-este/salon"
+                    }
+                  },
+                  {
+                    "type": "button",
+                    "icon": "mdi:desk",
+                    "text": "Oficina 1",
+                    "tap_action": {
+                      "action": "navigate",
+                      "navigation_path": "/shelly-x2i-oficina-1/oficina-1"
+                    },
+                    "color": "disabled"
+                  },
+                  {
+                    "type": "button",
+                    "icon": "mdi:laptop",
+                    "text": "Oficina 2",
+                    "tap_action": {
+                      "action": "navigate",
+                      "navigation_path": "/shelly-x2i-oficina-2/oficina-2"
+                    },
+                    "color": "primary"
+                  }
+                ]
+              },
+              {
+                "type": "markdown",
+                "content": "<ha-alert alert-type=\"error\" title=\"SAI en batería\">Corte de luz en la oficina. Autonomía: {{ states('sensor.eaton_autonomia_de_la_bateria') | float(0) | round(0) | int }} min · Batería {{ states('sensor.eaton_ellipse_eco_800_carga_de_la_bateria') }} %</ha-alert>",
+                "visibility": [
+                  {
+                    "condition": "template",
+                    "value_template": "{{ 'OB' in states('sensor.eaton_ellipse_eco_800_datos_de_estado') }}"
+                  }
+                ],
+                "grid_options": {
+                  "columns": 12,
+                  "rows": "auto"
+                }
+              },
+              {
+                "type": "markdown",
+                "content": "<ha-alert alert-type=\"error\" title=\"¡Fuga de agua!\">Se ha detectado una fuga de agua en casa.</ha-alert>",
+                "visibility": [
+                  {
+                    "condition": "state",
+                    "entity": "input_boolean.alerta_fuga_agua",
+                    "state": "on"
+                  }
+                ],
+                "grid_options": {
+                  "columns": 12,
+                  "rows": "auto"
+                }
+              },
+              {
+                "type": "markdown",
+                "content": "<ha-alert alert-type=\"warning\" title=\"Robot aspirador con error\">{{ state_attr('vacuum.limpiasuelos', 'error') or 'Revisa el Limpiasuelos.' }}</ha-alert>",
+                "visibility": [
+                  {
+                    "condition": "state",
+                    "entity": "vacuum.limpiasuelos",
+                    "state": "error"
+                  }
+                ],
+                "grid_options": {
+                  "columns": 12,
+                  "rows": "auto"
+                }
+              },
+              {
+                "type": "markdown",
+                "content": "<ha-alert alert-type=\"warning\" title=\"Tinta baja en la Epson\">{% set t = {'Negro':'sensor.epson_et_5150_series_black_ink','Cian':'sensor.epson_et_5150_series_cyan_ink','Magenta':'sensor.epson_et_5150_series_magenta_ink','Amarillo':'sensor.epson_et_5150_series_yellow_ink'} %}{% for n, e in t.items() if states(e) | float(100) < 15 %}{{ n }} {{ states(e) }} %{{ ' · ' if not loop.last }}{% endfor %}</ha-alert>",
+                "visibility": [
+                  {
+                    "condition": "or",
+                    "conditions": [
+                      {
+                        "condition": "numeric_state",
+                        "entity": "sensor.epson_et_5150_series_black_ink",
+                        "below": 15
+                      },
+                      {
+                        "condition": "numeric_state",
+                        "entity": "sensor.epson_et_5150_series_cyan_ink",
+                        "below": 15
+                      },
+                      {
+                        "condition": "numeric_state",
+                        "entity": "sensor.epson_et_5150_series_magenta_ink",
+                        "below": 15
+                      },
+                      {
+                        "condition": "numeric_state",
+                        "entity": "sensor.epson_et_5150_series_yellow_ink",
+                        "below": 15
+                      }
+                    ]
+                  }
+                ],
+                "grid_options": {
+                  "columns": 12,
+                  "rows": "auto"
+                }
+              },
+              {
+                "type": "markdown",
+                "content": "<ha-alert alert-type=\"info\" title=\"Alarma armada\">Estado: {{ states('alarm_control_panel.alarma_vivienda') | replace('armed_away','Total') | replace('armed_home','En casa') | replace('armed_night','Noche') | replace('triggered','¡DISPARADA!') }}</ha-alert>",
+                "visibility": [
+                  {
+                    "condition": "state",
+                    "entity": "alarm_control_panel.alarma_vivienda",
+                    "state_not": "disarmed"
+                  }
+                ],
+                "grid_options": {
+                  "columns": 12,
+                  "rows": "auto"
+                }
+              },
+              {
+                "type": "markdown",
+                "content": "<ha-alert alert-type=\"info\" title=\"Modo silencio activado\">Las notificaciones sonoras están silenciadas.</ha-alert>",
+                "visibility": [
+                  {
+                    "condition": "state",
+                    "entity": "input_boolean.modo_silencio",
+                    "state": "on"
+                  }
+                ],
+                "grid_options": {
+                  "columns": 12,
+                  "rows": "auto"
+                }
+              },
+              {
+                "type": "heading",
+                "heading": "Llaman a la puerta",
+                "heading_style": "title",
+                "icon": "mdi:doorbell-video",
+                "visibility": [
+                  {
+                    "condition": "or",
+                    "conditions": [
+                      {
+                        "condition": "state",
+                        "entity": "binary_sensor.jardin_norte_portero_automatico_exterior_duox_doorbell_zero",
+                        "state": "on"
+                      },
+                      {
+                        "condition": "template",
+                        "value_template": "{{ (now() - as_datetime(states('event.jardin_norte_portero_automatico_exterior_duox_doorbell'), now())).total_seconds() < 180 }}"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "custom:duox-autoconnect-card",
+                "entry_id": "01M6RCMBFVKXBW4DKH7S0WJ1RD",
+                "camera_entity": "camera.jardin_norte_portero_automatico_exterior_duox_doorbell_camera",
+                "lock_entity": "lock.jardin_norte_portero_automatico_exterior_duox_zero",
+                "wifi_entity": "sensor.jardin_norte_portero_automatico_exterior_duox_wifi_signal",
+                "device_name": "Puerta exterior",
+                "visibility": [
+                  {
+                    "condition": "or",
+                    "conditions": [
+                      {
+                        "condition": "state",
+                        "entity": "binary_sensor.jardin_norte_portero_automatico_exterior_duox_doorbell_zero",
+                        "state": "on"
+                      },
+                      {
+                        "condition": "template",
+                        "value_template": "{{ (now() - as_datetime(states('event.jardin_norte_portero_automatico_exterior_duox_doorbell'), now())).total_seconds() < 180 }}"
+                      }
+                    ]
+                  }
+                ],
+                "grid_options": {
+                  "columns": 12,
+                  "rows": "auto"
+                },
+                "ring_entity": "binary_sensor.jardin_norte_portero_automatico_exterior_duox_doorbell_zero",
+                "hide_history": true
+              },
+              {
+                "type": "heading",
+                "heading": "Luces",
+                "heading_style": "title",
+                "icon": "mdi:lightbulb-group",
+                "badges": [
+                  {
+                    "type": "button",
+                    "icon": "mdi:lightbulb-group-off",
+                    "color": "red",
+                    "tap_action": {
+                      "action": "perform-action",
+                      "perform_action": "light.turn_off",
+                      "target": {
+                        "entity_id": [
+                          "light.persiana_oficina_2_luz_techo",
+                          "light.oficina_2_lampara_pro_mi_1",
+                          "light.oficina_2_lampara_pro_mi_2_mijia_desk_lamp_sw",
+                          "light.oficina_2_wled_cortinero_oficina_2"
+                        ]
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "type": "tile",
+                "entity": "light.persiana_oficina_2_luz_techo",
+                "name": "Techo",
+                "icon": "mdi:light-recessed",
+                "tap_action": {
+                  "action": "toggle"
+                },
+                "hold_action": {
+                  "action": "more-info"
+                },
+                "icon_tap_action": {
+                  "action": "toggle"
+                },
+                "grid_options": {
+                  "columns": 12,
+                  "rows": 1
+                }
+              },
+              {
+                "type": "tile",
+                "entity": "light.oficina_2_lampara_pro_mi_1",
+                "name": "Lámpara Mi 1",
+                "icon": "mdi:desk-lamp",
+                "tap_action": {
+                  "action": "more-info"
+                },
+                "icon_tap_action": {
+                  "action": "toggle"
+                },
+                "features": [
+                  {
+                    "type": "light-brightness"
+                  },
+                  {
+                    "type": "light-color-temp"
+                  }
+                ],
+                "grid_options": {
+                  "columns": 6,
+                  "rows": 3
+                }
+              },
+              {
+                "type": "tile",
+                "entity": "light.oficina_2_lampara_pro_mi_2_mijia_desk_lamp_sw",
+                "name": "Lámpara Mi 2",
+                "icon": "mdi:desk-lamp",
+                "tap_action": {
+                  "action": "more-info"
+                },
+                "icon_tap_action": {
+                  "action": "toggle"
+                },
+                "features": [
+                  {
+                    "type": "light-brightness"
+                  },
+                  {
+                    "type": "light-color-temp"
+                  }
+                ],
+                "grid_options": {
+                  "columns": 6,
+                  "rows": 3
+                }
+              },
+              {
+                "type": "shortcut",
+                "label": "Ámbar 50%",
+                "icon": "mdi:candle",
+                "color": "deep-orange",
+                "vertical": true,
+                "tap_action": {
+                  "action": "perform-action",
+                  "perform_action": "script.wled_cortinero_modo",
+                  "data": {
+                    "luz": "light.oficina_2_wled_cortinero_oficina_2",
+                    "paleta": "select.oficina_2_wled_cortinero_oficina_2_paleta_de_color",
+                    "velocidad": "number.oficina_2_wled_cortinero_oficina_2_velocidad",
+                    "intensidad": "number.oficina_2_wled_cortinero_oficina_2_intensidad",
+                    "modo": "blanco_calido",
+                    "color_calido": [
+                      255,
+                      70,
+                      0,
+                      20
+                    ]
+                  }
+                },
+                "grid_options": {
+                  "columns": 3,
+                  "rows": 2
+                }
+              },
+              {
+                "type": "shortcut",
+                "label": "Aurora",
+                "icon": "mdi:waves",
+                "color": "teal",
+                "vertical": true,
+                "tap_action": {
+                  "action": "perform-action",
+                  "perform_action": "script.wled_cortinero_modo",
+                  "data": {
+                    "luz": "light.oficina_2_wled_cortinero_oficina_2",
+                    "paleta": "select.oficina_2_wled_cortinero_oficina_2_paleta_de_color",
+                    "velocidad": "number.oficina_2_wled_cortinero_oficina_2_velocidad",
+                    "intensidad": "number.oficina_2_wled_cortinero_oficina_2_intensidad",
+                    "modo": "pacifica_aurora"
+                  }
+                },
+                "grid_options": {
+                  "columns": 3,
+                  "rows": 2
+                }
+              },
+              {
+                "type": "shortcut",
+                "label": "Otoño",
+                "icon": "mdi:leaf-maple",
+                "color": "deep-orange",
+                "vertical": true,
+                "tap_action": {
+                  "action": "perform-action",
+                  "perform_action": "script.wled_cortinero_modo",
+                  "data": {
+                    "luz": "light.oficina_2_wled_cortinero_oficina_2",
+                    "paleta": "select.oficina_2_wled_cortinero_oficina_2_paleta_de_color",
+                    "velocidad": "number.oficina_2_wled_cortinero_oficina_2_velocidad",
+                    "intensidad": "number.oficina_2_wled_cortinero_oficina_2_intensidad",
+                    "modo": "pacifica_otono"
+                  }
+                },
+                "grid_options": {
+                  "columns": 3,
+                  "rows": 2
+                }
+              },
+              {
+                "type": "shortcut",
+                "label": "Arcoíris",
+                "icon": "mdi:looks",
+                "color": "purple",
+                "vertical": true,
+                "tap_action": {
+                  "action": "perform-action",
+                  "perform_action": "script.wled_cortinero_modo",
+                  "data": {
+                    "luz": "light.oficina_2_wled_cortinero_oficina_2",
+                    "paleta": "select.oficina_2_wled_cortinero_oficina_2_paleta_de_color",
+                    "velocidad": "number.oficina_2_wled_cortinero_oficina_2_velocidad",
+                    "intensidad": "number.oficina_2_wled_cortinero_oficina_2_intensidad",
+                    "modo": "arcoiris_lento"
+                  }
+                },
+                "grid_options": {
+                  "columns": 3,
+                  "rows": 2
+                }
+              },
+              {
+                "type": "tile",
+                "entity": "light.oficina_2_wled_cortinero_oficina_2",
+                "name": "Cortinero LED",
+                "icon": "mdi:led-strip-variant",
+                "tap_action": {
+                  "action": "more-info"
+                },
+                "icon_tap_action": {
+                  "action": "toggle"
+                },
+                "features": [
+                  {
+                    "type": "light-brightness"
+                  }
+                ],
+                "grid_options": {
+                  "columns": 12,
+                  "rows": 2
+                }
+              },
+              {
+                "type": "heading",
+                "heading": "Persiana",
+                "heading_style": "title",
+                "icon": "mdi:blinds-horizontal",
+                "badges": [
+                  {
+                    "type": "entity",
+                    "entity": "sensor.oficina_2_shellywalldisplay_oficina2_iluminancia",
+                    "show_state": true,
+                    "show_icon": true,
+                    "icon": "mdi:white-balance-sunny",
+                    "color": "amber"
+                  }
+                ]
+              },
+              {
+                "type": "tile",
+                "entity": "cover.persiana_oficina_2_persiana",
+                "name": "Persiana Oficina 2",
+                "icon": "mdi:blinds-horizontal",
+                "tap_action": {
+                  "action": "more-info"
+                },
+                "features": [
+                  {
+                    "type": "cover-open-close"
+                  },
+                  {
+                    "type": "cover-position"
+                  }
+                ],
+                "grid_options": {
+                  "columns": 12,
+                  "rows": 3
+                }
+              },
+              {
+                "type": "heading",
+                "heading": "Energía",
+                "heading_style": "title",
+                "icon": "mdi:solar-power-variant",
+                "badges": [
+                  {
+                    "type": "entity",
+                    "entity": "sensor.david_lopez_perez_daily_pv_generation",
+                    "show_state": true,
+                    "show_icon": true,
+                    "icon": "mdi:calendar-today",
+                    "color": "amber"
+                  }
+                ]
+              },
+              {
+                "type": "tile",
+                "entity": "sensor.david_lopez_perez_pv_power",
+                "name": "Solar",
+                "icon": "mdi:solar-power",
+                "color": "amber",
+                "grid_options": {
+                  "columns": 6,
+                  "rows": 1
+                }
+              },
+              {
+                "type": "tile",
+                "entity": "sensor.david_lopez_perez_load_power",
+                "name": "Consumo casa",
+                "icon": "mdi:home-lightning-bolt",
+                "color": "blue",
+                "grid_options": {
+                  "columns": 6,
+                  "rows": 1
+                }
+              },
+              {
+                "type": "tile",
+                "entity": "sensor.david_lopez_perez_battery_state_of_charge",
+                "name": "Batería",
+                "color": "green",
+                "grid_options": {
+                  "columns": 6,
+                  "rows": 1
+                }
+              },
+              {
+                "type": "tile",
+                "entity": "sensor.david_lopez_perez_grid_power",
+                "name": "Red (+ exporta)",
+                "icon": "mdi:transmission-tower",
+                "color": "purple",
+                "grid_options": {
+                  "columns": 6,
+                  "rows": 1
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

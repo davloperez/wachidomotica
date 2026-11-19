@@ -42,6 +42,7 @@ import type { FloorPlan } from "./plan/floor-plan";
 import { DOORBELL, PriorityWatcher, type PriorityAlert } from "./lib/priority";
 import type { RoomView } from "./views/room-view";
 import type { LayerView } from "./views/layer-view";
+import { HOME, defaultView } from "./lib/panels";
 import "./plan/floor-plan";
 import "./views/home-view";
 import "./views/room-view";
@@ -54,7 +55,6 @@ import "./widgets/vacuum-sheet";
 import "./widgets/priority-alert";
 import "./widgets/camera-viewer";
 
-const HOME = "home";
 /** El modo Editar solo existe con ratón y pantalla grande (nunca en las Shelly ni en el móvil). */
 const DESKTOP_MQ = "(min-width: 900px) and (hover: hover) and (pointer: fine)";
 const DRAFT_KEY = "fv2-marker-draft";
@@ -117,7 +117,9 @@ export class FunctionalDashboard extends LitElement {
   @property({ attribute: false }) hass?: HomeAssistant;
   @state() private config: DashboardConfig = { type: "custom:functional-v2" };
   @state() private themeMode: ThemeMode = "auto";
-  @state() private view = HOME;
+  /** Vista con la que arranca este dashboard y a la que vuelve por inactividad (ver `lib/panels.ts`) */
+  private readonly startView = defaultView();
+  @state() private view = this.startView;
   @state() private sheet?: { entity: string; name: string };
   @state() private solarOpen = false;
   @state() private alertsOpen = false;
@@ -188,6 +190,8 @@ export class FunctionalDashboard extends LitElement {
     plan?.addEventListener("pointerdown", this.onEditDown as EventListener, true);
     plan?.addEventListener("click", this.onEditClick, true);
     plan?.addEventListener("dblclick", this.onEditDouble, true);
+    // Paneles que arrancan en una estancia: su pestaña de la barra inferior, a la vista
+    if (this.view !== HOME) this.toTop();
   }
 
   private fitTimers: number[] = [];
@@ -334,10 +338,17 @@ export class FunctionalDashboard extends LitElement {
     }
   };
 
+  /** Sin tocar la pantalla un rato: vuelve a la vista por defecto de este dashboard, con su encuadre. */
   private checkIdle(): void {
     const secs = this.config.idle_return_seconds ?? 180;
-    if (!secs || this.editing || (this.view === HOME && !this.layer)) return;
-    if (Date.now() - this.lastTouch > secs * 1000) this.go(HOME);
+    if (!secs || this.editing || Date.now() - this.lastTouch <= secs * 1000) return;
+    if (this.view !== this.startView || this.layer) this.go(this.startView);
+    else {
+      // Ya en su vista: solo se deshace el zoom o desplazamiento que se haya dejado en el plano
+      this.lastTouch = Date.now();
+      this.renderRoot.querySelector<FloorPlan>("fv2-plan")?.recenter();
+      this.toTop();
+    }
   }
 
   private go(view: string): void {

@@ -15,6 +15,24 @@ con colores tranquilos (lino, salvia, terracota y ámbar), pero:
 
 Tema claro, oscuro o auto (botón «Tema» al final de la barra inferior).
 
+## Dashboards y vista por defecto
+
+La misma tarjeta (mismo código y misma configuración) se publica en varios dashboards de Home Assistant. Todos
+muestran la casa entera, pero cada uno **arranca en la estancia donde está el panel** y vuelve a ella (con su
+encuadre del plano) tras `idle_return_seconds` sin tocar la pantalla:
+
+| Dashboard (URL)                                           | Vista por defecto |
+| --------------------------------------------------------- | ----------------- |
+| **Casa General** (`/functional-v2`, el de HA por defecto) | Casa              |
+| Shelly X2i Oficina 1 (`/shelly-x2i-oficina-1`)            | Oficina 1         |
+| Shelly X2i Oficina 2 (`/shelly-x2i-oficina-2`)            | Oficina 2         |
+| Shelly Salón Sur (`/shelly-salon-sur`)                    | Salón             |
+| Shelly Salón Este (`/shelly-salon-este`)                  | Salón             |
+
+La lista está en [`src/lib/panels.ts`](src/lib/panels.ts) (`DEFAULT_VIEWS`) y los dashboards a publicar en
+[`deploy.json`](deploy.json) (`dashboards`). Un dashboard nuevo se añade en los dos sitios. En desarrollo,
+`?panel=<url>` simula estar en ese dashboard (p. ej. `?mock&panel=shelly-x2i-oficina-1`).
+
 ## Disposición
 
 - **Pantalla vertical** (la de las Shelly): arriba el plano (algo más de media pantalla), debajo las tarjetas de la
@@ -169,7 +187,8 @@ marcador en el plano) abre una hoja con:
 lo desactiva kiosk-mode) para entrar en ajustes u otros paneles; el mismo botón, ahora **Kiosko**, vuelve a ocultarlas.
 Volver a abrir el panel desde la barra lateral también lo deja en kiosko. Se quita con `"kiosk_toggle": false`.
 
-Tras `idle_return_seconds` (180 s por defecto) sin tocar la pantalla vuelve a la vista general.
+Tras `idle_return_seconds` (180 s por defecto) sin tocar la pantalla vuelve a la vista por defecto de su dashboard
+(ver [Dashboards y vista por defecto](#dashboards-y-vista-por-defecto)) y deshace el zoom del plano.
 
 ## Configuración de la tarjeta
 
@@ -195,7 +214,7 @@ Tras `idle_return_seconds` (180 s por defecto) sin tocar la pantalla vuelve a la
 | Tarea de VSCode                            | Qué hace                                                                                     |
 | ------------------------------------------ | -------------------------------------------------------------------------------------------- |
 | **Functional v2: servidor de desarrollo**  | `http://localhost:5176/dev/index.html` (datos reales; `?mock` simulados; `?dark` / `?light`) |
-| **Functional v2: deploy a Home Assistant** | Build → SSH → recurso `?v=<hash>` → dashboard `functional-v2`                                |
+| **Functional v2: deploy a Home Assistant** | Build → SSH → recurso `?v=<hash>` → todos los dashboards de `deploy.json`                    |
 | Functional v2: typecheck y lint            | Comprobaciones                                                                               |
 
 Con `?mock`, la barra de desarrollo tiene los botones **Timbre** y **Fuga robot** para probar las alertas; las

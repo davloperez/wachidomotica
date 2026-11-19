@@ -1,0 +1,300 @@
+{
+  "dashboard": {
+    "id": "functional_v2",
+    "show_in_sidebar": true,
+    "require_admin": false,
+    "mode": "storage",
+    "url_path": "functional-v2",
+    "title": "Functional v2",
+    "icon": "mdi:home-heart"
+  },
+  "config": {
+    "kiosk_mode": {
+      "kiosk": true
+    },
+    "views": [
+      {
+        "title": "Casa",
+        "path": "main",
+        "type": "panel",
+        "cards": [
+          {
+            "type": "custom:functional-v2",
+            "title": "Villawachitos",
+            "theme": "auto",
+            "weather": "weather.forecast_casa",
+            "alarm": "alarm_control_panel.alarma_vivienda",
+            "idle_return_seconds": 180,
+            "priority_alerts": true,
+            "marker_positions": {
+              "airfryer:Freidora de aire": [
+                -6.12,
+                0.35
+              ],
+              "alarm_control_panel.alarma_vivienda": [
+                -3.97,
+                -3.2
+              ],
+              "binary_sensor.cam_exterior_este_motion_2": [
+                8.21,
+                -5.55
+              ],
+              "binary_sensor.cam_garaje_motion": [
+                -9.44,
+                -5.9
+              ],
+              "binary_sensor.cam_patio_lavadero_motion_2": [
+                -8.63,
+                -3.99
+              ],
+              "binary_sensor.cam_piscina_este_motion": [
+                8.35,
+                6.31
+              ],
+              "binary_sensor.cam_piscina_oeste_motion_2": [
+                -7.1,
+                5.19
+              ],
+              "binary_sensor.sensor_agua_dreame_water_leak": [
+                1.05,
+                -0.42
+              ],
+              "cover.persiana_oficina_2_persiana": [
+                -0.19,
+                -5.74
+              ],
+              "cover.persiana_salon_1_persiana": [
+                -4.36,
+                4.5
+              ],
+              "cover.persiana_salon_2_persiana": [
+                -1.95,
+                4.45
+              ],
+              "dishwasher:Lavavajillas": [
+                -6.09,
+                2.61
+              ],
+              "energy:Instalación solar": [
+                -7.18,
+                -3.78
+              ],
+              "fridge:Frigorífico": [
+                -6.04,
+                3.32
+              ],
+              "gates": [
+                -8.92,
+                -9.26
+              ],
+              "hvac:climate.aidoo_28_cc_ff_82_82_6f": [
+                -6.12,
+                -3.27
+              ],
+              "light.bano_1_bano_1_luz_hornacina_bano_1": [
+                6.57,
+                2.19
+              ],
+              "light.bano_1_bano_1_luz_techo_bano_1": [
+                6.83,
+                4.68
+              ],
+              "light.bano_2_esp_bano_2_luz_aplique_pasillo": [
+                3.25,
+                -2.38
+              ],
+              "light.bano_2_esp_bano_2_luz_hornacina_bano_2": [
+                1.24,
+                -5.28
+              ],
+              "light.bano_2_esp_bano_2_luz_techo_bano_2": [
+                2.04,
+                -3.61
+              ],
+              "light.bano_2_esp_bano_2_luz_techo_pasillo": [
+                2.57,
+                -1.85
+              ],
+              "light.cocina_esp_cocina_luz_isla_cocina": [
+                -4.28,
+                2.1
+              ],
+              "light.cocina_esp_cocina_luz_techo_cocina": [
+                -5.17,
+                2.06
+              ],
+              "light.dormitorio_3_persiana_dormitorio_3_luz_mesita": [
+                4.26,
+                -5.28
+              ],
+              "light.dormitorio_3_persiana_dormitorio_3_luz_mesita_2": [
+                5.98,
+                -5.28
+              ],
+              "light.dormitorio_3_persiana_dormitorio_3_luz_techo_2": [
+                6.25,
+                -3.08
+              ],
+              "light.enchufe_luz_nube_infantil": [
+                1.87,
+                5.37
+              ],
+              "light.lampara_blanca_exterior": [
+                -6.1,
+                7.11
+              ],
+              "light.luz_cajones": [
+                1.71,
+                0.92
+              ],
+              "light.luz_fregadero_cocina": [
+                -6.15,
+                1.91
+              ],
+              "light.luz_mesita_noche_dorm_1": [
+                5.2,
+                2.56
+              ],
+              "light.jardin_sur_luz_piscina": [
+                -1.26,
+                11.09
+              ],
+              "light.oficina_1_lampara_mueble_oficina_1": [
+                -1.94,
+                -2.87
+              ],
+              "light.oficina_1_persiana_oficina_1_luz_techo": [
+                -2.58,
+                -4.2
+              ],
+              "light.oficina_1_wled_cortinero_oficina_1": [
+                -1.99,
+                -5.55
+              ],
+              "light.oficina_2_lampara_pro_mi_1": [
+                -1.03,
+                -3.48
+              ],
+              "light.oficina_2_lampara_pro_mi_2_mijia_desk_lamp_sw": [
+                -1.04,
+                -5.01
+              ],
+              "light.oficina_2_wled_cortinero_oficina_2": [
+                0.47,
+                -5.52
+              ],
+              "light.persiana_oficina_2_luz_techo": [
+                -0.22,
+                -4.23
+              ],
+              "light.salon_esp_entrada_luz_cuadro_entrada": [
+                -5.35,
+                -1.82
+              ],
+              "light.salon_esp_entrada_luz_exterior_barbacoa": [
+                -6.85,
+                2.68
+              ],
+              "light.salon_esp_entrada_luz_exterior_lavadero": [
+                -8.18,
+                -1.74
+              ],
+              "light.salon_esp_entrada_luz_mamposteria_entrada": [
+                -6.49,
+                -4.87
+              ],
+              "light.salon_esp_entrada_luz_techo_entrada": [
+                -4.93,
+                -3.19
+              ],
+              "light.salon_esp_entrada_luz_techo_lavadero": [
+                -7.06,
+                -1.48
+              ],
+              "light.salon_persiana_salon_3_luz_aplique_pasillo_salon": [
+                -1.33,
+                -2.29
+              ],
+              "light.salon_persiana_salon_3_luz_techo_salon": [
+                -0.95,
+                1.44
+              ],
+              "light.wled_gledopto": [
+                -3.29,
+                4.24
+              ],
+              "litter:Arenero": [
+                -6.01,
+                -1.19
+              ],
+              "lock:lock.jardin_norte_portero_automatico_exterior_duox_zero": [
+                -4.12,
+                -8.95
+              ],
+              "media_player.fire_tv_dormitorio": [
+                5.34,
+                5.36
+              ],
+              "media_player.oficina_1_shellywalldisplay_oficina1": [
+                -3.18,
+                -2.6
+              ],
+              "media_player.oficina_2_shellywalldisplay_oficina2": [
+                -0.77,
+                -2.55
+              ],
+              "media_player.shelly_salon_sur": [
+                -5.51,
+                4.23
+              ],
+              "presence:binary_sensor.oficina_1_shellywalldisplay_oficina1_ocupacion": [
+                -3.16,
+                -2.74
+              ],
+              "presence:binary_sensor.oficina_2_shellywalldisplay_oficina2_ocupacion": [
+                -0.46,
+                -2.71
+              ],
+              "presence:binary_sensor.sensor_movimiento_vestidor_occupancy": [
+                3.39,
+                -0.26
+              ],
+              "printer:sensor.epson_et_5150_series": [
+                -3.64,
+                -3.84
+              ],
+              "sensor.shelly_salon_sur_temperatura": [
+                -5.89,
+                4.17
+              ],
+              "switch:switch.interruptor_ventilacion_forzada": [
+                -6.55,
+                -3.24
+              ],
+              "switch:switch.t34_smart_plug_interruptor_1": [
+                -3.57,
+                -5.33
+              ],
+              "towel:switch.esp_bano_2_luz_toallero_bano_2": [
+                2.77,
+                -4.11
+              ],
+              "tv:media_player.salon_tv_samsung_salon_85": [
+                0.93,
+                1.18
+              ],
+              "vacuum:vacuum.limpiasuelos": [
+                1,
+                -1.05
+              ],
+              "washer:switch.enchufe_lavadora": [
+                -5.99,
+                -2.46
+              ]
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

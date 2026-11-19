@@ -2,11 +2,50 @@
   "bundle": "dist/functional-v2.js",
   "wwwDir": "/config/www/functional-v2",
   "card": "dashboard.config.json",
-  "dashboard": {
-    "url_path": "functional-v2",
-    "title": "Functional v2",
-    "icon": "mdi:home-heart"
-  },
+  "dashboards": [
+    {
+      "url_path": "functional-v2",
+      "title": "Casa General",
+      "icon": "mdi:home-heart",
+      "show_in_sidebar": true
+    },
+    {
+      "url_path": "shelly-x2i-oficina-1",
+      "title": "Shelly X2i Oficina 1",
+      "icon": "mdi:desk",
+      "show_in_sidebar": false,
+      "view": {
+        "path": "oficina-1"
+      }
+    },
+    {
+      "url_path": "shelly-x2i-oficina-2",
+      "title": "Shelly X2i Oficina 2",
+      "icon": "mdi:laptop",
+      "show_in_sidebar": false,
+      "view": {
+        "path": "oficina-2"
+      }
+    },
+    {
+      "url_path": "shelly-salon-sur",
+      "title": "Shelly Salón Sur",
+      "icon": "mdi:overscan",
+      "show_in_sidebar": false,
+      "view": {
+        "path": "salon-sur"
+      }
+    },
+    {
+      "url_path": "shelly-salon-este",
+      "title": "Shelly Salón Este",
+      "icon": "mdi:sofa",
+      "show_in_sidebar": false,
+      "view": {
+        "path": "salon"
+      }
+    }
+  ],
   "view": {
     "title": "Casa",
     "path": "main"

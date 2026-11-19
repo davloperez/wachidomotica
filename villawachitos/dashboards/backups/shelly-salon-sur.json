@@ -1,0 +1,280 @@
+{
+  "dashboard": {
+    "id": "shelly_salon_sur",
+    "show_in_sidebar": false,
+    "icon": "mdi:overscan",
+    "title": "Shelly Salón Sur",
+    "require_admin": false,
+    "mode": "storage",
+    "url_path": "shelly-salon-sur"
+  },
+  "config": {
+    "kiosk_mode": {
+      "hide_header": true
+    },
+    "views": [
+      {
+        "title": "Salón Sur",
+        "path": "salon-sur",
+        "icon": "mdi:overscan",
+        "type": "sections",
+        "max_columns": 1,
+        "sections": [
+          {
+            "type": "grid",
+            "cards": [
+              {
+                "type": "heading",
+                "heading": "Persianas salón",
+                "heading_style": "subtitle",
+                "icon": "mdi:blinds-horizontal"
+              },
+              {
+                "type": "tile",
+                "entity": "cover.persianas_salon",
+                "name": "Las 3",
+                "icon": "mdi:blinds-horizontal",
+                "tap_action": {
+                  "action": "more-info"
+                },
+                "features": [
+                  {
+                    "type": "cover-open-close"
+                  }
+                ],
+                "features_position": "inline",
+                "grid_options": {
+                  "columns": 12,
+                  "rows": 1
+                }
+              },
+              {
+                "type": "tile",
+                "entity": "cover.persiana_salon_1_persiana",
+                "name": "Salón 1",
+                "icon": "mdi:blinds-horizontal",
+                "tap_action": {
+                  "action": "more-info"
+                },
+                "features": [
+                  {
+                    "type": "cover-open-close"
+                  }
+                ],
+                "grid_options": {
+                  "columns": 4,
+                  "rows": 3
+                },
+                "vertical": true
+              },
+              {
+                "type": "tile",
+                "entity": "cover.persiana_salon_2_persiana",
+                "name": "Salón 2",
+                "icon": "mdi:blinds-horizontal",
+                "tap_action": {
+                  "action": "more-info"
+                },
+                "features": [
+                  {
+                    "type": "cover-open-close"
+                  }
+                ],
+                "grid_options": {
+                  "columns": 4,
+                  "rows": 3
+                },
+                "vertical": true
+              },
+              {
+                "type": "tile",
+                "entity": "cover.persiana_salon_3_persiana",
+                "name": "Salón 3",
+                "icon": "mdi:blinds-horizontal",
+                "tap_action": {
+                  "action": "more-info"
+                },
+                "features": [
+                  {
+                    "type": "cover-open-close"
+                  }
+                ],
+                "grid_options": {
+                  "columns": 4,
+                  "rows": 3
+                },
+                "vertical": true
+              },
+              {
+                "type": "heading",
+                "heading": "Jardín y piscina",
+                "heading_style": "subtitle",
+                "icon": "mdi:pool"
+              },
+              {
+                "type": "tile",
+                "entity": "light.luz_piscina",
+                "name": "Luz piscina",
+                "icon": "mdi:pool",
+                "tap_action": {
+                  "action": "toggle"
+                },
+                "icon_tap_action": {
+                  "action": "toggle"
+                },
+                "hold_action": {
+                  "action": "more-info"
+                },
+                "grid_options": {
+                  "columns": 4,
+                  "rows": 1
+                }
+              },
+              {
+                "type": "tile",
+                "entity": "light.lampara_blanca_exterior",
+                "name": "Lámpara",
+                "icon": "mdi:outdoor-lamp",
+                "tap_action": {
+                  "action": "toggle"
+                },
+                "icon_tap_action": {
+                  "action": "toggle"
+                },
+                "hold_action": {
+                  "action": "more-info"
+                },
+                "grid_options": {
+                  "columns": 4,
+                  "rows": 1
+                }
+              },
+              {
+                "type": "tile",
+                "entity": "switch.interruptor_depuradora",
+                "name": "Depuradora",
+                "icon": "mdi:pump",
+                "color": "cyan",
+                "tap_action": {
+                  "action": "toggle",
+                  "confirmation": {
+                    "text": "¿Cambiar el estado de la depuradora?"
+                  }
+                },
+                "icon_tap_action": {
+                  "action": "toggle",
+                  "confirmation": {
+                    "text": "¿Cambiar el estado de la depuradora?"
+                  }
+                },
+                "hold_action": {
+                  "action": "more-info"
+                },
+                "grid_options": {
+                  "columns": 4,
+                  "rows": 1
+                }
+              },
+              {
+                "type": "heading",
+                "heading": "Cocina",
+                "heading_style": "subtitle",
+                "icon": "mdi:countertop",
+                "badges": [
+                  {
+                    "type": "button",
+                    "icon": "mdi:lightbulb-group-off",
+                    "color": "red",
+                    "tap_action": {
+                      "action": "perform-action",
+                      "perform_action": "light.turn_off",
+                      "target": {
+                        "area_id": "cocina"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "type": "tile",
+                "entity": "light.cocina_esp_cocina_luz_techo_cocina",
+                "name": "Techo",
+                "icon": "mdi:ceiling-light",
+                "tap_action": {
+                  "action": "toggle"
+                },
+                "icon_tap_action": {
+                  "action": "toggle"
+                },
+                "hold_action": {
+                  "action": "more-info"
+                },
+                "grid_options": {
+                  "columns": 6,
+                  "rows": 1
+                }
+              },
+              {
+                "type": "tile",
+                "entity": "light.cocina_esp_cocina_luz_isla_cocina",
+                "name": "Isla",
+                "icon": "mdi:light-recessed",
+                "tap_action": {
+                  "action": "toggle"
+                },
+                "icon_tap_action": {
+                  "action": "toggle"
+                },
+                "hold_action": {
+                  "action": "more-info"
+                },
+                "grid_options": {
+                  "columns": 6,
+                  "rows": 1
+                }
+              },
+              {
+                "type": "tile",
+                "entity": "light.led_barra_isla",
+                "name": "Barra isla",
+                "icon": "mdi:led-strip-variant",
+                "tap_action": {
+                  "action": "toggle"
+                },
+                "icon_tap_action": {
+                  "action": "toggle"
+                },
+                "hold_action": {
+                  "action": "more-info"
+                },
+                "grid_options": {
+                  "columns": 6,
+                  "rows": 1
+                }
+              },
+              {
+                "type": "tile",
+                "entity": "light.luz_fregadero_cocina",
+                "name": "Fregadero",
+                "icon": "mdi:faucet",
+                "tap_action": {
+                  "action": "toggle"
+                },
+                "icon_tap_action": {
+                  "action": "toggle"
+                },
+                "hold_action": {
+                  "action": "more-info"
+                },
+                "grid_options": {
+                  "columns": 6,
+                  "rows": 1
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

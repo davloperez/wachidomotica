@@ -134,6 +134,11 @@ export class FloorPlan extends LitElement {
     this.frame(this.frameBox, true);
   }
 
+  /** Como `reset`, pero solo si se ha movido o ampliado el plano a mano (vuelta por inactividad). */
+  recenter(): void {
+    if (this.userMoved) this.reset();
+  }
+
   private fitScale(b: Box, fill = 0.96): number {
     return Math.min((this.w / b.w) * fill, ((this.h - this.padTop) / b.h) * fill);
   }

@@ -30,12 +30,39 @@ so prefer `?mock` when clicking controls to test.
 
 ## Shared plumbing
 
-- `shared/scripts/deploy.mjs` reads each dashboard's `deploy.json` (bundle, wwwDir, dashboard url_path, kiosk,
-  `assets` folders) and pushes `dashboard.config.json` as the card config. The repo is the source of truth for
-  the HA dashboard config.
+- `shared/scripts/deploy.mjs` reads each dashboard's `deploy.json` (bundle, wwwDir, `dashboard` or a `dashboards`
+  list, kiosk, `assets` folders) and pushes `dashboard.config.json` as the card config to **every** listed HA
+  dashboard (creating it, or syncing title/icon/show_in_sidebar if they differ). The repo is the source of truth for
+  those HA dashboard configs: a deploy overwrites whatever was edited in the HA UI.
 - `shared/scripts/check-bundle.mjs` fails the build if the bundle contains `process.env`, dev credential
   markers or a JWT. Credentials are only injected via `__DEV_HA_URL__` / `__DEV_HA_TOKEN__` in `vite serve`.
 - `.env` lives in `villawachitos/dashboards/.env` (see `.env.example`); a per-dashboard `.env` overrides it.
+
+## functional-v2: one card, several HA dashboards
+
+The same `custom:functional-v2` card (same bundle, same `dashboard.config.json`) is published to all the
+dashboards in `functional-v2/deploy.json` → `dashboards`. Only the **default view** differs, chosen at runtime from
+the URL's first path segment (the dashboard `url_path`) via `DEFAULT_VIEWS` in `src/lib/panels.ts`:
+
+| HA dashboard (title → `url_path`) | Default view |
+| --- | --- |
+| Casa General → `functional-v2` (HA's default dashboard; renamed from "Functional v2", url_path kept) | `home` (Casa) |
+| Shelly X2i Oficina 1 → `shelly-x2i-oficina-1` | `oficina_1` |
+| Shelly X2i Oficina 2 → `shelly-x2i-oficina-2` | `oficina_2` |
+| Shelly Salón Sur → `shelly-salon-sur` | `salon` |
+| Shelly Salón Este → `shelly-salon-este` | `salon` |
+
+- The panel starts in that view and, after `idle_return_seconds` without touches, returns to it (closing sheets
+  and layers, and re-framing the plan if it was panned/zoomed). Every panel can still navigate the whole house.
+- **Adding/removing a wall panel** = add/remove it in **both** `deploy.json` `dashboards` and `DEFAULT_VIEWS`, and
+  update the table in the dashboard `README.md` and here. Values are `HOME` or a room `id` from `house/rooms.ts`;
+  unknown dashboards fall back to `HOME`.
+- Never hand-edit those dashboards in HA (the next deploy overwrites them). Dashboard-specific behaviour goes in
+  `panels.ts`, not in per-dashboard card configs.
+- The Shelly entries in `deploy.json` keep their old HA view paths (`view.path`: `oficina-1`, `oficina-2`,
+  `salon-sur`, `salon`) so the URLs saved on the devices still work; Casa General uses `main`. The view path does
+  not matter to the card (it only reads the `url_path`).
+- Dev: `?panel=<url_path>` simulates a dashboard, e.g. `/dev/index.html?mock&panel=shelly-salon-sur`.
 
 ## functional-v2 map
 
@@ -44,7 +71,8 @@ no `backdrop-filter`/`filter`), animate only `transform`/`opacity` (never `box-s
 
 | File | Role |
 | --- | --- |
-| `src/functional-dashboard.ts` | Root: layout (plan on top / left, cards below / right, room dock), plan markers, routing, priority alerts |
+| `src/functional-dashboard.ts` | Root: layout (plan on top / left, cards below / right, room dock), plan markers, routing, idle return, priority alerts |
+| `src/lib/panels.ts` | `DEFAULT_VIEWS`: HA dashboard `url_path` → default view (see section above) |
 | `src/plan/house-plan.ts` | Floor-plan geometry: rooms, walls, lamps, furniture, gates, pool |
 | `src/plan/geometry.ts` | 2D geometry from the plan (world px, `PX` per metre), static SVG strings, framing boxes |
 | `src/plan/floor-plan.ts` | `fv2-plan`: pan/pinch/wheel/double-tap zoom on a single transformed layer; markers are slotted and keep size via `--inv` |
