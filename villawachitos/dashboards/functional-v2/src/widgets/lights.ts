@@ -51,7 +51,50 @@ export function lightIcon(entity: string): string {
   }
 }
 
-/** Mosaico de una luz: tocar enciende/apaga; el deslizador regula; el icono de ajustes abre el detalle. */
+/** Tiras WLED (cortineros del salón y de las oficinas): tienen presets en lugar de deslizador. */
+export const isWled = (entity: string): boolean => /wled/.test(entity);
+
+export interface WledPreset {
+  id: string;
+  label: string;
+  data: Record<string, unknown>;
+}
+
+/** Presets de las tiras WLED (RGBW). */
+export const WLED_PRESETS: WledPreset[] = [
+  {
+    id: "ambiente",
+    label: "Ambiente",
+    data: { effect: "Solid", rgbw_color: [40, 15, 0, 255], brightness_pct: 30 },
+  },
+  { id: "aurora", label: "Aurora", data: { effect: "Pacifica", brightness_pct: 70 } },
+  {
+    id: "calido",
+    label: "Cálido",
+    data: { effect: "Solid", rgbw_color: [255, 70, 0, 15], brightness_pct: 60 },
+  },
+  {
+    id: "maximo",
+    label: "Máximo",
+    data: { effect: "Solid", rgbw_color: [255, 255, 255, 255], brightness_pct: 100 },
+  },
+];
+
+/** Efectos que se ofrecen en la hoja de una tira WLED. */
+const WLED_EFFECTS = ["Solid", "Random Colors", "Dynamic", "Scan", "Pacifica", "Rainbow"];
+
+export function applyWledPreset(hass: HomeAssistant | undefined, entity: string, id: string): void {
+  const p = WLED_PRESETS.find((x) => x.id === id);
+  if (p) call(hass, "light", "turn_on", { entity_id: entity, ...p.data });
+}
+
+/** Tocar una luz: la apaga si está encendida; si está apagada la enciende (las tiras WLED, en modo Ambiente). */
+export function toggleLight(hass: HomeAssistant | undefined, entity: string): void {
+  if (isWled(entity) && st(hass, entity)?.state !== "on") applyWledPreset(hass, entity, "ambiente");
+  else call(hass, "light", "toggle", { entity_id: entity });
+}
+
+/** Mosaico de una luz: tocar enciende/apaga; el deslizador regula (o los presets, en las WLED); el icono de ajustes abre el detalle. */
 @customElement("fv2-light-tile")
 export class LightTile extends LitElement {
   @property({ attribute: false }) hass?: HomeAssistant;
@@ -72,6 +115,7 @@ export class LightTile extends LitElement {
     const off = isUnavailable(e);
     const on = e?.state === "on";
     const dim = isDimmable(e);
+    const wled = isWled(this.entity);
     const pct = this.draft ?? brightnessPct(e);
     const color = lightColor(e);
     const extra = dim || ((e?.attributes.effect_list as string[] | undefined)?.length ?? 0) > 0;
@@ -79,7 +123,7 @@ export class LightTile extends LitElement {
       <div
         class="tile ${on ? "on" : ""} ${off ? "na" : ""}"
         style="--lamp:${color}"
-        @click=${() => !off && call(this.hass, "light", "toggle", { entity_id: this.entity })}
+        @click=${() => !off && toggleLight(this.hass, this.entity)}
       >
         <span class="bulb">${icon(lightIcon(this.entity))}</span>
         <div class="txt">
@@ -109,7 +153,19 @@ export class LightTile extends LitElement {
         <span class="toggle amber ${on ? "on" : ""}"></span>
       </div>
       ${
-        dim && !off
+        wled && !off
+          ? html`<div class="presets">
+              ${WLED_PRESETS.map(
+                (p) =>
+                  html`<button class="preset" @click=${() => applyWledPreset(this.hass, this.entity, p.id)}>
+                    ${p.label}
+                  </button>`,
+              )}
+            </div>`
+          : nothing
+      }
+      ${
+        dim && !off && !wled
           ? html`<fv2-slider
               variant="thin"
               min="1"
@@ -194,6 +250,23 @@ export class LightTile extends LitElement {
         font-size: var(--fs-label);
         color: var(--text-muted);
       }
+      .presets {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 6px;
+      }
+      .preset {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 8px 4px;
+        border-radius: var(--radius-sm);
+        background: var(--glass-strong);
+        color: var(--text);
+        font-size: var(--fs-label);
+        font-weight: 600;
+      }
       .mini {
         display: grid;
         place-items: center;
@@ -251,7 +324,8 @@ export class LightSheet extends LitElement {
     const modes = (a.supported_color_modes as string[] | undefined) ?? ["onoff"];
     const hasTemp = modes.includes("color_temp");
     const hasColor = modes.some((m) => COLOR_MODES.includes(m));
-    const effects = (a.effect_list as string[] | undefined) ?? [];
+    const allFx = (a.effect_list as string[] | undefined) ?? [];
+    const effects = isWled(this.entity) ? WLED_EFFECTS.filter((fx) => allFx.includes(fx)) : allFx;
     const pct = this.draft.b ?? brightnessPct(e);
     const minK = (a.min_color_temp_kelvin as number | undefined) ?? 2200;
     const maxK = (a.max_color_temp_kelvin as number | undefined) ?? 6500;

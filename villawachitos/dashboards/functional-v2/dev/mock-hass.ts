@@ -38,7 +38,7 @@ export function createMockHass(getDarkMode: () => boolean, onUpdate: (hass: Home
         brightness: modes[0] === "onoff" ? null : Math.round(60 + Math.random() * 190),
         rgb_color: kind === "strip" ? [255, 170, 110] : [255, 200, 140],
         ...(kind === "strip"
-          ? { effect_list: ["Solid", "Breathe", "Candle", "Fire 2012", "Ocean"], effect: "Solid" }
+          ? { effect_list: ["Solid", "Breathe", "Random Colors", "Dynamic", "Scan", "Pacifica", "Rainbow", "Candle"], effect: "Solid" }
           : {}),
         ...(kind === "lamp"
           ? { min_color_temp_kelvin: 2700, max_color_temp_kelvin: 6500, color_temp_kelvin: 3000 }

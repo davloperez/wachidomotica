@@ -67,11 +67,19 @@ piscina, suelos de cada estancia, muros con sus puertas y ventanas, muebles, val
 
 ### Qué se ve en cada vista
 
-| Vista    | Marcadores                                                                                                                                                                                                          |
-| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Casa     | Acceso de cada estancia, luces encendidas (punto que late), lo que está en marcha, persianas moviéndose y avisos. Tocar uno lleva a su estancia                                                                     |
-| Estancia | Todas sus luces (tocar enciende/apaga, mantener pulsado abre el detalle) y todos sus dispositivos, persianas y sensores. Solo se rotula lo encendido o con aviso; tocar un marcador lleva a su tarjeta y la resalta |
-| Capa     | Todo lo de la capa en la casa (con muchos elementos, puntos más pequeños y, de lejos, solo se rotula lo activo)                                                                                                     |
+| Vista    | Marcadores                                                                                                                                                                                                                                                        |
+| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Casa     | Acceso de cada estancia, luces encendidas (punto que late), lo que está en marcha, persianas moviéndose y avisos. Tocar uno lleva a su estancia                                                                                                                   |
+| Estancia | Todas sus luces (tocar enciende/apaga, mantener pulsado abre el detalle; las tiras WLED se encienden en modo Ambiente) y todos sus dispositivos, persianas y sensores. Solo se rotula lo encendido o con aviso; tocar un marcador lleva a su tarjeta y la resalta |
+| Capa     | Todo lo de la capa en la casa (con muchos elementos, puntos más pequeños y, de lejos, solo se rotula lo activo)                                                                                                                                                   |
+
+### Tiras WLED
+
+Las tres tiras WLED (cortineros del salón, oficina 1 y oficina 2) no llevan deslizador de intensidad sino cuatro
+presets: **Ambiente** (blanco cálido sólido al 30 %), **Aurora** (efecto Pacifica, verdes y azules), **Cálido**
+(sólido rojo-naranja con muy poco blanco) y **Máximo** (blanco brillante al 100 %). Tocar la tira en el plano o su
+mosaico estando apagada la enciende en Ambiente. El icono de ajustes abre el detalle, que ofrece los efectos
+Solid, Random Colors, Dynamic, Scan, Pacifica y Rainbow.
 
 ### Deslizadores y scroll en la pantalla táctil
 

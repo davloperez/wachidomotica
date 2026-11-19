@@ -271,8 +271,7 @@ export const ROOMS_DEF: RoomDef[] = [
       {
         type: "switch",
         name: "Ambientador",
-        entity: "switch.t34_smart_plug_interruptor_1",
-        power: "sensor.t34_smart_plug_potencia",
+        entity: "switch.enchufe_ambientador",
         // Dosificación periódica (automatización «Ambientador periódico»): una descarga de 10 s cada X minutos
         dose: {
           script: "script.ambientador_descarga",

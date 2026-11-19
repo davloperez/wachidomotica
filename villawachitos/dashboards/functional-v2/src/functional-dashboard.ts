@@ -22,7 +22,7 @@ import {
 import type { DashboardConfig, HomeAssistant, ThemeMode } from "./types";
 import { shared, tokens } from "./styles/tokens";
 import { LuxTheme, loadThemeMode, resolveTheme, saveThemeMode } from "./lib/theme";
-import { call, fmt, icon, isOn, lightColor, num, relTime, st } from "./lib/ha";
+import { fmt, icon, isOn, lightColor, num, relTime, st } from "./lib/ha";
 import { ROOMS_DEF, ROOM_BY_ID, lampPos, type DeviceDef, type RoomDef } from "./house/rooms";
 import {
   LAYERS,
@@ -35,7 +35,7 @@ import {
   type LayerItem,
 } from "./house/layers";
 import { deviceIcon, deviceBrief } from "./widgets/devices";
-import { lightIcon } from "./widgets/lights";
+import { lightIcon, toggleLight } from "./widgets/lights";
 import { GATES } from "./plan/house-plan";
 import { HOME_BOX, fromWorld, roomAnchor, roomBox, toWorld, unionBox, type Box } from "./plan/geometry";
 import type { FloorPlan } from "./plan/floor-plan";
@@ -730,7 +730,7 @@ export class FunctionalDashboard extends LitElement {
         @click=${() => {
           window.clearTimeout(this.press);
           if (this.press !== -1) {
-            call(this.hass, "light", "toggle", { entity_id: it.entity });
+            toggleLight(this.hass, it.entity);
             after?.();
           }
           this.press = 0;

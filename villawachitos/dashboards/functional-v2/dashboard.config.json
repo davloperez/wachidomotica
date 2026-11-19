@@ -68,7 +68,7 @@
     "printer:sensor.epson_et_5150_series": [-3.64, -3.84],
     "sensor.shelly_salon_sur_temperatura": [-5.89, 4.17],
     "switch:switch.interruptor_ventilacion_forzada": [-6.55, -3.24],
-    "switch:switch.t34_smart_plug_interruptor_1": [-3.57, -5.33],
+    "switch:switch.enchufe_ambientador": [-3.57, -5.33],
     "towel:switch.esp_bano_2_luz_toallero_bano_2": [2.77, -4.11],
     "tv:media_player.salon_tv_samsung_salon_85": [0.93, 1.18],
     "vacuum:vacuum.limpiasuelos": [1, -1.05],
