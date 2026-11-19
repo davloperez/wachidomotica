@@ -38,9 +38,9 @@ export function resolveTheme(
 }
 
 /** Por debajo de estos lux se pasa a oscuro… */
-export const LUX_DARK_BELOW = 10;
+export const LUX_DARK_BELOW = 50;
 /** …y por encima de estos, a claro (entre medias se mantiene el tema actual, para no parpadear al atardecer). */
-export const LUX_LIGHT_ABOVE = 25;
+export const LUX_LIGHT_ABOVE = 70;
 /** Tiempo que tiene que mantenerse la nueva lectura antes de cambiar (una sombra o alguien delante no cuenta). */
 export const LUX_HOLD_MS = 90_000;
 

@@ -55,7 +55,7 @@ and the panel's own **lux sensor** (drives the "auto" theme):
 
 - The panel starts in that view and, after `idle_return_seconds` without touches, returns to it (closing sheets
   and layers, and re-framing the plan if it was panned/zoomed). Every panel can still navigate the whole house.
-- Auto theme with a lux sensor = `LuxTheme` in `src/lib/theme.ts`: dark < 10 lx, light > 25 lx (hysteresis), a
+- Auto theme with a lux sensor = `LuxTheme` in `src/lib/theme.ts`: dark < 50 lx, light > 70 lx (hysteresis), a
   change must hold 90 s; first reading applies at once; unavailable sensor keeps the last decision, or falls back
   to HA dark mode if there never was one. The manual "Tema" button (light/dark, saved per browser) overrides it.
   The Shelly sensors mostly read daylight (≈0–5 lx at night even with lights on). Dev: `?mock` dev-bar **Luz**.

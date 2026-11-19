@@ -14,7 +14,7 @@ con colores tranquilos (lino, salvia, terracota y ámbar), pero:
 - Respeta «reducir movimiento» del sistema (se paran todas las animaciones).
 
 Tema claro, oscuro o auto (botón «Tema» al final de la barra inferior). En **auto**, cada panel Shelly usa su
-**sensor de luz**: por debajo de 10 lx pasa a oscuro y por encima de 25 lx a claro (entre medias se queda como
+**sensor de luz**: por debajo de 50 lx pasa a oscuro y por encima de 70 lx a claro (entre medias se queda como
 está), y solo cambia si la lectura se mantiene 90 s, para que una sombra o alguien delante no lo hagan parpadear. Los
 sensores miden sobre todo luz natural (de noche marcan casi 0 aunque haya luces), así que de día queda claro y al
 anochecer oscuro. Sin sensor (Casa General en móviles u ordenador) o si el sensor no responde, auto sigue el modo

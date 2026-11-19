@@ -319,14 +319,14 @@ export function createMockHass(getDarkMode: () => boolean, onUpdate: (hass: Home
   });
   // Sensores de luz de las Shelly: alterna entre de día y de noche (tema «auto» de los paneles)
   window.addEventListener("fv2-dev-lux", () => {
-    const night = Number(states["sensor.shelly_salon_sur_iluminancia"]?.state) >= 10;
+    const night = Number(states["sensor.shelly_salon_sur_iluminancia"]?.state) >= 50;
     for (const id of [
       "sensor.shelly_salon_sur_iluminancia",
       "sensor.shellywalldisplay_0205030bbdd8_iluminancia",
       "sensor.oficina_1_shellywalldisplay_oficina1_iluminancia",
       "sensor.oficina_2_shellywalldisplay_oficina2_iluminancia",
     ])
-      set(id, night ? "3" : String(Math.round(60 + Math.random() * 600)), { unit_of_measurement: "lx" });
+      set(id, night ? "3" : String(Math.round(200 + Math.random() * 600)), { unit_of_measurement: "lx" });
     emit();
   });
   // Persianas y portero: el mock "mueve" la persiana unos segundos y vuelve a cerrar la puerta
