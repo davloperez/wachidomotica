@@ -382,7 +382,7 @@ export class PumpSheet extends LitElement {
         display: flex;
         justify-content: space-between;
         color: var(--text-faint);
-        font-size: 10px;
+        font-size: calc(10px * var(--fs-scale));
       }
     `,
   ];

@@ -212,7 +212,7 @@ export class AreaChart extends Sized {
       overflow: visible;
     }
     .axis {
-      font-size: 9.5px;
+      font-size: calc(9.5px * var(--fs-scale));
       font-family: var(--font-ui);
       opacity: 0.75;
       paint-order: stroke;
@@ -224,7 +224,7 @@ export class AreaChart extends Sized {
       stroke-width: 1.6;
     }
     .extv {
-      font-size: 10px;
+      font-size: calc(10px * var(--fs-scale));
       font-weight: 600;
       font-family: var(--font-ui);
       paint-order: stroke;
@@ -236,7 +236,7 @@ export class AreaChart extends Sized {
       flex-wrap: wrap;
       gap: 4px 14px;
       margin-top: 6px;
-      font-size: 11px;
+      font-size: calc(11px * var(--fs-scale));
       font-family: var(--font-ui);
       color: var(--text-muted);
     }
@@ -269,11 +269,11 @@ export class AreaChart extends Sized {
     }
     .tick {
       fill: var(--text-faint);
-      font-size: 10.5px;
+      font-size: calc(10.5px * var(--fs-scale));
       font-family: var(--font-ui);
     }
     .val {
-      font-size: 12px;
+      font-size: calc(12px * var(--fs-scale));
       font-weight: 700;
       font-family: var(--font-ui);
     }
@@ -397,7 +397,7 @@ export class BarChart extends Sized {
     }
     .tick {
       fill: var(--text-faint);
-      font-size: 10.5px;
+      font-size: calc(10.5px * var(--fs-scale));
       font-family: var(--font-ui);
     }
     .tick.cur {
@@ -406,7 +406,7 @@ export class BarChart extends Sized {
     }
     .val {
       fill: var(--text-muted);
-      font-size: 10.5px;
+      font-size: calc(10.5px * var(--fs-scale));
       font-weight: 700;
       font-family: var(--font-ui);
     }
@@ -559,13 +559,13 @@ export class Timeline extends Sized {
     }
     .label {
       fill: var(--text-muted);
-      font-size: 11.5px;
+      font-size: calc(11.5px * var(--fs-scale));
       font-weight: 600;
       font-family: var(--font-ui);
     }
     .tick {
       fill: var(--text-faint);
-      font-size: 10px;
+      font-size: calc(10px * var(--fs-scale));
       font-family: var(--font-ui);
     }
     .grid {
@@ -713,13 +713,13 @@ export class EnergyFlow extends Sized {
     }
     .lbl {
       fill: var(--text-muted);
-      font-size: 11px;
+      font-size: calc(11px * var(--fs-scale));
       font-weight: 600;
       font-family: var(--font-ui);
     }
     .v {
       fill: var(--text);
-      font-size: 13px;
+      font-size: calc(13px * var(--fs-scale));
       font-weight: 700;
       font-family: var(--font-ui);
     }

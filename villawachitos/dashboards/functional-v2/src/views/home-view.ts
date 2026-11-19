@@ -794,7 +794,7 @@ export class HomeView extends LitElement {
         height: 30px;
         border-radius: 50%;
         font-weight: 700;
-        font-size: 13px;
+        font-size: calc(13px * var(--fs-scale));
         background: var(--chip-strong);
         color: var(--text-faint);
         margin-right: -2px;

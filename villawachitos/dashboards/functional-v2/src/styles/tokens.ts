@@ -24,11 +24,25 @@ export const tokens = css`
     --fs-title: clamp(19px, 0.6vw + 16px, 24px);
     --fs-kpi: clamp(30px, 1.2vw + 24px, 42px);
     --fs-hero: clamp(30px, 1.6vw + 24px, 46px);
+    --fs-scale: 1;
 
     --col-w: 100%;
     --ease: cubic-bezier(0.22, 1, 0.36, 1);
     --ease-soft: cubic-bezier(0.45, 0, 0.2, 1);
     --zoom-ms: 450ms;
+  }
+
+  /* Vista móvil (pantalla estrecha): texto más grande en general */
+  @media (max-width: 600px) {
+    :host {
+      --fs-label: clamp(15px, 0.35vw + 13.5px, 16px);
+      --fs-small: clamp(16px, 0.4vw + 14.5px, 17px);
+      --fs-body: clamp(18px, 0.4vw + 16.5px, 19px);
+      --fs-title: clamp(22px, 0.6vw + 19px, 25px);
+      --fs-kpi: clamp(34px, 1.2vw + 28px, 44px);
+      --fs-hero: clamp(34px, 1.6vw + 28px, 48px);
+      --fs-scale: 1.25;
+    }
   }
 
   /*
