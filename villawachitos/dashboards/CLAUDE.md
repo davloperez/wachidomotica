@@ -41,28 +41,36 @@ so prefer `?mock` when clicking controls to test.
 ## functional-v2: one card, several HA dashboards
 
 The same `custom:functional-v2` card (same bundle, same `dashboard.config.json`) is published to all the
-dashboards in `functional-v2/deploy.json` → `dashboards`. Only the **default view** differs, chosen at runtime from
-the URL's first path segment (the dashboard `url_path`) via `DEFAULT_VIEWS` in `src/lib/panels.ts`:
+dashboards in `functional-v2/deploy.json` → `dashboards`. Only the per-panel settings differ, chosen at runtime from
+the URL's first path segment (the dashboard `url_path`) via `PANELS` in `src/lib/panels.ts`: the **default view**
+and the panel's own **lux sensor** (drives the "auto" theme):
 
-| HA dashboard (title → `url_path`) | Default view |
-| --- | --- |
-| Casa General → `functional-v2` (HA's default dashboard; renamed from "Functional v2", url_path kept) | `home` (Casa) |
-| Shelly X2i Oficina 1 → `shelly-x2i-oficina-1` | `oficina_1` |
-| Shelly X2i Oficina 2 → `shelly-x2i-oficina-2` | `oficina_2` |
-| Shelly Salón Sur → `shelly-salon-sur` | `salon` |
-| Shelly Salón Este → `shelly-salon-este` | `salon` |
+| HA dashboard (title → `url_path`) | Default view | Lux sensor (auto theme) |
+| --- | --- | --- |
+| Casa General → `functional-v2` (HA's default dashboard; renamed from "Functional v2", url_path kept) | `home` (Casa) | none → HA dark mode |
+| Shelly X2i Oficina 1 → `shelly-x2i-oficina-1` | `oficina_1` | `sensor.oficina_1_shellywalldisplay_oficina1_iluminancia` |
+| Shelly X2i Oficina 2 → `shelly-x2i-oficina-2` | `oficina_2` | `sensor.oficina_2_shellywalldisplay_oficina2_iluminancia` |
+| Shelly Cocina → `shelly-cocina` (replaced the old "Shelly Salón Sur" / `shelly-salon-sur`) | `cocina` | `sensor.shelly_salon_sur_iluminancia` |
+| Shelly Salón Este → `shelly-salon-este` | `salon` | `sensor.shellywalldisplay_0205030bbdd8_iluminancia` |
 
 - The panel starts in that view and, after `idle_return_seconds` without touches, returns to it (closing sheets
   and layers, and re-framing the plan if it was panned/zoomed). Every panel can still navigate the whole house.
-- **Adding/removing a wall panel** = add/remove it in **both** `deploy.json` `dashboards` and `DEFAULT_VIEWS`, and
+- Auto theme with a lux sensor = `LuxTheme` in `src/lib/theme.ts`: dark < 10 lx, light > 25 lx (hysteresis), a
+  change must hold 90 s; first reading applies at once; unavailable sensor keeps the last decision, or falls back
+  to HA dark mode if there never was one. The manual "Tema" button (light/dark, saved per browser) overrides it.
+  The Shelly sensors mostly read daylight (≈0–5 lx at night even with lights on). Dev: `?mock` dev-bar **Luz**.
+- **Adding/removing a wall panel** = add/remove it in **both** `deploy.json` `dashboards` and `PANELS` (with its
+  lux sensor, if the device has one), and
   update the table in the dashboard `README.md` and here. Values are `HOME` or a room `id` from `house/rooms.ts`;
   unknown dashboards fall back to `HOME`.
 - Never hand-edit those dashboards in HA (the next deploy overwrites them). Dashboard-specific behaviour goes in
   `panels.ts`, not in per-dashboard card configs.
-- The Shelly entries in `deploy.json` keep their old HA view paths (`view.path`: `oficina-1`, `oficina-2`,
-  `salon-sur`, `salon`) so the URLs saved on the devices still work; Casa General uses `main`. The view path does
+- The Shelly Oficina 1/2 and Salón Este entries in `deploy.json` keep their old HA view paths (`view.path`:
+  `oficina-1`, `oficina-2`, `salon`) so the URLs saved on the devices still work; Casa General and Shelly Cocina
+  use `main`. HA can't change a dashboard's `url_path`: renaming one means a new entry here, deleting the old
+  dashboard in HA (the deploy never deletes) and updating the URL on the device. The view path does
   not matter to the card (it only reads the `url_path`).
-- Dev: `?panel=<url_path>` simulates a dashboard, e.g. `/dev/index.html?mock&panel=shelly-salon-sur`.
+- Dev: `?panel=<url_path>` simulates a dashboard, e.g. `/dev/index.html?mock&panel=shelly-cocina`.
 
 ## functional-v2 map
 
@@ -72,7 +80,7 @@ no `backdrop-filter`/`filter`), animate only `transform`/`opacity` (never `box-s
 | File | Role |
 | --- | --- |
 | `src/functional-dashboard.ts` | Root: layout (plan on top / left, cards below / right, room dock), plan markers, routing, idle return, priority alerts |
-| `src/lib/panels.ts` | `DEFAULT_VIEWS`: HA dashboard `url_path` → default view (see section above) |
+| `src/lib/panels.ts` | `PANELS`: HA dashboard `url_path` → default view + lux sensor (see section above) |
 | `src/plan/house-plan.ts` | Floor-plan geometry: rooms, walls, lamps, furniture, gates, pool |
 | `src/plan/geometry.ts` | 2D geometry from the plan (world px, `PX` per metre), static SVG strings, framing boxes |
 | `src/plan/floor-plan.ts` | `fv2-plan`: pan/pinch/wheel/double-tap zoom on a single transformed layer; markers are slotted and keep size via `--inv` |

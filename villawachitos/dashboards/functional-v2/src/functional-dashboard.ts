@@ -21,7 +21,7 @@ import {
 
 import type { DashboardConfig, HomeAssistant, ThemeMode } from "./types";
 import { shared, tokens } from "./styles/tokens";
-import { loadThemeMode, resolveTheme, saveThemeMode } from "./lib/theme";
+import { LuxTheme, loadThemeMode, resolveTheme, saveThemeMode } from "./lib/theme";
 import { call, fmt, icon, isOn, lightColor, num, relTime, st } from "./lib/ha";
 import { ROOMS_DEF, ROOM_BY_ID, lampPos, type DeviceDef, type RoomDef } from "./house/rooms";
 import {
@@ -42,7 +42,7 @@ import type { FloorPlan } from "./plan/floor-plan";
 import { DOORBELL, PriorityWatcher, type PriorityAlert } from "./lib/priority";
 import type { RoomView } from "./views/room-view";
 import type { LayerView } from "./views/layer-view";
-import { HOME, defaultView } from "./lib/panels";
+import { HOME, currentPanel } from "./lib/panels";
 import "./plan/floor-plan";
 import "./views/home-view";
 import "./views/room-view";
@@ -117,8 +117,11 @@ export class FunctionalDashboard extends LitElement {
   @property({ attribute: false }) hass?: HomeAssistant;
   @state() private config: DashboardConfig = { type: "custom:functional-v2" };
   @state() private themeMode: ThemeMode = "auto";
-  /** Vista con la que arranca este dashboard y a la que vuelve por inactividad (ver `lib/panels.ts`) */
-  private readonly startView = defaultView();
+  /** Este dashboard (ver `lib/panels.ts`): vista con la que arranca y a la que vuelve por inactividad, y sensor de luz */
+  private readonly panel = currentPanel();
+  private readonly startView = this.panel.view;
+  /** Tema «auto» según el sensor de luz del propio panel (solo paneles de pared) */
+  private readonly lux = this.panel.lux ? new LuxTheme(this.panel.lux) : undefined;
   @state() private view = this.startView;
   @state() private sheet?: { entity: string; name: string };
   @state() private solarOpen = false;
@@ -171,6 +174,8 @@ export class FunctionalDashboard extends LitElement {
     this.idleTimer = window.setInterval(() => {
       this.checkIdle();
       if (this.alerts.length) this.tick++;
+      // Un cambio de tema por luz espera a mantenerse un rato: se reevalúa aunque no llegue un `hass` nuevo
+      else if (this.lux?.pending && this.themeMode === "auto") this.requestUpdate();
     }, 5000);
   }
 
@@ -416,7 +421,7 @@ export class FunctionalDashboard extends LitElement {
   }
 
   protected willUpdate(): void {
-    const theme = resolveTheme(this.themeMode, this.hass?.themes?.darkMode);
+    const theme = resolveTheme(this.themeMode, this.hass?.themes?.darkMode, this.lux?.update(this.hass));
     if (this.getAttribute("data-theme") !== theme) this.setAttribute("data-theme", theme);
     this.alerts = this.config.priority_alerts === false ? [] : this.priority.update(this.hass);
   }
@@ -899,7 +904,11 @@ export class FunctionalDashboard extends LitElement {
           ${icon(r.icon)}<span>${r.short ?? r.name}</span>
         </button>`;
       })}
-      <button class="tab theme" title="Tema: ${theme}" @click=${this.setTheme}>
+      <button
+        class="tab theme"
+        title="Tema: ${theme}${theme === "auto" && this.lux ? " (sensor de luz del panel)" : ""}"
+        @click=${this.setTheme}
+      >
         ${icon(themeIcon)}<span>Tema</span>
       </button>
       ${

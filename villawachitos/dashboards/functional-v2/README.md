@@ -13,25 +13,32 @@ con colores tranquilos (lino, salvia, terracota y ámbar), pero:
 - **Letra grande**: nada por debajo de 13 px y botones de al menos 44 px.
 - Respeta «reducir movimiento» del sistema (se paran todas las animaciones).
 
-Tema claro, oscuro o auto (botón «Tema» al final de la barra inferior).
+Tema claro, oscuro o auto (botón «Tema» al final de la barra inferior). En **auto**, cada panel Shelly usa su
+**sensor de luz**: por debajo de 10 lx pasa a oscuro y por encima de 25 lx a claro (entre medias se queda como
+está), y solo cambia si la lectura se mantiene 90 s, para que una sombra o alguien delante no lo hagan parpadear. Los
+sensores miden sobre todo luz natural (de noche marcan casi 0 aunque haya luces), así que de día queda claro y al
+anochecer oscuro. Sin sensor (Casa General en móviles u ordenador) o si el sensor no responde, auto sigue el modo
+oscuro de Home Assistant. Elegir claro u oscuro con el botón manda sobre el sensor (se recuerda en cada pantalla).
+Los umbrales están en [`src/lib/theme.ts`](src/lib/theme.ts).
 
-## Dashboards y vista por defecto
+## Dashboards, vista por defecto y sensor de luz
 
 La misma tarjeta (mismo código y misma configuración) se publica en varios dashboards de Home Assistant. Todos
 muestran la casa entera, pero cada uno **arranca en la estancia donde está el panel** y vuelve a ella (con su
-encuadre del plano) tras `idle_return_seconds` sin tocar la pantalla:
+encuadre del plano) tras `idle_return_seconds` sin tocar la pantalla, y en tema auto usa **su sensor de luz**:
 
-| Dashboard (URL)                                           | Vista por defecto |
-| --------------------------------------------------------- | ----------------- |
-| **Casa General** (`/functional-v2`, el de HA por defecto) | Casa              |
-| Shelly X2i Oficina 1 (`/shelly-x2i-oficina-1`)            | Oficina 1         |
-| Shelly X2i Oficina 2 (`/shelly-x2i-oficina-2`)            | Oficina 2         |
-| Shelly Salón Sur (`/shelly-salon-sur`)                    | Salón             |
-| Shelly Salón Este (`/shelly-salon-este`)                  | Salón             |
+| Dashboard (URL)                                           | Vista por defecto | Tema auto según                                           |
+| --------------------------------------------------------- | ----------------- | --------------------------------------------------------- |
+| **Casa General** (`/functional-v2`, el de HA por defecto) | Casa              | Modo oscuro de HA                                         |
+| Shelly X2i Oficina 1 (`/shelly-x2i-oficina-1`)            | Oficina 1         | `sensor.oficina_1_shellywalldisplay_oficina1_iluminancia` |
+| Shelly X2i Oficina 2 (`/shelly-x2i-oficina-2`)            | Oficina 2         | `sensor.oficina_2_shellywalldisplay_oficina2_iluminancia` |
+| Shelly Cocina (`/shelly-cocina`)                          | Cocina            | `sensor.shelly_salon_sur_iluminancia`                     |
+| Shelly Salón Este (`/shelly-salon-este`)                  | Salón             | `sensor.shellywalldisplay_0205030bbdd8_iluminancia`       |
 
-La lista está en [`src/lib/panels.ts`](src/lib/panels.ts) (`DEFAULT_VIEWS`) y los dashboards a publicar en
+La lista está en [`src/lib/panels.ts`](src/lib/panels.ts) (`PANELS`) y los dashboards a publicar en
 [`deploy.json`](deploy.json) (`dashboards`). Un dashboard nuevo se añade en los dos sitios. En desarrollo,
-`?panel=<url>` simula estar en ese dashboard (p. ej. `?mock&panel=shelly-x2i-oficina-1`).
+`?panel=<url>` simula estar en ese dashboard (p. ej. `?mock&panel=shelly-x2i-oficina-1`); con `?mock`, el botón
+**Luz** de la barra de desarrollo alterna los sensores entre día y noche.
 
 ## Disposición
 
@@ -188,7 +195,7 @@ lo desactiva kiosk-mode) para entrar en ajustes u otros paneles; el mismo botón
 Volver a abrir el panel desde la barra lateral también lo deja en kiosko. Se quita con `"kiosk_toggle": false`.
 
 Tras `idle_return_seconds` (180 s por defecto) sin tocar la pantalla vuelve a la vista por defecto de su dashboard
-(ver [Dashboards y vista por defecto](#dashboards-y-vista-por-defecto)) y deshace el zoom del plano.
+(ver [Dashboards, vista por defecto y sensor de luz](#dashboards-vista-por-defecto-y-sensor-de-luz)) y deshace el zoom del plano.
 
 ## Configuración de la tarjeta
 
@@ -217,7 +224,8 @@ Tras `idle_return_seconds` (180 s por defecto) sin tocar la pantalla vuelve a la
 | **Functional v2: deploy a Home Assistant** | Build → SSH → recurso `?v=<hash>` → todos los dashboards de `deploy.json`                    |
 | Functional v2: typecheck y lint            | Comprobaciones                                                                               |
 
-Con `?mock`, la barra de desarrollo tiene los botones **Timbre** y **Fuga robot** para probar las alertas; las
+Con `?mock`, la barra de desarrollo tiene los botones **Timbre** y **Fuga robot** para probar las alertas (y **Luz**
+para el tema según el sensor de luz); las
 persianas simuladas tardan unos segundos en moverse (para ver su animación) y el portero se vuelve a cerrar solo.
 
 Usa el `.env` compartido de `villawachitos/dashboards/.env` y el script común de

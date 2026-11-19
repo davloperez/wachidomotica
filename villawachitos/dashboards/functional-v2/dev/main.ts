@@ -42,3 +42,6 @@ document
 document
   .getElementById("leak")!
   .addEventListener("click", () => window.dispatchEvent(new Event("fv2-dev-leak")));
+document
+  .getElementById("lux")!
+  .addEventListener("click", () => window.dispatchEvent(new Event("fv2-dev-lux")));

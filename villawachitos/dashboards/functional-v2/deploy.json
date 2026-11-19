@@ -28,13 +28,10 @@
       }
     },
     {
-      "url_path": "shelly-salon-sur",
-      "title": "Shelly Salón Sur",
-      "icon": "mdi:overscan",
-      "show_in_sidebar": false,
-      "view": {
-        "path": "salon-sur"
-      }
+      "url_path": "shelly-cocina",
+      "title": "Shelly Cocina",
+      "icon": "mdi:countertop",
+      "show_in_sidebar": false
     },
     {
       "url_path": "shelly-salon-este",
