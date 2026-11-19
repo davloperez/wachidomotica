@@ -153,8 +153,6 @@ export const ROOMS_DEF: RoomDef[] = [
       { entity: "cover.cortina_grande_salon", name: "Cortina grande", curtain: true },
       { entity: "cover.cortina_pequena_salon", name: "Cortina pequeña", curtain: true },
     ],
-    temperature: "sensor.shelly_salon_sur_temperatura",
-    humidity: "sensor.shelly_salon_sur_humedad",
     devices: [
       { type: "tv", entity: TV.entity, name: 'TV 85"' },
       {
@@ -184,6 +182,8 @@ export const ROOMS_DEF: RoomDef[] = [
       { entity: "light.luz_fregadero_cocina", name: "Fregadero" },
     ],
     covers: [],
+    temperature: "sensor.shelly_salon_sur_temperatura",
+    humidity: "sensor.shelly_salon_sur_humedad",
     devices: [
       { type: "presence", name: "Panel cocina", illuminance: "sensor.shelly_salon_sur_iluminancia" },
       { type: "fridge", name: "Frigorífico" },

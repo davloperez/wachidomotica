@@ -172,6 +172,13 @@ const VACUUM_ES: Record<string, string> = {
   idle: "En reposo",
   error: "Error",
 };
+const LITTER_ES: Record<string, string> = {
+  idle: "En reposo",
+  cleaning: "Limpiando",
+  restoring: "Restaurando",
+  leveling: "Nivelando",
+  cat_appears: "Gato detectado",
+};
 const DISH_ES: Record<string, string> = {
   ready: "Listo",
   run: "Lavando",
@@ -460,13 +467,16 @@ export class DeviceCard extends LitElement {
       case "litter": {
         const visits = num(h, d.visits);
         const sand = num(h, d.sand);
+        const litter = st(h, d.status)?.state;
+        const busy = !!litter && litter !== "idle" && litter !== "unavailable" && litter !== "unknown";
         const alerts = [
           isOn(h, d.clean) ? "Necesita limpieza" : "",
           isOn(h, d.full) ? "Cubo lleno" : "",
         ].filter(Boolean);
         return {
           entity: d.status,
-          status: st(h, d.status)?.state === "idle" ? "En reposo" : st(h, d.status)?.state,
+          status: LITTER_ES[litter ?? ""] ?? litter,
+          active: busy,
           body: html`
             <div class="stats">
               ${this.stat("Visitas hoy", fmt(visits, 0), "")}${this.stat("Arena", `${fmt(sand, 0)} %`, "")}

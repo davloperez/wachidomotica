@@ -649,6 +649,8 @@ export class FunctionalDashboard extends LitElement {
       for (const it of this.items(layer.id)) {
         if (it.room.id !== room.id || !it.pos || seen.has(it.key)) continue;
         seen.add(it.key);
+        // El clima sale del Shelly del panel (ya tiene su icono): sin marcador propio en la estancia
+        if (it.kind === "row" && it.row === "climate") continue;
         if (it.kind === "light") {
           out.push(this.lightMarker(it, "active"));
           continue;

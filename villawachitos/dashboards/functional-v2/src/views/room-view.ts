@@ -400,7 +400,7 @@ export class RoomView extends LitElement {
     const comfort =
       t === undefined ? "" : t < 19 ? "Fresco" : t <= 25 ? "Confortable" : t <= 28 ? "Cálido" : "Caluroso";
     return html`
-      <section class="glass card" style="--d:0">
+      <section class="glass card" data-key=${r.temperature} style="--d:0">
         <header class="card-head tap" @click=${() => moreInfo(this, r.temperature!)}>
           <span class="ico">${icon(mdiThermometer)}</span>
           <div class="grow ttl"><b>Ambiente</b><span>${comfort}</span></div>
