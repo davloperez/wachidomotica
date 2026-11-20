@@ -213,6 +213,10 @@ Volver a abrir el panel desde la barra lateral también lo deja en kiosko. Se qu
 Tras `idle_return_seconds` (180 s por defecto) sin tocar la pantalla vuelve a la vista por defecto de su dashboard
 (ver [Dashboards, vista por defecto y sensor de luz](#dashboards-vista-por-defecto-y-sensor-de-luz)) y deshace el zoom del plano.
 
+En pantallas estrechas (paneles verticales), si la vista por defecto es una estancia, al arrancar y al volver por
+inactividad el contenido sale ya desplazado: los controles de la estancia parten del borde superior y el plano queda
+encima, a un gesto de scroll hacia arriba. En «Casa General» y en pantallas anchas no cambia nada.
+
 ## Configuración de la tarjeta
 
 ```json

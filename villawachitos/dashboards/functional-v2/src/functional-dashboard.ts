@@ -386,11 +386,34 @@ export class FunctionalDashboard extends LitElement {
   /** Al cambiar de vista, el plano vuelve a quedar arriba y la pestaña de la barra, a la vista. */
   private toTop(): void {
     this.updateComplete.then(() => {
-      this.renderRoot.querySelector(".main")?.scrollTo({ top: 0 });
+      const main = this.renderRoot.querySelector<HTMLElement>(".main");
+      // Paneles estrechos (vertical) en su estancia por defecto: el plano queda replegado arriba y los
+      // controles parten del borde superior. Basta deslizar hacia abajo para volver a ver el plano.
+      const stacked = !window.matchMedia("(min-width: 900px) and (min-aspect-ratio: 1/1)").matches;
+      const plan = this.renderRoot.querySelector<HTMLElement>(".planbox");
+      const hide = stacked && this.startView !== HOME && this.view === this.startView && !this.layer;
+      main?.scrollTo({ top: hide && plan ? plan.offsetHeight : 0 });
+      if (hide) this.holdHidden();
       const tab = this.renderRoot.querySelector<HTMLElement>(".dock .tab.on");
       const dock = tab?.parentElement;
       if (tab && dock) dock.scrollTo({ left: tab.offsetLeft - dock.clientWidth / 2 + tab.offsetWidth / 2 });
     });
+  }
+
+  /**
+   * Al arrancar, el contenido aún crece (datos, fuentes, imágenes) y el navegador recorta el scroll a la
+   * altura que haya en ese momento. Se reaplica unos segundos, salvo que se toque la pantalla.
+   */
+  private holdHidden(): void {
+    const touched = this.lastTouch;
+    const apply = (): void => {
+      if (this.lastTouch !== touched || this.view !== this.startView || this.layer) return;
+      const main = this.renderRoot.querySelector<HTMLElement>(".main");
+      const plan = this.renderRoot.querySelector<HTMLElement>(".planbox");
+      if (main && plan && Math.abs(main.scrollTop - plan.offsetHeight) > 1)
+        main.scrollTo({ top: plan.offsetHeight });
+    };
+    for (const ms of [100, 300, 700, 1500, 3000, 6000]) window.setTimeout(apply, ms);
   }
 
   private items(id: LayerId): LayerItem[] {
