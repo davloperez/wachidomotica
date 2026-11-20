@@ -50,8 +50,13 @@ and the panel's own **lux sensor** (drives the "auto" theme):
 | Casa General → `functional-v2` (HA's default dashboard; renamed from "Functional v2", url_path kept) | `home` (Casa) | none → HA dark mode |
 | Shelly X2i Oficina 1 → `shelly-x2i-oficina-1` | `oficina_1` | `sensor.oficina_1_shellywalldisplay_oficina1_iluminancia` |
 | Shelly X2i Oficina 2 → `shelly-x2i-oficina-2` | `oficina_2` | `sensor.oficina_2_shellywalldisplay_oficina2_iluminancia` |
-| Shelly Cocina → `shelly-cocina` (replaced the old "Shelly Salón Sur" / `shelly-salon-sur`) | `cocina` | `sensor.shelly_salon_sur_iluminancia` |
+| Shelly Cocina → `shelly-cocina` (now an X2i; replaced the old "Shelly Salón Sur" / `shelly-salon-sur`) | `cocina` | `sensor.cocina_shelly_cocina_iluminancia` |
 | Shelly Salón Este → `shelly-salon-este` | `salon` | `sensor.shellywalldisplay_0205030bbdd8_iluminancia` |
+| Shelly Baño 1 → `shelly-bano-1` | `bano_1` | `sensor.bano_1_shelly_bano_1_iluminancia` |
+| Shelly Baño 2 → `shelly-bano-2` | `bano_2` | `sensor.bano_2_shelly_bano_2_iluminancia` |
+| Shelly Dormitorio 1 → `shelly-dormitorio-1` | `dormitorio_1` | `sensor.dormitorio_1_shelly_dormitorio_1_iluminancia` |
+| Shelly Dormitorio 2 → `shelly-dormitorio-2` | `dormitorio_2` | `sensor.dormitorio_2_shelly_dormitorio_2_iluminancia` |
+| Shelly Dormitorio 3 → `shelly-dormitorio-3` | `dormitorio_3` | `sensor.dormitorio_3_shelly_dormitorio_3_iluminancia` |
 
 - The panel starts in that view and, after `idle_return_seconds` without touches, returns to it (closing sheets
   and layers, and re-framing the plan if it was panned/zoomed). Every panel can still navigate the whole house.
@@ -59,6 +64,8 @@ and the panel's own **lux sensor** (drives the "auto" theme):
   change must hold 90 s; first reading applies at once; unavailable sensor keeps the last decision, or falls back
   to HA dark mode if there never was one. The manual "Tema" button (light/dark, saved per browser) overrides it.
   The Shelly sensors mostly read daylight (≈0–5 lx at night even with lights on). Dev: `?mock` dev-bar **Luz**.
+- All wall panels are Shelly Wall Display X2i: occupancy + lux only, **no temperature/humidity** sensor (the home
+  "Clima" card shows the A/C and outdoor weather instead).
 - **Adding/removing a wall panel** = add/remove it in **both** `deploy.json` `dashboards` and `PANELS` (with its
   lux sensor, if the device has one), and
   update the table in the dashboard `README.md` and here. Values are `HOME` or a room `id` from `house/rooms.ts`;
@@ -66,8 +73,8 @@ and the panel's own **lux sensor** (drives the "auto" theme):
 - Never hand-edit those dashboards in HA (the next deploy overwrites them). Dashboard-specific behaviour goes in
   `panels.ts`, not in per-dashboard card configs.
 - The Shelly Oficina 1/2 and Salón Este entries in `deploy.json` keep their old HA view paths (`view.path`:
-  `oficina-1`, `oficina-2`, `salon`) so the URLs saved on the devices still work; Casa General and Shelly Cocina
-  use `main`. HA can't change a dashboard's `url_path`: renaming one means a new entry here, deleting the old
+  `oficina-1`, `oficina-2`, `salon`) so the URLs saved on the devices still work; Casa General, Shelly Cocina and
+  the Baño/Dormitorio panels use `main`. HA can't change a dashboard's `url_path`: renaming one means a new entry here, deleting the old
   dashboard in HA (the deploy never deletes) and updating the URL on the device. The view path does
   not matter to the card (it only reads the `url_path`).
 - Dev: `?panel=<url_path>` simulates a dashboard, e.g. `/dev/index.html?mock&panel=shelly-cocina`.

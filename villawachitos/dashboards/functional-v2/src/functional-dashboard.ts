@@ -68,7 +68,7 @@ const HOLD_MS = 550;
  */
 const NUDGE: Record<string, [dx: number, dz: number]> = {
   "binary_sensor.sensor_agua_dreame_water_leak": [-0.9, 0.5],
-  "vacuum:vacuum.limpiasuelos": [-0.85, -0.55],
+  "vacuum:vacuum.x60_pro_master": [-0.85, -0.55],
   "presence:binary_sensor.shellywalldisplay_0205030bbdd8_ocupacion": [0.0, -0.85],
   "media_player.shellywalldisplay_0205030bbdd8": [0.0, -0.85],
 };
@@ -649,7 +649,7 @@ export class FunctionalDashboard extends LitElement {
       for (const it of this.items(layer.id)) {
         if (it.room.id !== room.id || !it.pos || seen.has(it.key)) continue;
         seen.add(it.key);
-        // El clima sale del Shelly del panel (ya tiene su icono): sin marcador propio en la estancia
+        // La temperatura y humedad de la estancia se ven en su tarjeta «Ambiente»: sin marcador propio
         if (it.kind === "row" && it.row === "climate") continue;
         if (it.kind === "light") {
           out.push(this.lightMarker(it, "active"));

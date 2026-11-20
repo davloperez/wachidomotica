@@ -621,10 +621,10 @@ export const WASHER = {
 /** Cuadro del recibidor, colgado en la cara este del tabique del lavadero (con su foco delante). */
 export const PAINTING = { at: [-5.69, -1.7] as Point, width: 1.0, height: 0.7, lift: 1.0 };
 
-/** Robot aspirador (Dreame X40 Master): base contra la pared este, al norte del mueble de la TV. */
+/** Robot aspirador (Dreame X60 Pro Master): base contra la pared este, al norte del mueble de la TV. */
 export const VACUUM = {
-  entity: "vacuum.limpiasuelos",
-  battery: "sensor.limpiasuelos_battery_level",
+  entity: "vacuum.x60_pro_master",
+  battery: "sensor.x60_pro_master_battery_level",
   /** Centro de la base en planta; el robot aparcado queda delante (al oeste) */
   dock: [0.97, -1.25] as Point,
   dockSize: [0.44, 0.59, 0.34] as [number, number, number],

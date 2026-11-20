@@ -23,29 +23,36 @@ import { sheetStyles } from "./solar-sheet";
 const V = {
   vacuum: VACUUM.entity,
   battery: VACUUM.battery,
-  room: "sensor.limpiasuelos_current_room",
-  history: "sensor.limpiasuelos_cleaning_history",
-  map: "camera.limpiasuelos_map",
-  customized: "switch.limpiasuelos_customized_cleaning",
-  cleangenius: "select.limpiasuelos_cleangenius",
-  mode: "select.limpiasuelos_cleaning_mode",
-  suction: "select.limpiasuelos_suction_level",
-  humidity: "select.limpiasuelos_mop_pad_humidity",
+  room: "sensor.x60_pro_master_current_room",
+  history: "sensor.x60_pro_master_cleaning_history",
+  map: "camera.x60_pro_master_map",
+  customized: "switch.x60_pro_master_customized_cleaning",
+  cleangenius: "select.x60_pro_master_cleangenius",
+  mode: "select.x60_pro_master_cleaning_mode",
+  suction: "select.x60_pro_master_suction_level",
+  humidity: "select.x60_pro_master_mop_pad_humidity",
+  progress: "sensor.x60_pro_master_cleaning_progress",
+  count: "sensor.x60_pro_master_cleaning_count",
+  total: "sensor.x60_pro_master_total_cleaned_area",
   consumables: [
-    ["Cepillo principal", "sensor.limpiasuelos_main_brush_left"],
-    ["Cepillo lateral", "sensor.limpiasuelos_side_brush_left"],
-    ["Filtro", "sensor.limpiasuelos_filter_left"],
-    ["Sensores", "sensor.limpiasuelos_sensor_dirty_left"],
+    ["Cepillo principal", "sensor.x60_pro_master_main_brush_left"],
+    ["Cepillo lateral", "sensor.x60_pro_master_side_brush_left"],
+    ["Filtro", "sensor.x60_pro_master_filter_left"],
+    ["Sensores", "sensor.x60_pro_master_sensor_dirty_left"],
+    ["Ruedas", "sensor.x60_pro_master_wheel_dirty_left"],
   ] as const,
 };
 
 /**
- * Estancias del robot (segmentos del mapa de Dreame) y qué zonas del plano de la casa cubren. El robot
- * agrupa Salón, Cocina y Entrada en una sola estancia; el exterior limpiable es el porche.
+ * Estancias del robot sobre el plano de la casa. Cada una agrupa uno o varios segmentos del mapa del Dreame
+ * X60 Pro Master (hoy uno por estancia, igual que las del dashboard). El exterior limpiable es el porche.
+ * `id` es el primer segmento y sirve de clave.
  */
 interface RobotRoom {
   id: number;
   name: string;
+  /** Segmentos del mapa del robot que se limpian al elegir esta estancia, en orden */
+  segments: number[];
   /** Nombres de estancias del plano compartido ("" = el hueco sin nombre junto a la cocina) */
   plan: string[];
   /** Nombre corto para las estancias estrechas del plano */
@@ -53,31 +60,38 @@ interface RobotRoom {
   exterior?: boolean;
 }
 const ROBOT_ROOMS: RobotRoom[] = [
-  { id: 11, name: "Salón y cocina", plan: ["Salón", "Cocina", "", "Entrada"] },
-  { id: 2, name: "Lavadero", plan: ["Lavadero"] },
-  { id: 5, name: "Oficina 1", short: "Ofi. 1", plan: ["Oficina 1"] },
-  { id: 3, name: "Oficina 2", short: "Ofi. 2", plan: ["Oficina 2"] },
-  { id: 8, name: "Dormitorio 2", short: "Dorm. 2", plan: ["Dormitorio 2"] },
-  { id: 6, name: "Vestidor", plan: ["Vestidor"] },
-  { id: 9, name: "Dormitorio 1", short: "Dorm. 1", plan: ["Dormitorio 1"] },
-  { id: 13, name: "Baño 1", plan: ["Baño 1"] },
-  { id: 10, name: "Dormitorio 3", short: "Dorm. 3", plan: ["Dormitorio 3"] },
-  { id: 15, name: "Pasillo", plan: ["Pasillo"] },
-  { id: 20, name: "Baño 2", plan: ["Baño 2"] },
-  { id: 17, name: "Porche", plan: [], exterior: true },
+  { id: 9, name: "Salón", segments: [9], plan: ["Salón"] },
+  { id: 12, name: "Cocina", segments: [12], plan: ["Cocina", ""] },
+  { id: 13, name: "Entrada", segments: [13], plan: ["Entrada"] },
+  { id: 14, name: "Lavadero", segments: [14], plan: ["Lavadero"] },
+  { id: 7, name: "Oficina 1", short: "Ofi. 1", segments: [7], plan: ["Oficina 1"] },
+  { id: 6, name: "Oficina 2", short: "Ofi. 2", segments: [6], plan: ["Oficina 2"] },
+  { id: 1, name: "Baño 1", segments: [1], plan: ["Baño 1"] },
+  { id: 3, name: "Dormitorio 1", short: "Dorm. 1", segments: [3], plan: ["Dormitorio 1"] },
+  { id: 8, name: "Vestidor", segments: [8], plan: ["Vestidor"] },
+  { id: 2, name: "Dormitorio 2", short: "Dorm. 2", segments: [2], plan: ["Dormitorio 2"] },
+  { id: 4, name: "Pasillo", segments: [4], plan: ["Pasillo"] },
+  { id: 5, name: "Baño 2", segments: [5], plan: ["Baño 2"] },
+  { id: 11, name: "Porche", segments: [11], plan: [], exterior: true },
 ];
-const DEFAULT_ORDER = [11, 2, 5, 3, 8, 6, 9, 13, 10, 15, 20, 17];
+/** Estancias de la casa que el robot aún no tiene en su mapa: se dibujan, pero no se pueden elegir. */
+const UNMAPPED: { name: string; short: string; plan: string[] }[] = [
+  { name: "Dormitorio 3", short: "Dorm. 3", plan: ["Dormitorio 3"] },
+];
+const DEFAULT_ORDER = [9, 12, 13, 14, 7, 6, 1, 3, 8, 2, 4, 5, 11];
+/** Segmento del robot → estancia del dashboard que lo incluye */
+const ROOM_OF_SEGMENT = new Map(ROBOT_ROOMS.flatMap((r) => r.segments.map((sg) => [sg, r] as const)));
+const segmentsOf = (ids: number[]) =>
+  ids.flatMap((id) => ROBOT_ROOMS.find((r) => r.id === id)?.segments ?? []);
 
 type Rect = [number, number, number, number];
+const rectsOf = (plan: string[]) =>
+  plan.flatMap((n) => ROOMS.filter((x) => x.name === n).map((x) => x.rect)) as Rect[];
 const PLAN_RECTS = new Map<number, Rect[]>(
-  ROBOT_ROOMS.map((r) => [
-    r.id,
-    r.exterior
-      ? [PORCH as Rect]
-      : (r.plan.flatMap((n) => ROOMS.filter((x) => x.name === n).map((x) => x.rect)) as Rect[]),
-  ]),
+  ROBOT_ROOMS.map((r) => [r.id, r.exterior ? [PORCH as Rect] : rectsOf(r.plan)]),
 );
-const ALL_RECTS = [...PLAN_RECTS.values()].flat();
+const UNMAPPED_RECTS = UNMAPPED.map((u) => ({ ...u, rects: rectsOf(u.plan) }));
+const ALL_RECTS = [...PLAN_RECTS.values(), ...UNMAPPED_RECTS.map((u) => u.rects)].flat();
 const BOX = {
   x1: Math.min(...ALL_RECTS.map((r) => r[0])),
   z1: Math.min(...ALL_RECTS.map((r) => r[1])),
@@ -191,10 +205,19 @@ export class VacuumSheet extends LitElement {
 
   /* ------------------------------ Estancias ------------------------------ */
 
-  private sequence(): number[] {
+  /** Secuencia de limpieza del robot (segmentos), tal cual la tiene guardada. */
+  private robotSequence(): number[] {
     const seq = st(this.hass, V.vacuum)?.attributes.cleaning_sequence;
-    const known = new Set(ROBOT_ROOMS.map((r) => r.id));
-    const base = Array.isArray(seq) ? (seq as number[]).filter((i) => known.has(i)) : [];
+    return Array.isArray(seq) ? (seq as number[]) : [];
+  }
+
+  /** Orden de las estancias del dashboard según la secuencia del robot (una estancia, donde sale su primer segmento). */
+  private sequence(): number[] {
+    const base: number[] = [];
+    for (const sg of this.robotSequence()) {
+      const r = ROOM_OF_SEGMENT.get(sg);
+      if (r && !base.includes(r.id)) base.push(r.id);
+    }
     return [...base, ...DEFAULT_ORDER.filter((i) => !base.includes(i))];
   }
 
@@ -221,14 +244,26 @@ export class VacuumSheet extends LitElement {
     return ROBOT_ROOMS.find((r) => r.id === id)?.name ?? `Estancia ${id}`;
   }
 
-  /** Nombre de una estancia según el mapa del robot (para el historial). */
-  private mapRoom(id: number): string {
+  /** Estancias del mapa del robot (segmento y nombre que les da el robot). */
+  private robotRooms(): { id: number; name: string }[] {
     const rooms = st(this.hass, V.vacuum)?.attributes.rooms as
       Record<string, { id: number; name: string }[]> | undefined;
-    const hit = Object.values(rooms ?? {})
-      .flat()
-      .find((r) => r.id === id);
-    return hit?.name ?? this.roomName(id);
+    return Object.values(rooms ?? {}).flat();
+  }
+
+  /** Nombre en el dashboard de un segmento del robot. */
+  private mapRoom(segment: number): string {
+    return (
+      ROOM_OF_SEGMENT.get(segment)?.name ??
+      this.robotRooms().find((r) => r.id === segment)?.name ??
+      `Estancia ${segment}`
+    );
+  }
+
+  /** Nombre en el dashboard de la estancia que el robot dice estar limpiando. */
+  private roomLabel(robotName: string): string {
+    const seg = this.robotRooms().find((r) => r.name === robotName)?.id;
+    return seg !== undefined ? this.mapRoom(seg) : robotName;
   }
 
   /* ------------------------------ Acciones ------------------------------ */
@@ -272,16 +307,21 @@ export class VacuumSheet extends LitElement {
       if (!(await this.svc("select", "select_option", { entity_id: V.humidity, option: wet.select })))
         failed.push("humedad");
     this.busy = "Ordenando las estancias…";
-    const rest = this.sequence().filter((i) => !this.order.includes(i));
+    const segments = segmentsOf(this.order);
+    // El resto de segmentos detrás, en su orden (también los que el dashboard no conoce)
+    const known = segmentsOf(this.sequence());
+    const rest = [...known, ...this.robotSequence().filter((sg) => !known.includes(sg))].filter(
+      (sg) => !segments.includes(sg),
+    );
     await this.svc("dreame_vacuum", "vacuum_set_cleaning_sequence", {
       entity_id: V.vacuum,
-      cleaning_sequence: [...this.order, ...rest],
+      cleaning_sequence: [...segments, ...rest],
     });
     await sleep(1500);
     this.busy = "Empezando…";
     const ok = await this.svc("dreame_vacuum", "vacuum_clean_segment", {
       entity_id: V.vacuum,
-      segments: this.order,
+      segments,
       suction_level: this.power,
       ...(this.mode === "sweeping" ? {} : { water_volume: this.wet + 1 }),
     });
@@ -379,6 +419,18 @@ export class VacuumSheet extends LitElement {
             </button>`,
         );
       })}
+      ${UNMAPPED_RECTS.flatMap((u) =>
+        u.rects.map(
+          (rc, i) =>
+            html`<div
+              class="rm off"
+              style="left:${((rc[0] - BOX.x1) / w) * 100}%;top:${((rc[1] - BOX.z1) / hgt) * 100}%;width:${((rc[2] - rc[0]) / w) * 100}%;height:${((rc[3] - rc[1]) / hgt) * 100}%"
+              title="${u.name}: el robot aún no la tiene en su mapa"
+            >
+              ${i === 0 ? html`<span class="lab">${u.short}<small>sin mapa</small></span>` : nothing}
+            </div>`,
+        ),
+      )}
     </div>`;
   }
 
@@ -428,7 +480,7 @@ export class VacuumSheet extends LitElement {
     const running = s === "cleaning";
     const active = running || s === "paused" || s === "returning";
     const room = st(h, V.room)?.state;
-    const progress = num(h, "sensor.limpiasuelos_cleaning_progress");
+    const progress = num(h, V.progress);
     const hasMop = a.mop_pad !== false;
     const zone = this.zone();
     const tasks = this.tasks();
@@ -445,7 +497,7 @@ export class VacuumSheet extends LitElement {
             <span class="muted">
               ${[
                 STATE_ES[s] ?? s,
-                active && room && room !== "unknown" ? room : "",
+                active && room && room !== "unknown" ? this.roomLabel(room) : "",
                 active && a.cleaning_time ? `${a.cleaning_time} min · ${a.cleaned_area ?? 0} m²` : "",
                 active && progress !== undefined ? `${Math.round(progress)} %` : "",
                 bat !== undefined ? `batería ${bat} %` : "",
@@ -567,8 +619,7 @@ export class VacuumSheet extends LitElement {
             <div class="head">
               <span class="sub">Últimas limpiezas</span>
               <span class="muted note"
-                >${fmt(num(h, "sensor.limpiasuelos_cleaning_count"), 0)} en total ·
-                ${fmt(num(h, "sensor.limpiasuelos_total_cleaned_area"), 0)} m²</span
+                >${fmt(num(h, V.count), 0)} en total · ${fmt(num(h, V.total), 0)} m²</span
               >
             </div>
             ${
@@ -690,6 +741,15 @@ export class VacuumSheet extends LitElement {
       .rm.sel {
         background: var(--sage);
         color: #fff;
+      }
+      .rm.off {
+        background: var(--chip);
+        color: var(--text-faint, var(--text-muted));
+        cursor: default;
+      }
+      .lab small {
+        font-size: var(--fs-label);
+        font-weight: 500;
       }
       .rm:active {
         transform: none;

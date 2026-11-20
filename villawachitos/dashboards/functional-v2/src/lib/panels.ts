@@ -38,9 +38,19 @@ export const PANELS: Record<string, PanelDef> = {
     lux: "sensor.oficina_2_shellywalldisplay_oficina2_iluminancia",
   },
   // Shelly Cocina → Cocina
-  "shelly-cocina": { view: "cocina", lux: "sensor.shelly_salon_sur_iluminancia" },
+  "shelly-cocina": { view: "cocina", lux: "sensor.cocina_shelly_cocina_iluminancia" },
   // Shelly Salón Este → Salón
   "shelly-salon-este": { view: "salon", lux: "sensor.shellywalldisplay_0205030bbdd8_iluminancia" },
+  // Shelly Baño 1 → Baño 1
+  "shelly-bano-1": { view: "bano_1", lux: "sensor.bano_1_shelly_bano_1_iluminancia" },
+  // Shelly Baño 2 → Baño 2
+  "shelly-bano-2": { view: "bano_2", lux: "sensor.bano_2_shelly_bano_2_iluminancia" },
+  // Shelly Dormitorio 1 → Dormitorio 1
+  "shelly-dormitorio-1": { view: "dormitorio_1", lux: "sensor.dormitorio_1_shelly_dormitorio_1_iluminancia" },
+  // Shelly Dormitorio 2 → Dormitorio 2
+  "shelly-dormitorio-2": { view: "dormitorio_2", lux: "sensor.dormitorio_2_shelly_dormitorio_2_iluminancia" },
+  // Shelly Dormitorio 3 → Dormitorio 3
+  "shelly-dormitorio-3": { view: "dormitorio_3", lux: "sensor.dormitorio_3_shelly_dormitorio_3_iluminancia" },
 };
 
 /**

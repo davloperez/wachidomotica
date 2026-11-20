@@ -54,9 +54,7 @@ export function createMockHass(getDarkMode: () => boolean, onUpdate: (hass: Home
       });
     }
   }
-  set("sensor.shelly_salon_sur_temperatura", "23.4", { unit_of_measurement: "°C" });
-  set("sensor.shelly_salon_sur_humedad", "48", { unit_of_measurement: "%" });
-  set("sensor.shelly_salon_sur_iluminancia", "320");
+  set("sensor.cocina_shelly_cocina_iluminancia", "320");
   set("weather.forecast_casa", "partlycloudy", {
     temperature: 19,
     humidity: 62,
@@ -134,39 +132,41 @@ export function createMockHass(getDarkMode: () => boolean, onUpdate: (hass: Home
   set("media_player.fire_tv_dormitorio", "unavailable");
   set("switch.t34_smart_plug_interruptor_1_2", "unavailable");
   set("binary_sensor.cam_exterior_este_motion_2", "on");
+  // Mapa del Dreame X60 Pro Master (aún sin el Dormitorio 3)
   const robotRooms = [
-    [2, "Cuarto De Servicio"],
-    [3, "Oficina 2"],
-    [5, "Oficina 1"],
-    [6, "Vestidor"],
-    [8, "Dormitorio 2"],
-    [9, "Dormitorio 1"],
-    [10, "Dormitorio 3"],
-    [11, "Salón"],
-    [13, "Baño 1"],
-    [15, "Pasillo"],
-    [17, "Porche"],
-    [20, "Baño 2"],
+    [1, "Baño 1"],
+    [2, "Dormitorio 2"],
+    [3, "Dormitorio 1"],
+    [4, "Pasillo"],
+    [5, "Baño 2"],
+    [6, "Oficina 2"],
+    [7, "Oficina 1"],
+    [8, "Vestidor"],
+    [9, "Salón"],
+    [11, "Porche"],
+    [12, "Cocina"],
+    [13, "Entrada"],
+    [14, "Lavadero"],
   ].map(([id, name]) => ({ id, name }));
-  set("vacuum.limpiasuelos", "docked", {
-    friendly_name: "Limpiasuelos",
+  set("vacuum.x60_pro_master", "docked", {
+    friendly_name: "X60 Pro Master",
     fan_speed: "standard",
     mop_pad: true,
     mop_pad_humidity: "Moist",
     cleaning_mode: "Sweeping and mopping",
-    cleaning_sequence: [11, 2, 5, 3, 8, 6, 9, 13, 10, 15, 20, 17],
+    cleaning_sequence: [9, 12, 13, 14, 7, 6, 1, 3, 8, 2, 4, 5, 11],
     cleaning_time: 12,
     cleaned_area: 9,
-    rooms: { Villawachitos: robotRooms },
+    rooms: { "Mapa 1": robotRooms },
   });
-  set("sensor.limpiasuelos_battery_level", "100");
-  set("sensor.limpiasuelos_current_room", "Salón");
-  set("sensor.limpiasuelos_cleaning_count", "174");
-  set("sensor.limpiasuelos_total_cleaned_area", "7370");
-  set("sensor.limpiasuelos_main_brush_left", "47");
-  set("sensor.limpiasuelos_side_brush_left", "21");
-  set("sensor.limpiasuelos_filter_left", "97");
-  set("sensor.limpiasuelos_sensor_dirty_left", "93");
+  set("sensor.x60_pro_master_battery_level", "100");
+  set("sensor.x60_pro_master_current_room", "Salón");
+  set("sensor.x60_pro_master_cleaning_count", "174");
+  set("sensor.x60_pro_master_total_cleaned_area", "7370");
+  set("sensor.x60_pro_master_main_brush_left", "47");
+  set("sensor.x60_pro_master_side_brush_left", "21");
+  set("sensor.x60_pro_master_filter_left", "97");
+  set("sensor.x60_pro_master_sensor_dirty_left", "93");
   {
     const t0 = Date.now();
     const at = (h: number) => Math.round((t0 - h * 3600_000) / 1000);
@@ -183,16 +183,16 @@ export function createMockHass(getDarkMode: () => boolean, onUpdate: (hass: Home
     });
     const pics: Record<string, string> = {};
     [3, 20, 40, 60, 90, 120, 150].forEach((h, i) => (pics[`${i + 1}: tarea`] = `/dev/mock-map.svg?v=${at(h)}`));
-    set("camera.limpiasuelos_map", new Date().toISOString(), {
+    set("camera.x60_pro_master_map", new Date().toISOString(), {
       entity_picture: `/dev/mock-map.svg?v=${Date.now()}`,
       cleaning_history_picture: pics,
     });
-    set("sensor.limpiasuelos_cleaning_history", new Date().toISOString(), {
+    set("sensor.x60_pro_master_cleaning_history", new Date().toISOString(), {
       "a": task(3, 6, 7, { cleanup_method: "Cleangenius" }),
       "b": task(20, 115, 87, { blocked_rooms: { "13": "Blocked by dynamic obstacle" }, pet: true, status: "Cleaning" }),
       "c": task(40, 38, 40, { completed: false, interrupt_reason: "Robot lifted" }),
       "d": task(60, 6, 5, { mop_pad: "Not installed" }),
-      "e": task(90, 115, 83, { blocked_rooms: { "10": "Blocked by door", "15": "Blocked by door" } }),
+      "e": task(90, 115, 83, { blocked_rooms: { "2": "Blocked by door", "4": "Blocked by door" } }),
       "f": task(120, 12, 12, { status: "Zone cleaning" }),
       "g": task(150, 29, 22),
     });
@@ -203,7 +203,7 @@ export function createMockHass(getDarkMode: () => boolean, onUpdate: (hass: Home
   set("sensor.epson_et_5150_series_magenta_ink", "12", { unit_of_measurement: "%" });
   set("sensor.epson_et_5150_series_yellow_ink", "82", { unit_of_measurement: "%" });
   set(
-    "binary_sensor.limpiasuelos_maintenance",
+    "binary_sensor.x60_pro_master_maintenance",
     "on",
     { device_class: "problem", friendly_name: "Robot: mantenimiento pendiente" },
     ago(600),
@@ -319,12 +319,17 @@ export function createMockHass(getDarkMode: () => boolean, onUpdate: (hass: Home
   });
   // Sensores de luz de las Shelly: alterna entre de día y de noche (tema «auto» de los paneles)
   window.addEventListener("fv2-dev-lux", () => {
-    const night = Number(states["sensor.shelly_salon_sur_iluminancia"]?.state) >= 50;
+    const night = Number(states["sensor.cocina_shelly_cocina_iluminancia"]?.state) >= 50;
     for (const id of [
-      "sensor.shelly_salon_sur_iluminancia",
+      "sensor.cocina_shelly_cocina_iluminancia",
       "sensor.shellywalldisplay_0205030bbdd8_iluminancia",
       "sensor.oficina_1_shellywalldisplay_oficina1_iluminancia",
       "sensor.oficina_2_shellywalldisplay_oficina2_iluminancia",
+      "sensor.bano_1_shelly_bano_1_iluminancia",
+      "sensor.bano_2_shelly_bano_2_iluminancia",
+      "sensor.dormitorio_1_shelly_dormitorio_1_iluminancia",
+      "sensor.dormitorio_2_shelly_dormitorio_2_iluminancia",
+      "sensor.dormitorio_3_shelly_dormitorio_3_iluminancia",
     ])
       set(id, night ? "3" : String(Math.round(200 + Math.random() * 600)), { unit_of_measurement: "lx" });
     emit();

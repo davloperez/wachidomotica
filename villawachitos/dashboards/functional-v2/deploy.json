@@ -41,6 +41,36 @@
       "view": {
         "path": "salon"
       }
+    },
+    {
+      "url_path": "shelly-bano-1",
+      "title": "Shelly Baño 1",
+      "icon": "mdi:bathtub",
+      "show_in_sidebar": false
+    },
+    {
+      "url_path": "shelly-bano-2",
+      "title": "Shelly Baño 2",
+      "icon": "mdi:shower",
+      "show_in_sidebar": false
+    },
+    {
+      "url_path": "shelly-dormitorio-1",
+      "title": "Shelly Dormitorio 1",
+      "icon": "mdi:bed-double",
+      "show_in_sidebar": false
+    },
+    {
+      "url_path": "shelly-dormitorio-2",
+      "title": "Shelly Dormitorio 2",
+      "icon": "mdi:bed",
+      "show_in_sidebar": false
+    },
+    {
+      "url_path": "shelly-dormitorio-3",
+      "title": "Shelly Dormitorio 3",
+      "icon": "mdi:bed",
+      "show_in_sidebar": false
     }
   ],
   "view": {

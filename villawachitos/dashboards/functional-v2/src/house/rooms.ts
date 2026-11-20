@@ -182,10 +182,13 @@ export const ROOMS_DEF: RoomDef[] = [
       { entity: "light.luz_fregadero_cocina", name: "Fregadero" },
     ],
     covers: [],
-    temperature: "sensor.shelly_salon_sur_temperatura",
-    humidity: "sensor.shelly_salon_sur_humedad",
     devices: [
-      { type: "presence", name: "Panel cocina", illuminance: "sensor.shelly_salon_sur_iluminancia" },
+      {
+        type: "presence",
+        name: "Panel cocina",
+        occupancy: "binary_sensor.cocina_shelly_cocina_ocupacion",
+        illuminance: "sensor.cocina_shelly_cocina_iluminancia",
+      },
       { type: "fridge", name: "Frigorífico" },
       {
         type: "dishwasher",
@@ -328,6 +331,12 @@ export const ROOMS_DEF: RoomDef[] = [
         entity: "switch.esp_bano_2_luz_toallero_bano_2",
         mode: "input_select.modo_de_toalleros_bano_2",
       },
+      {
+        type: "presence",
+        name: "Panel baño 2",
+        occupancy: "binary_sensor.bano_2_shelly_bano_2_ocupacion",
+        illuminance: "sensor.bano_2_shelly_bano_2_iluminancia",
+      },
     ],
   },
   {
@@ -343,7 +352,14 @@ export const ROOMS_DEF: RoomDef[] = [
       { entity: "light.dormitorio_3_persiana_dormitorio_3_luz_mesita_2", name: "Mesita 2" },
     ],
     covers: [{ entity: "cover.persiana_dormitorio_3_persiana", name: "Persiana" }],
-    devices: [],
+    devices: [
+      {
+        type: "presence",
+        name: "Panel dormitorio 3",
+        occupancy: "binary_sensor.dormitorio_3_shelly_dormitorio_3_ocupacion",
+        illuminance: "sensor.dormitorio_3_shelly_dormitorio_3_iluminancia",
+      },
+    ],
   },
   {
     id: "pasillo",
@@ -368,7 +384,14 @@ export const ROOMS_DEF: RoomDef[] = [
       { entity: "light.luz_wifi_mesita_noche_dorm_2", name: "Mesita" },
     ],
     covers: [{ entity: "cover.persiana_dormitorio_2_persiana", name: "Persiana" }],
-    devices: [],
+    devices: [
+      {
+        type: "presence",
+        name: "Panel dormitorio 2",
+        occupancy: "binary_sensor.dormitorio_2_shelly_dormitorio_2_ocupacion",
+        illuminance: "sensor.dormitorio_2_shelly_dormitorio_2_iluminancia",
+      },
+    ],
   },
   {
     // Dormitorio principal y su vestidor en una sola vista
@@ -394,6 +417,12 @@ export const ROOMS_DEF: RoomDef[] = [
         name: "Movimiento vestidor",
         occupancy: "binary_sensor.sensor_movimiento_vestidor_occupancy",
       },
+      {
+        type: "presence",
+        name: "Panel dormitorio 1",
+        occupancy: "binary_sensor.dormitorio_1_shelly_dormitorio_1_ocupacion",
+        illuminance: "sensor.dormitorio_1_shelly_dormitorio_1_iluminancia",
+      },
     ],
   },
   {
@@ -413,6 +442,12 @@ export const ROOMS_DEF: RoomDef[] = [
         name: "Toallero",
         entity: "switch.bano_1_bano_1_luz_toallero_bano_1",
         mode: "input_select.modo_de_toalleros_bano_1",
+      },
+      {
+        type: "presence",
+        name: "Panel baño 1",
+        occupancy: "binary_sensor.bano_1_shelly_bano_1_ocupacion",
+        illuminance: "sensor.bano_1_shelly_bano_1_iluminancia",
       },
     ],
   },

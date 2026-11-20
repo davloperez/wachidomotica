@@ -61,17 +61,15 @@
     "media_player.fire_tv_dormitorio": [5.34, 5.36],
     "media_player.oficina_1_shellywalldisplay_oficina1": [-3.18, -2.6],
     "media_player.oficina_2_shellywalldisplay_oficina2": [-0.77, -2.55],
-    "media_player.shelly_salon_sur": [-5.51, 4.23],
     "presence:binary_sensor.oficina_1_shellywalldisplay_oficina1_ocupacion": [-3.16, -2.74],
     "presence:binary_sensor.oficina_2_shellywalldisplay_oficina2_ocupacion": [-0.46, -2.71],
     "presence:binary_sensor.sensor_movimiento_vestidor_occupancy": [3.39, -0.26],
     "printer:sensor.epson_et_5150_series": [-3.64, -3.84],
-    "sensor.shelly_salon_sur_temperatura": [-5.89, 4.17],
     "switch:switch.interruptor_ventilacion_forzada": [-6.55, -3.24],
     "switch:switch.enchufe_ambientador": [-3.57, -5.33],
     "towel:switch.esp_bano_2_luz_toallero_bano_2": [2.77, -4.11],
     "tv:media_player.salon_tv_samsung_salon_85": [0.93, 1.18],
-    "vacuum:vacuum.limpiasuelos": [1, -1.05],
+    "vacuum:vacuum.x60_pro_master": [1, -1.05],
     "washer:switch.enchufe_lavadora": [-5.99, -2.46]
   }
 }

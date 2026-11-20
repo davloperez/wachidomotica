@@ -32,8 +32,13 @@ encuadre del plano) tras `idle_return_seconds` sin tocar la pantalla, y en tema 
 | **Casa General** (`/functional-v2`, el de HA por defecto) | Casa              | Modo oscuro de HA                                         |
 | Shelly X2i Oficina 1 (`/shelly-x2i-oficina-1`)            | Oficina 1         | `sensor.oficina_1_shellywalldisplay_oficina1_iluminancia` |
 | Shelly X2i Oficina 2 (`/shelly-x2i-oficina-2`)            | Oficina 2         | `sensor.oficina_2_shellywalldisplay_oficina2_iluminancia` |
-| Shelly Cocina (`/shelly-cocina`)                          | Cocina            | `sensor.shelly_salon_sur_iluminancia`                     |
+| Shelly Cocina (`/shelly-cocina`)                          | Cocina            | `sensor.cocina_shelly_cocina_iluminancia`                 |
 | Shelly Salón Este (`/shelly-salon-este`)                  | Salón             | `sensor.shellywalldisplay_0205030bbdd8_iluminancia`       |
+| Shelly Baño 1 (`/shelly-bano-1`)                          | Baño 1            | `sensor.bano_1_shelly_bano_1_iluminancia`                 |
+| Shelly Baño 2 (`/shelly-bano-2`)                          | Baño 2            | `sensor.bano_2_shelly_bano_2_iluminancia`                 |
+| Shelly Dormitorio 1 (`/shelly-dormitorio-1`)              | Dormitorio 1      | `sensor.dormitorio_1_shelly_dormitorio_1_iluminancia`     |
+| Shelly Dormitorio 2 (`/shelly-dormitorio-2`)              | Dormitorio 2      | `sensor.dormitorio_2_shelly_dormitorio_2_iluminancia`     |
+| Shelly Dormitorio 3 (`/shelly-dormitorio-3`)              | Dormitorio 3      | `sensor.dormitorio_3_shelly_dormitorio_3_iluminancia`     |
 
 La lista está en [`src/lib/panels.ts`](src/lib/panels.ts) (`PANELS`) y los dashboards a publicar en
 [`deploy.json`](deploy.json) (`dashboards`). Un dashboard nuevo se añade en los dos sitios. En desarrollo,
@@ -62,7 +67,7 @@ piscina, suelos de cada estancia, muros con sus puertas y ventanas, muebles, val
 - **Tocar una estancia** del plano lleva a su vista; la estancia elegida se marca con un borde discontinuo.
 - **Estancias con luz encendida**: el suelo se tiñe de ámbar; la piscina se ilumina con su luz.
 - Los marcadores mantienen su tamaño al hacer zoom. Con poco zoom solo se ve el icono de cada estancia (y cuántas
-  luces tiene encendidas); al acercarse aparecen el nombre y la temperatura.
+  luces tiene encendidas); al acercarse aparece el nombre.
 - Todo el dibujo es una sola capa que se mueve con un `transform`: moverlo o hacer zoom no repinta nada.
 
 ### Qué se ve en cada vista
@@ -156,7 +161,8 @@ Las alertas descartadas se recuerdan en el navegador de cada pantalla. Para desa
 ## Vista general, estancias y capas
 
 Saludo y tiempo, avisos, alarma, acciones de toda
-la casa, clima, energía y batería; en cada estancia iluminación con escenas, persianas y cortinas (estas se abren en horizontal, con su propio icono y tarjeta), ambiente, seguridad,
+la casa, clima (aire acondicionado, temperatura y humedad de fuera y previsión de las próximas 24 h; las Shelly X2i no
+miden temperatura ni humedad, así que no hay dato de ambiente interior), energía y batería; en cada estancia iluminación con escenas, persianas y cortinas (estas se abren en horizontal, con su propio icono y tarjeta), ambiente, seguridad,
 dispositivos y actividad de hoy; y las capas Luces, Persianas, Clima, Energía, Electrodomésticos, Seguridad y
 Multimedia. Las hojas de detalle (luz, instalación solar, depuradora) ocupan toda la pantalla con fondo opaco.
 
@@ -181,18 +187,20 @@ integración **Meteoalarm** (publica los avisos de la AEMET para España). Se de
 **Tocar para ver más**: las filas de Seguridad (alarma, puertas, sensores de agua), cada puerta de la calle y cada
 cámara, el clima de la estancia y el tiempo abren el detalle de Home Assistant (la alarma se conecta o desconecta ahí).
 
-**Robot aspirador** (Dreame): además de _Limpiar_ y _A la base_, el botón **Personalizar limpieza e historial** (o tocar su
+**Robot aspirador** (Dreame X60 Pro Master, `vacuum.x60_pro_master`): además de _Limpiar_ y _A la base_, el botón **Personalizar limpieza e historial** (o tocar su
 marcador en el plano) abre una hoja con:
 
 - **Modo**: solo aspirar, solo fregar o aspirar y fregar a la vez; **potencia de aspirado** (silencio, estándar,
   fuerte, turbo) y **humedad de la mopa** (poco húmeda, húmeda, muy mojada). Sin mopa instalada solo deja aspirar.
 - **Estancias**: botones _Interior_, _Exterior_ (el porche, lo único exterior del mapa del robot) y _Todo_, o _Elegir_
-  y tocar las estancias en un plano sencillo: el número indica el orden de limpieza. Las del robot no coinciden con
-  las del panel (p. ej. Salón y cocina son una sola).
+  y tocar las estancias en un plano sencillo: el número indica el orden de limpieza. Son las mismas que las del
+  panel (Salón, Cocina y Entrada por separado). El **Dormitorio 3** sale como «sin mapa» y no se puede elegir hasta
+  que el robot lo mapee.
 - **Últimas limpiezas**: fecha, duración, superficie, tipo, si se interrumpió y por qué, si llevaba mopa, método,
-  estancias donde no pudo entrar, y el desgaste de cepillos y filtro (de `sensor.limpiasuelos_cleaning_history`).
+  estancias donde no pudo entrar, y el desgaste de cepillos, filtro, sensores y ruedas (de
+  `sensor.x60_pro_master_cleaning_history`).
 - **Mapas**: el mapa en directo mientras limpia (o el último estado) y el recorrido de cada limpieza del historial, con
-  una miniatura en cada tarjeta; tocar una la muestra en grande. Salen de `camera.limpiasuelos_map` (la integración
+  una miniatura en cada tarjeta; tocar una la muestra en grande. Salen de `camera.x60_pro_master_map` (la integración
   de Dreame guarda las últimas 30 tareas con su imagen).
 - Al empezar se desactiva CleanGenius y la limpieza personalizada del robot (si no, ignora estos ajustes), se fijan
   modo, succión y humedad, se ordena la secuencia de estancias y se llama a `dreame_vacuum.vacuum_clean_segment`.

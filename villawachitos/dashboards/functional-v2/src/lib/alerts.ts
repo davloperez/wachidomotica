@@ -50,6 +50,8 @@ export interface AlertRule {
 
 /** `binary_sensor` de avería que no son relevantes en el panel. */
 const IGNORE = [/connectif/, /cpu_vulnerabilities/];
+/** Prefijo de las entidades del robot aspirador (sus averías se sitúan en el salón, donde está la base) */
+const VACUUM_ID = VACUUM_LEAK.vacuum.split(".")[1];
 
 /** Dispositivos de un tipo en todas las estancias, con la estancia a la que pertenecen. */
 function devicesOf<T extends DeviceDef["type"]>(
@@ -325,7 +327,7 @@ export const ALERT_RULES: AlertRule[] = [
           title: friendly(c.hass, id),
           room: id.includes("frigo")
             ? "cocina"
-            : id.includes("limpiasuelos") || id.includes("aidoo")
+            : id.includes(VACUUM_ID) || id.includes("aidoo")
               ? "salon"
               : undefined,
           since: since(c, id),

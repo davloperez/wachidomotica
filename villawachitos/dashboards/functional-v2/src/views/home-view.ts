@@ -71,8 +71,6 @@ export const WEATHER_ICON: Record<string, string> = {
 
 const PV_TOTAL = "sensor.david_lopez_perez_daily_pv_generation";
 const LOAD_TOTAL = "sensor.david_lopez_perez_home_consumption_today";
-const INDOOR_T = "sensor.shelly_salon_sur_temperatura";
-const INDOOR_H = "sensor.shelly_salon_sur_humedad";
 const HVAC = "climate.aidoo_28_cc_ff_82_82_6f";
 /** Modo silencioso de la alarma: sin sirenas ni avisos sonoros, solo Telegram. */
 const SILENT_MODE = "input_boolean.alarma_modo_silencioso";
@@ -148,7 +146,7 @@ export class HomeView extends LitElement {
       console.warn("[functional-v2] energía diaria", err);
     }
     try {
-      this.hours = await hourlyMeans(this.hass, [ENERGY.sensors.soc, ENERGY.sensors.pv, INDOOR_T], 24);
+      this.hours = await hourlyMeans(this.hass, [ENERGY.sensors.soc, ENERGY.sensors.pv], 24);
     } catch (err) {
       console.warn("[functional-v2] medias horarias", err);
     }
@@ -593,44 +591,54 @@ export class HomeView extends LitElement {
     `;
   }
 
+  /**
+   * Clima: estado del aire acondicionado y tiempo exterior (las Shelly X2i no miden temperatura ni humedad,
+   * así que ya no hay sensor de ambiente interior). La gráfica es la previsión de temperatura de las
+   * próximas 24 h.
+   */
   private climate() {
-    const t = num(this.hass, INDOOR_T);
-    const hum = num(this.hass, INDOOR_H);
     const hv = st(this.hass, HVAC);
     const w = st(this.hass, this.config?.weather);
     const out = w?.attributes.temperature as number | undefined;
+    const hum = w?.attributes.humidity as number | undefined;
     const mode = hv?.state ?? "off";
+    const now = this.now.getTime();
+    const next: Point[] = this.hourly
+      .map((f): [number, number | undefined] => [new Date(f.datetime).getTime(), f.temperature])
+      .filter(
+        (p): p is Point => typeof p[1] === "number" && p[0] >= now - 3_600_000 && p[0] <= now + 86_400_000,
+      );
     return html`
-      <section class="glass card" style="--d:2" @click=${() => this.go("salon")}>
+      <section class="glass card" style="--d:2" @click=${() => this.go("entrada")}>
         <header class="card-head">
           <span class="ico">${icon(mdiThermometer)}</span>
-          <span class="grow">Clima interior</span>
+          <span class="grow">Clima</span>
           <span class="pill ${mode === "off" ? "" : mode === "heat" ? "warn" : "info"}">
             ${mode === "off" ? "Aire apagado" : `${HVAC_ES[mode] ?? mode} → ${fmt(hv?.attributes.temperature as number, 0)}°`}
           </span>
         </header>
         <div class="kpis">
           <div>
-            <span class="kpi">${fmt(t, 1)}<small>°C</small></span
-            ><span class="muted lbl">salón</span>
-          </div>
-          <div>
-            <span class="kpi soft">${fmt(hum, 0)}<small>%</small></span>
-            <span class="muted lbl">${icon(mdiWaterPercent)} humedad</span>
+            <span class="kpi">${fmt(out, 0)}<small>°C</small></span
+            ><span class="muted lbl">fuera</span>
           </div>
           ${
-            out !== undefined
+            hum !== undefined
               ? html`<div>
-                  <span class="kpi soft">${fmt(out, 0)}<small>°</small></span
-                  ><span class="muted lbl">fuera</span>
+                  <span class="kpi soft">${fmt(hum, 0)}<small>%</small></span>
+                  <span class="muted lbl">${icon(mdiWaterPercent)} humedad</span>
                 </div>`
               : nothing
           }
         </div>
-        <fv2-area-chart
-          .height=${70}
-          .series=${[{ data: this.hours[INDOOR_T] ?? [], color: "var(--terracotta)", unit: "°" }]}
-        ></fv2-area-chart>
+        ${
+          next.length > 1
+            ? html`<fv2-area-chart
+                .height=${70}
+                .series=${[{ data: next, color: "var(--terracotta)", unit: "°", label: "Previsión" }]}
+              ></fv2-area-chart>`
+            : nothing
+        }
       </section>
     `;
   }

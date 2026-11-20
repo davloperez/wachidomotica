@@ -20,7 +20,7 @@ export const DOORBELL = {
 
 export const VACUUM_LEAK = {
   sensor: "binary_sensor.sensor_agua_dreame_water_leak",
-  vacuum: "vacuum.limpiasuelos",
+  vacuum: "vacuum.x60_pro_master",
   room: "salon",
 };
 
