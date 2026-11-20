@@ -1,5 +1,6 @@
 import type { HassEntity, HomeAssistant } from "../src/types";
 import { ENERGY, FRIDGE, PEOPLE, ROOMS_DEF, lampKind } from "../src/house/rooms";
+import { PANELS } from "../src/lib/panels";
 
 /**
  * `hass` simulado con todas las entidades del panel: luces al azar, persianas, energía,
@@ -54,7 +55,6 @@ export function createMockHass(getDarkMode: () => boolean, onUpdate: (hass: Home
       });
     }
   }
-  set("sensor.cocina_shelly_cocina_iluminancia", "320");
   set("weather.forecast_casa", "partlycloudy", {
     temperature: 19,
     humidity: 62,
@@ -126,9 +126,9 @@ export function createMockHass(getDarkMode: () => boolean, onUpdate: (hass: Home
     source_list: ["TV", "HDMI 1", "Netflix"],
   });
   set("remote.salon_tv_samsung_salon_85", "off");
-  set("sensor.shellywalldisplay_0205030bbdd8_iluminancia", "854");
-  set("sensor.oficina_1_shellywalldisplay_oficina1_iluminancia", "140");
-  set("sensor.oficina_2_shellywalldisplay_oficina2_iluminancia", "919");
+  // Sensores de luz de las Shelly (solo deciden el tema «auto» de cada panel)
+  for (const p of Object.values(PANELS))
+    if (p.lux) set(p.lux, String(Math.round(140 + Math.random() * 800)), { unit_of_measurement: "lx" });
   set("media_player.fire_tv_dormitorio", "unavailable");
   set("switch.t34_smart_plug_interruptor_1_2", "unavailable");
   set("binary_sensor.cam_exterior_este_motion_2", "on");
@@ -319,18 +319,9 @@ export function createMockHass(getDarkMode: () => boolean, onUpdate: (hass: Home
   });
   // Sensores de luz de las Shelly: alterna entre de día y de noche (tema «auto» de los paneles)
   window.addEventListener("fv2-dev-lux", () => {
-    const night = Number(states["sensor.cocina_shelly_cocina_iluminancia"]?.state) >= 50;
-    for (const id of [
-      "sensor.cocina_shelly_cocina_iluminancia",
-      "sensor.shellywalldisplay_0205030bbdd8_iluminancia",
-      "sensor.oficina_1_shellywalldisplay_oficina1_iluminancia",
-      "sensor.oficina_2_shellywalldisplay_oficina2_iluminancia",
-      "sensor.bano_1_shelly_bano_1_iluminancia",
-      "sensor.bano_2_shelly_bano_2_iluminancia",
-      "sensor.dormitorio_1_shelly_dormitorio_1_iluminancia",
-      "sensor.dormitorio_2_shelly_dormitorio_2_iluminancia",
-      "sensor.dormitorio_3_shelly_dormitorio_3_iluminancia",
-    ])
+    const ids = Object.values(PANELS).flatMap((p) => (p.lux ? [p.lux] : []));
+    const night = Number(states[ids[0]]?.state) >= 50;
+    for (const id of ids)
       set(id, night ? "3" : String(Math.round(200 + Math.random() * 600)), { unit_of_measurement: "lx" });
     emit();
   });

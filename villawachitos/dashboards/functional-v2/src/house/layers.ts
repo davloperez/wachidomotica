@@ -87,12 +87,6 @@ export function coverSpot(entity: string): [number, number, number] | undefined 
 const SPOTS: Record<string, [number, number, number]> = {
   // Control del aire acondicionado: dentro del armario del recibidor (entrada)
   "climate.aidoo_28_cc_ff_82_82_6f": [-5.8, 1.4, -2.1],
-  // Pantallas de pared Shelly (presencia y luz ambiente)
-  "binary_sensor.shellywalldisplay_0205030bbdd8_ocupacion": [1.15, 1.4, -0.85],
-  // Shelly Cocina, en la pared sur de la cocina
-  "binary_sensor.cocina_shelly_cocina_ocupacion": [-5.6, 1.4, 4.4],
-  "binary_sensor.oficina_1_shellywalldisplay_oficina1_ocupacion": [-3.7, 1.4, -3.0],
-  "binary_sensor.oficina_2_shellywalldisplay_oficina2_ocupacion": [0.95, 1.4, -3.0],
   "media_player.fire_tv_dormitorio": [3.4, 1.0, 2.35],
   "binary_sensor.sensor_movimiento_vestidor_occupancy": [2.9, 2.2, 0.5],
   // Cortinas del salón, delante de la puerta grande (balconeras 1 y 2) y de la pequeña (balconera 3)

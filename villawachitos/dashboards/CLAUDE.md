@@ -65,7 +65,8 @@ and the panel's own **lux sensor** (drives the "auto" theme):
   to HA dark mode if there never was one. The manual "Tema" button (light/dark, saved per browser) overrides it.
   The Shelly sensors mostly read daylight (≈0–5 lx at night even with lights on). Dev: `?mock` dev-bar **Luz**.
 - All wall panels are Shelly Wall Display X2i: occupancy + lux only, **no temperature/humidity** sensor (the home
-  "Clima" card shows the A/C and outdoor weather instead).
+  "Clima" card shows the A/C and outdoor weather instead). The panels themselves are **not shown in the UI** (no
+  device in `house/rooms.ts`, no plan marker): their lux sensor is only used, via `PANELS`, for that panel's theme.
 - **Adding/removing a wall panel** = add/remove it in **both** `deploy.json` `dashboards` and `PANELS` (with its
   lux sensor, if the device has one), and
   update the table in the dashboard `README.md` and here. Values are `HOME` or a room `id` from `house/rooms.ts`;

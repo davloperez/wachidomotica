@@ -27,7 +27,6 @@ import {
   mdiRobotVacuum,
   mdiFan,
   mdiFlower,
-  mdiTablet,
   mdiTune,
   mdiSolarPowerVariant,
   mdiTelevision,
@@ -75,9 +74,8 @@ const PRINTER_ES: Record<string, string> = {
   unavailable: "Apagada",
 };
 
-/** Icono de un dispositivo: por tipo, salvo las pantallas Shelly (tablet), el ambientador (flor) y la ventilación (ventilador). */
+/** Icono de un dispositivo: por tipo, salvo el ambientador (flor) y la ventilación (ventilador). */
 export function deviceIcon(d: DeviceDef): string {
-  if (d.type === "presence" && (d.occupancy ?? d.illuminance)?.includes("shelly")) return mdiTablet;
   if (d.type === "switch") {
     if (d.dose) return mdiFlower;
     if (d.entity.includes("ventilacion")) return mdiFan;

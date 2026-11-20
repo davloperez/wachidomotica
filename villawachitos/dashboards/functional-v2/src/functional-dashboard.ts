@@ -69,8 +69,6 @@ const HOLD_MS = 550;
 const NUDGE: Record<string, [dx: number, dz: number]> = {
   "binary_sensor.sensor_agua_dreame_water_leak": [-0.9, 0.5],
   "vacuum:vacuum.x60_pro_master": [-0.85, -0.55],
-  "presence:binary_sensor.shellywalldisplay_0205030bbdd8_ocupacion": [0.0, -0.85],
-  "media_player.shellywalldisplay_0205030bbdd8": [0.0, -0.85],
 };
 
 /** Animación del icono de un elemento activo (todas son transform/opacity). */
