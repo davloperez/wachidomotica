@@ -54,7 +54,9 @@ export class Slider extends LitElement {
     this.armed = true;
     this.active = true;
     try {
-      this.setPointerCapture(this.pointer);
+      // La captura debe hacerse sobre la pista (donde están los listeners), no sobre el host:
+      // si no, los pointermove/pointerup se entregan al host y la pista no los recibe nunca.
+      this.shadowRoot?.querySelector(".track")?.setPointerCapture(this.pointer);
     } catch {
       /* el puntero ya terminó */
     }

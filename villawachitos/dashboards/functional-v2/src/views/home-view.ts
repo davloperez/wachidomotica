@@ -50,7 +50,7 @@ import "../widgets/cam-thumb";
 import { allCameras } from "../lib/cameras";
 import { dailyTotals, hourlyMeans, type Point } from "../lib/data";
 import { computeAlerts, roomName } from "../lib/alerts";
-import { ALL_OFF_SCRIPT, ENERGY, PEOPLE, ROOMS_DEF } from "../house/rooms";
+import { ALL_OFF_SCRIPT, ENERGY, ROOMS_DEF } from "../house/rooms";
 import { subscribeForecast, type Forecast } from "../lib/weather";
 import "../charts/charts";
 import "../widgets/alarm-keypad";
@@ -179,8 +179,6 @@ export class HomeView extends LitElement {
       h < 6 ? "Buenas noches" : h < 13 ? "Buenos días" : h < 21 ? "Buenas tardes" : "Buenas noches";
     const w = st(this.hass, this.config?.weather);
     const temp = w?.attributes.temperature as number | undefined;
-    const people = PEOPLE.map((p) => st(this.hass, p)).filter((p) => p);
-    const home = people.filter((p) => p!.state === "home");
     return html`
       <section class="glass card hello" style="--d:0">
         <span class="muted date">
@@ -204,17 +202,6 @@ export class HomeView extends LitElement {
                 </span>`
               : nothing
           }
-        </div>
-        <div class="people">
-          ${people.map((p) => {
-            const name = String(p!.attributes.friendly_name ?? "").split(" ")[0];
-            return html`<span class="avatar ${p!.state === "home" ? "in" : ""}" title=${name}
-              >${name.slice(0, 1)}</span
-            >`;
-          })}
-          <span class="muted">
-            ${home.length === 0 ? "No hay nadie en casa" : home.length === people.length ? "Todos en casa" : `${home.length} en casa`}
-          </span>
         </div>
         ${this.forecast()}
       </section>
@@ -241,7 +228,6 @@ export class HomeView extends LitElement {
     return html`
       <div class="fc">
         <div class="fc-head muted">
-          <span>Urbanización La Quinta · Molina de Segura</span>
           ${
             td
               ? html`<span class="num"
@@ -759,7 +745,7 @@ export class HomeView extends LitElement {
       }
       .fc-head {
         display: flex;
-        justify-content: space-between;
+        justify-content: flex-end;
         gap: 8px;
         font-size: var(--fs-label);
       }
@@ -788,32 +774,6 @@ export class HomeView extends LitElement {
       .fc-it .rain {
         color: var(--sky);
         font-size: var(--fs-label);
-      }
-      .people {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        font-size: var(--fs-small);
-      }
-      .avatar {
-        display: grid;
-        place-items: center;
-        width: 30px;
-        height: 30px;
-        border-radius: 50%;
-        font-weight: 700;
-        font-size: calc(13px * var(--fs-scale));
-        background: var(--chip-strong);
-        color: var(--text-faint);
-        margin-right: -2px;
-      }
-      .avatar.in {
-        background: var(--sage);
-        color: #fff;
-        box-shadow: 0 0 0 2px var(--glass-strong);
-      }
-      .people .muted {
-        margin-left: 8px;
       }
       .ttl {
         display: grid;
@@ -946,7 +906,7 @@ export class HomeView extends LitElement {
       .sec-foot {
         display: flex;
         align-items: center;
-        justify-content: space-between;
+        justify-content: flex-end;
         gap: 8px;
         font-size: var(--fs-label);
       }

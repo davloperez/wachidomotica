@@ -1,5 +1,5 @@
 import type { HassEntity, HomeAssistant } from "../src/types";
-import { ENERGY, FRIDGE, PEOPLE, ROOMS_DEF, lampKind } from "../src/house/rooms";
+import { ENERGY, FRIDGE, ROOMS_DEF, lampKind } from "../src/house/rooms";
 import { PANELS } from "../src/lib/panels";
 
 /**
@@ -85,9 +85,6 @@ export function createMockHass(getDarkMode: () => boolean, onUpdate: (hass: Home
     fan_modes: ["auto", "low", "medium", "high"],
     fan_mode: "auto",
   });
-  PEOPLE.forEach((p, i) =>
-    set(p, i === 0 ? "home" : "not_home", { friendly_name: i === 0 ? "David López" : "Inmaculada Pérez" }),
-  );
 
   const e = ENERGY.sensors;
   const solar: Record<string, string> = {

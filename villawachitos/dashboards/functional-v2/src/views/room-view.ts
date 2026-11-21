@@ -8,15 +8,12 @@ import {
   mdiArrowExpandHorizontal,
   mdiArrowLeft,
   mdiBlindsHorizontal,
-  mdiChartTimelineVariant,
   mdiCurtains,
   mdiLightbulbGroupOutline,
   mdiShieldHomeOutline,
   mdiThermometer,
   mdiWashingMachine,
-  mdiWaterPercent,
   mdiWeatherPartlyCloudy,
-  mdiWindowShutterOpen,
 } from "@mdi/js";
 import type { DashboardConfig, HomeAssistant } from "../types";
 import { shared } from "../styles/tokens";
@@ -33,7 +30,7 @@ import "../widgets/devices";
 
 type Scene = "all" | "relax" | "night" | "off";
 
-/** Detalle de una estancia: resumen, iluminación con escenas, persianas, ambiente, dispositivos y actividad. */
+/** Detalle de una estancia: resumen, iluminación con escenas, persianas, ambiente, dispositivos. */
 @customElement("fv2-room")
 export class RoomView extends LitElement {
   @property({ attribute: false }) hass?: HomeAssistant;
@@ -133,6 +130,20 @@ export class RoomView extends LitElement {
     const off = (ids: string[]) => ids.length && call(this.hass, "light", "turn_off", { entity_id: ids });
     if (scene === "all") on(lights, 100);
     if (scene === "off") off(lights);
+    const own = scene === "relax" || scene === "night" ? r.scenes?.[scene] : undefined;
+    if (own) {
+      for (const l of own.lights) {
+        if (!lights.includes(l.entity)) continue;
+        const e = st(this.hass, l.entity);
+        const data: Record<string, unknown> = { entity_id: l.entity };
+        if (l.pct !== undefined && isDimmable(e)) data.brightness_pct = l.pct;
+        const modes = (e?.attributes.supported_color_modes as string[] | undefined) ?? [];
+        if (l.kelvin !== undefined && modes.includes("color_temp")) data.color_temp_kelvin = l.kelvin;
+        call(this.hass, "light", "turn_on", data);
+      }
+      if (own.offOthers) off(lights.filter((id) => !own.lights.some((l) => l.entity === id)));
+      return;
+    }
     if (scene === "relax") {
       const amb = lights.filter((id) => soft(id) || isDimmable(st(this.hass, id)));
       const pick = amb.length ? amb : lights;
@@ -157,8 +168,6 @@ export class RoomView extends LitElement {
     if (!r) return nothing;
     const h = this.hass;
     const lightsOn = r.lights.filter((l) => isOn(h, l.entity)).length;
-    const t = num(h, r.temperature);
-    const hum = num(h, r.humidity);
     const pos = r.covers
       .filter((c) => !c.curtain)
       .map((c) => st(h, c.entity)?.attributes.current_position as number | undefined)
@@ -172,18 +181,6 @@ export class RoomView extends LitElement {
         <div class="title">
           <span class="eyebrow">Villawachitos · estancia</span>
           <h1>${r.name}</h1>
-        </div>
-        <div class="summary">
-          ${t !== undefined ? html`<span class="pill glass-pill">${icon(mdiThermometer)} ${fmt(t, 1)}°</span>` : nothing}
-          ${hum !== undefined ? html`<span class="pill glass-pill">${icon(mdiWaterPercent)} ${fmt(hum, 0)} %</span>` : nothing}
-          ${
-            r.lights.length
-              ? html`<span class="pill glass-pill ${lightsOn ? "lit" : ""}"
-                  >${icon(mdiLightbulbGroupOutline)} ${lightsOn}/${r.lights.length}</span
-                >`
-              : nothing
-          }
-          ${avg !== undefined ? html`<span class="pill glass-pill">${icon(mdiWindowShutterOpen)} ${avg} %</span>` : nothing}
         </div>
       </header>
 
@@ -207,7 +204,6 @@ export class RoomView extends LitElement {
               .def=${d}
             ></fv2-device>`,
         )}
-        ${this.activityCard()}
       </div>
     `;
   }
@@ -217,8 +213,8 @@ export class RoomView extends LitElement {
     const allOn = lightsOn > 0;
     const scenes: [Scene, string][] = [
       ["all", "Todo"],
-      ["relax", "Relax"],
-      ["night", "Noche"],
+      ["relax", r.scenes?.relax?.label ?? "Relax"],
+      ["night", r.scenes?.night?.label ?? "Noche"],
       ["off", "Apagar"],
     ];
     return html`
@@ -481,43 +477,6 @@ export class RoomView extends LitElement {
     </section>`;
   }
 
-  private activityCard() {
-    const r = this.room!;
-    const rows = [
-      ...r.lights.map((l) => ({ label: l.name, spans: this.spans[l.entity] ?? [], color: "var(--amber)" })),
-      ...r.covers.map((c) => ({
-        label: c.name,
-        spans: this.spans[c.entity] ?? [],
-        color: "var(--sky)",
-        active: ["open", "opening"],
-      })),
-      ...r.devices.flatMap((d) =>
-        d.type === "washer"
-          ? [{ label: d.name, spans: this.spans[d.running] ?? [], color: "var(--sage)" }]
-          : [],
-      ),
-    ];
-    if (!rows.length) return nothing;
-    const onMs = r.lights.reduce(
-      (acc, l) =>
-        acc +
-        (this.spans[l.entity] ?? []).filter((s) => s.state === "on").reduce((a, s) => a + (s.to - s.from), 0),
-      0,
-    );
-    return html`
-      <section class="glass card" style="--d:1">
-        <header class="card-head">
-          <span class="ico">${icon(mdiChartTimelineVariant)}</span>
-          <div class="grow ttl">
-            <b>Actividad de hoy</b>
-            <span>${r.lights.length ? `${fmt(onMs / 3600_000, 1)} h de luz acumuladas` : ""}</span>
-          </div>
-        </header>
-        <fv2-timeline .rows=${rows} .from=${startOfToday().getTime()} .to=${Date.now()}></fv2-timeline>
-      </section>
-    `;
-  }
-
   static styles = [
     shared,
     css`
@@ -606,27 +565,6 @@ export class RoomView extends LitElement {
         font-size: var(--fs-hero);
         letter-spacing: -0.02em;
         line-height: 1.05;
-      }
-      .summary {
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
-      }
-      /* Vertical / móvil (lo contrario del modo escritorio): los chips siempre debajo del título */
-      @media (max-width: 899px), (max-aspect-ratio: 1/1) {
-        .summary {
-          flex-basis: 100%;
-        }
-      }
-      .glass-pill {
-        font-size: var(--fs-small);
-        padding: 8px 14px;
-        background: var(--glass);
-        border: 1px solid var(--glass-border);
-        color: var(--text);
-      }
-      .glass-pill.lit svg {
-        color: var(--amber);
       }
       .col {
         display: flex;

@@ -162,16 +162,15 @@ Las alertas descartadas se recuerdan en el navegador de cada pantalla. Para desa
 
 Saludo y tiempo, avisos, alarma, acciones de toda
 la casa, clima (aire acondicionado, temperatura y humedad de fuera y previsión de las próximas 24 h; las Shelly X2i no
-miden temperatura ni humedad, así que no hay dato de ambiente interior), energía y batería; en cada estancia iluminación con escenas, persianas y cortinas (estas se abren en horizontal, con su propio icono y tarjeta), ambiente, seguridad,
-dispositivos y actividad de hoy; y las capas Luces, Persianas, Clima, Energía, Electrodomésticos, Seguridad y
+miden temperatura ni humedad, así que no hay dato de ambiente interior), energía y batería; en cada estancia iluminación con escenas (Todo, Relax, Noche y Apagar; en Cocina «Relax» es **Cocinar** y «Noche» solo enciende la barra al 5 %, ver `scenes` en `rooms.ts`), persianas y cortinas (estas se abren en horizontal, con su propio icono y tarjeta), ambiente, seguridad,
+dispositivos; y las capas Luces, Persianas, Clima, Energía, Electrodomésticos, Seguridad y
 Multimedia. Las hojas de detalle (luz, instalación solar, depuradora) ocupan toda la pantalla con fondo opaco.
 
 Estancias y dispositivos: [`src/house/rooms.ts`](src/house/rooms.ts); capas: [`src/house/layers.ts`](src/house/layers.ts)
 (un dispositivo nuevo se añade ahí).
 
 **Previsión**: bajo el saludo, las próximas horas de hoy y los siguientes 5 días (mínima, máxima y probabilidad de
-lluvia) de la entidad `weather` configurada, que usa las coordenadas de la casa (Urbanización La Quinta, Molina de
-Segura). Se lee con `weather/subscribe_forecast`, así que la entidad debe soportar previsión diaria y por horas.
+lluvia) de la entidad `weather` configurada, que usa las coordenadas de la casa. Se lee con `weather/subscribe_forecast`, así que la entidad debe soportar previsión diaria y por horas.
 
 **Todos los avisos**: el botón _Ver todos los avisos_ del panel _Avisos_ abre una hoja con el catálogo completo de
 avisos posibles, se cumplan o no. Arriba, _Activos ahora_ (en el color de su gravedad; tocar uno lleva a su

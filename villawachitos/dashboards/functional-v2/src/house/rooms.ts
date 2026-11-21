@@ -111,6 +111,22 @@ export type DeviceDef =
   | { type: "cameras"; name: string; cameras: CameraDef[] }
   | { type: "presence"; name: string; occupancy?: string; illuminance?: string };
 
+/** Ajuste de una luz dentro de una escena propia de la estancia (`kelvin` solo si la luz admite temperatura de color) */
+export interface SceneLight {
+  entity: string;
+  pct?: number;
+  kelvin?: number;
+}
+
+/** Escena propia que sustituye a la genérica de «Relax» o «Noche»: enciende solo esas luces */
+export interface RoomScene {
+  /** Nombre del botón (por defecto el de la escena genérica) */
+  label?: string;
+  lights: SceneLight[];
+  /** Apaga el resto de luces de la estancia */
+  offOthers?: boolean;
+}
+
 export interface RoomDef {
   id: string;
   name: string;
@@ -122,6 +138,8 @@ export interface RoomDef {
   /** Punto [x, z] del acceso en el plano cuando la estancia une varias (por defecto, centro del rectángulo mayor) */
   anchor?: [x: number, z: number];
   lights: LightDef[];
+  /** Escenas propias de la estancia (sustituyen a las genéricas) */
+  scenes?: { relax?: RoomScene; night?: RoomScene };
   covers: CoverDef[];
   /** Sensores de clima de la estancia */
   temperature?: string;
@@ -175,6 +193,18 @@ export const ROOMS_DEF: RoomDef[] = [
       { entity: "light.led_barra_isla", name: "LED barra" },
       { entity: "light.luz_fregadero_cocina", name: "Fregadero" },
     ],
+    scenes: {
+      // Cocinar: barra en cálida (2000 K), fregadero neutro y luz de cocinar; el techo no se toca
+      relax: {
+        label: "Cocinar",
+        lights: [
+          { entity: "light.led_barra_isla", pct: 60, kelvin: 2000 },
+          { entity: "light.luz_fregadero_cocina", pct: 60, kelvin: 4000 },
+          { entity: "light.cocina_esp_cocina_luz_isla_cocina" },
+        ],
+      },
+      night: { lights: [{ entity: "light.led_barra_isla", pct: 5, kelvin: 2000 }], offOthers: true },
+    },
     covers: [],
     devices: [
       { type: "fridge", name: "Frigorífico" },
@@ -258,7 +288,6 @@ export const ROOMS_DEF: RoomDef[] = [
     ],
     covers: [{ entity: "cover.persiana_oficina_1_persiana", name: "Persiana" }],
     devices: [
-      { type: "printer", name: "Impresora", entity: PRINTER.entity, inks: PRINTER.inks },
       {
         type: "switch",
         name: "Ambientador",
@@ -272,6 +301,7 @@ export const ROOMS_DEF: RoomDef[] = [
           hours: "08:00–21:00",
         },
       },
+      { type: "printer", name: "Impresora", entity: PRINTER.entity, inks: PRINTER.inks },
     ],
   },
   {
@@ -510,8 +540,6 @@ export const EXTRA_LEAKS = [
   "binary_sensor.0xa4c1380e560ce904_water_leak",
   "binary_sensor.0xa4c138c3d63ea15c_water_leak",
 ];
-
-export const PEOPLE = ["person.david_lopez_perez", "person.inmaculada_perez_mayoer"];
 
 /** Script de Home Assistant que lo apaga todo (botón de la vista general). */
 export const ALL_OFF_SCRIPT = "script.apagar_todo";
