@@ -48,7 +48,7 @@ import {
   st,
 } from "../lib/ha";
 import "../widgets/cam-thumb";
-import { allCameras } from "../lib/cameras";
+import { allCameras, camAlert } from "../lib/cameras";
 import { dailyTotals, hourlyMeans, type Point } from "../lib/data";
 import { computeAlerts, roomName } from "../lib/alerts";
 import { ALL_OFF_SCRIPT, ENERGY, ROOMS_DEF } from "../house/rooms";
@@ -444,7 +444,7 @@ export class HomeView extends LitElement {
     const gates = ROOMS_DEF.flatMap((r) => r.devices).flatMap((d) => (d.type === "gates" ? d.gates : []));
     const door = st(this.hass, "binary_sensor.sensor_puerta_principal_contact");
     const cams = ROOMS_DEF.flatMap((r) => r.devices).flatMap((d) => (d.type === "cameras" ? d.cameras : []));
-    const motion = cams.filter((c) => isOn(this.hass, c.person) || isOn(this.hass, c.motion));
+    const seen = cams.filter((c) => isOn(this.hass, c.person) || isOn(this.hass, c.cat));
     return html`
       <section class="glass card sec ${triggered || pending ? "alarm" : armed ? "armed" : ""}" style="--d:0">
         <header class="card-head">
@@ -496,9 +496,9 @@ export class HomeView extends LitElement {
               >${!door || door.state === "unavailable" ? "—" : door.state === "on" ? "Abierta" : "Cerrada"}</b
             >
           </div>
-          <div class="mini-stat ${motion.length ? "info" : ""}" @click=${() => this.go("exterior")}>
+          <div class="mini-stat ${seen.length ? "info" : ""}" @click=${() => this.go("exterior")}>
             <span class="faint">Cámaras</span>
-            <b>${motion.length ? `${motion.length} con movimiento` : "Tranquilo"}</b>
+            <b>${seen.length ? `${seen.length} con persona o gato` : "Tranquilo"}</b>
           </div>
         </div>
         <div class="cam-head">
@@ -520,7 +520,7 @@ export class HomeView extends LitElement {
                   .entity=${c.entity}
                   .name=${c.name}
                   .interval=${30}
-                  .alert=${isOn(this.hass, c.person) ? "person" : isOn(this.hass, c.motion) ? "motion" : ""}
+                  .alert=${camAlert(this.hass, c)}
                 ></fv2-cam-thumb>
               </button>`,
           )}

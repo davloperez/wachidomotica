@@ -7,14 +7,28 @@
  */
 import type { HomeAssistant } from "../types";
 import { ROOMS_DEF, EXTRA_CAMERAS } from "../house/rooms";
-import { st } from "./ha";
+import { st, isOn } from "./ha";
 
 export interface CamInfo {
   name: string;
   entity: string;
-  /** Sensores de movimiento / persona (solo las cámaras de Frigate) */
+  /** Sensores de movimiento / persona / gato (solo las cámaras de Frigate) */
   motion?: string;
   person?: string;
+  cat?: string;
+}
+
+/**
+ * Aviso de una cámara: `person` (persona, en rojo), `animal` (gato, en ámbar) o vacío.
+ * El movimiento no cuenta: solo se resaltan personas y gatos.
+ */
+export function camAlert(
+  hass: HomeAssistant | undefined,
+  c: { person?: string; cat?: string },
+): "" | "animal" | "person" {
+  if (isOn(hass, c.person)) return "person";
+  if (isOn(hass, c.cat)) return "animal";
+  return "";
 }
 
 /** Todas las cámaras con imagen, en el orden del panel. */
@@ -24,7 +38,8 @@ export function allCameras(): CamInfo[] {
     for (const d of r.devices)
       if (d.type === "cameras")
         for (const c of d.cameras)
-          if (c.camera) out.push({ name: c.name, entity: c.camera, motion: c.motion, person: c.person });
+          if (c.camera)
+            out.push({ name: c.name, entity: c.camera, motion: c.motion, person: c.person, cat: c.cat });
   for (const c of EXTRA_CAMERAS) out.push({ name: c.name, entity: c.camera });
   return out;
 }

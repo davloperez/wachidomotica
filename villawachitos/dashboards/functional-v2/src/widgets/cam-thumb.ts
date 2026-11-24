@@ -17,8 +17,8 @@ export class CamThumb extends LitElement {
   @property() name = "";
   /** Segundos entre imágenes (0 = solo una vez) */
   @property({ type: Number }) interval = 20;
-  /** Avisa con el borde en ámbar (movimiento) o rojo (persona) */
-  @property() alert: "" | "motion" | "person" = "";
+  /** Avisa con el borde en ámbar (gato) o rojo (persona) */
+  @property() alert: "" | "animal" | "person" = "";
   /** Cómo encaja la imagen en su caja */
   @property() fit: "cover" | "contain" = "cover";
   /** Rellena todo el alto disponible en vez de mantener 16:9 */
@@ -104,7 +104,7 @@ export class CamThumb extends LitElement {
         background: var(--track);
         border: 2px solid transparent;
       }
-      .box.motion {
+      .box.animal {
         border-color: var(--amber);
       }
       .box.person {

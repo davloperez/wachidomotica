@@ -26,7 +26,7 @@ export class CamLive extends LitElement {
   @property({ type: Boolean }) mjpeg = false;
   /** Segundos entre imágenes cuando no hay directo */
   @property({ type: Number }) snapEvery = 3;
-  @property() alert: "" | "motion" | "person" = "";
+  @property() alert: "" | "animal" | "person" = "";
   @state() private source: Source = "connecting";
   @state() private why = "";
   @query("video") private video?: HTMLVideoElement;
@@ -163,7 +163,7 @@ export class CamLive extends LitElement {
         height: 100%;
         border-radius: 0;
       }
-      .box.motion {
+      .box.animal {
         border-color: var(--amber);
       }
       .box.person {

@@ -48,11 +48,12 @@ export interface CoverDef {
   curtain?: boolean;
 }
 
-/** Cámara (Frigate): sus sensores de movimiento y persona, y su entidad `camera.*` para la imagen y el directo. */
+/** Cámara (Frigate): sus sensores de movimiento, persona y gato, y su entidad `camera.*` para la imagen y el directo. */
 export interface CameraDef {
   name: string;
   motion: string;
   person?: string;
+  cat?: string;
   camera?: string;
 }
 
@@ -510,30 +511,35 @@ export const ROOMS_DEF: RoomDef[] = [
             camera: "camera.cam_garaje",
             motion: "binary_sensor.cam_garaje_motion",
             person: "binary_sensor.cam_garaje_person_occupancy",
+            cat: "binary_sensor.cam_garaje_cat_occupancy",
           },
           {
             name: "Patio lavadero",
             camera: "camera.cam_patio_lavadero",
             motion: "binary_sensor.cam_patio_lavadero_motion_2",
             person: "binary_sensor.cam_patio_lavadero_person_occupancy",
+            cat: "binary_sensor.cam_patio_lavadero_cat_occupancy",
           },
           {
             name: "Piscina este",
             camera: "camera.cam_piscina_este",
             motion: "binary_sensor.cam_piscina_este_motion",
             person: "binary_sensor.cam_piscina_este_person_occupancy",
+            cat: "binary_sensor.cam_piscina_este_cat_occupancy",
           },
           {
             name: "Piscina oeste",
             camera: "camera.cam_piscina_oeste",
             motion: "binary_sensor.cam_piscina_oeste_motion_2",
             person: "binary_sensor.cam_piscina_oeste_person_occupancy",
+            cat: "binary_sensor.cam_piscina_oeste_cat_occupancy",
           },
           {
             name: "Exterior este",
             camera: "camera.cam_exterior_este",
             motion: "binary_sensor.cam_exterior_este_motion_2",
             person: "binary_sensor.cam_exterior_este_person_occupancy",
+            cat: "binary_sensor.cam_exterior_este_cat_occupancy",
           },
         ],
       },

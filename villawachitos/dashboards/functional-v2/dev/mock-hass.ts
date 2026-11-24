@@ -39,7 +39,19 @@ export function createMockHass(getDarkMode: () => boolean, onUpdate: (hass: Home
         brightness: modes[0] === "onoff" ? null : Math.round(60 + Math.random() * 190),
         rgb_color: kind === "strip" ? [255, 170, 110] : [255, 200, 140],
         ...(kind === "strip"
-          ? { effect_list: ["Solid", "Breathe", "Random Colors", "Dynamic", "Scan", "Pacifica", "Rainbow", "Candle"], effect: "Solid" }
+          ? {
+              effect_list: [
+                "Solid",
+                "Breathe",
+                "Random Colors",
+                "Dynamic",
+                "Scan",
+                "Pacifica",
+                "Rainbow",
+                "Candle",
+              ],
+              effect: "Solid",
+            }
           : {}),
         ...(kind === "lamp"
           ? { min_color_temp_kelvin: 2700, max_color_temp_kelvin: 6500, color_temp_kelvin: 3000 }
@@ -179,19 +191,25 @@ export function createMockHass(getDarkMode: () => boolean, onUpdate: (hass: Home
       ...extra,
     });
     const pics: Record<string, string> = {};
-    [3, 20, 40, 60, 90, 120, 150].forEach((h, i) => (pics[`${i + 1}: tarea`] = `/dev/mock-map.svg?v=${at(h)}`));
+    [3, 20, 40, 60, 90, 120, 150].forEach(
+      (h, i) => (pics[`${i + 1}: tarea`] = `/dev/mock-map.svg?v=${at(h)}`),
+    );
     set("camera.x60_pro_master_map", new Date().toISOString(), {
       entity_picture: `/dev/mock-map.svg?v=${Date.now()}`,
       cleaning_history_picture: pics,
     });
     set("sensor.x60_pro_master_cleaning_history", new Date().toISOString(), {
-      "a": task(3, 6, 7, { cleanup_method: "Cleangenius" }),
-      "b": task(20, 115, 87, { blocked_rooms: { "13": "Blocked by dynamic obstacle" }, pet: true, status: "Cleaning" }),
-      "c": task(40, 38, 40, { completed: false, interrupt_reason: "Robot lifted" }),
-      "d": task(60, 6, 5, { mop_pad: "Not installed" }),
-      "e": task(90, 115, 83, { blocked_rooms: { "2": "Blocked by door", "4": "Blocked by door" } }),
-      "f": task(120, 12, 12, { status: "Zone cleaning" }),
-      "g": task(150, 29, 22),
+      a: task(3, 6, 7, { cleanup_method: "Cleangenius" }),
+      b: task(20, 115, 87, {
+        blocked_rooms: { "13": "Blocked by dynamic obstacle" },
+        pet: true,
+        status: "Cleaning",
+      }),
+      c: task(40, 38, 40, { completed: false, interrupt_reason: "Robot lifted" }),
+      d: task(60, 6, 5, { mop_pad: "Not installed" }),
+      e: task(90, 115, 83, { blocked_rooms: { "2": "Blocked by door", "4": "Blocked by door" } }),
+      f: task(120, 12, 12, { status: "Zone cleaning" }),
+      g: task(150, 29, 22),
     });
   }
   set("sensor.epson_et_5150_series", "idle");
@@ -262,7 +280,10 @@ export function createMockHass(getDarkMode: () => boolean, onUpdate: (hass: Home
   climate("sensor_t_h_oficina_1", "23.1", "47");
   climate("sensor_t_h_oficina_2", "21.6", "51");
   climate("sensor_t_h_m_i_bano_2", "22.8", "49");
-  set("sensor.sensor_t_h_m_i_bano_2_illuminance", "168", { unit_of_measurement: "lx", device_class: "illuminance" });
+  set("sensor.sensor_t_h_m_i_bano_2_illuminance", "168", {
+    unit_of_measurement: "lx",
+    device_class: "illuminance",
+  });
   set("binary_sensor.sensor_t_h_m_i_bano_2_presence", "off", { device_class: "occupancy" }, ago(300));
   for (const id of [
     "binary_sensor.sensor_agua_dreame_water_leak",
@@ -275,13 +296,18 @@ export function createMockHass(getDarkMode: () => boolean, onUpdate: (hass: Home
       if (d.type === "cameras")
         d.cameras.forEach((c, i) => {
           set(c.motion, i === 1 ? "on" : "off", {}, ago(3 + i * 17));
-          if (c.person) set(c.person, "off");
+          if (c.person) set(c.person, i === 3 ? "on" : "off");
+          if (c.cat) set(c.cat, i === 2 ? "on" : "off");
         });
       if (d.type === "cameras")
         d.cameras.forEach((c, i) => {
-          if (c.camera) set(c.camera, i === 4 ? "unavailable" : "recording", { entity_picture: mockPicture(c.name, i) });
+          if (c.camera)
+            set(c.camera, i === 4 ? "unavailable" : "recording", { entity_picture: mockPicture(c.name, i) });
         });
-      if (d.type === "lock") set("camera.jardin_norte_portero_automatico_exterior_duox_doorbell_camera", "idle", { entity_picture: mockPicture("Portero", 5) });
+      if (d.type === "lock")
+        set("camera.jardin_norte_portero_automatico_exterior_duox_doorbell_camera", "idle", {
+          entity_picture: mockPicture("Portero", 5),
+        });
       if (d.type === "presence") {
         if (d.occupancy) set(d.occupancy, Math.random() < 0.5 ? "on" : "off", {}, ago(12));
         if (d.illuminance) set(d.illuminance, String(Math.round(Math.random() * 400)));
@@ -296,10 +322,18 @@ export function createMockHass(getDarkMode: () => boolean, onUpdate: (hass: Home
       themes: { darkMode: getDarkMode() },
       connection: {
         subscribeMessage: async (cb: (m: never) => void, msg: Record<string, unknown>) => {
-          if (msg.type === "weather/subscribe_forecast") mockForecast(cb as never, msg.forecast_type as string);
+          if (msg.type === "weather/subscribe_forecast")
+            mockForecast(cb as never, msg.forecast_type as string);
           // Sin go2rtc en la simulación: el directo falla enseguida y el visor usa las imágenes
           if (msg.type === "camera/webrtc/offer")
-            window.setTimeout(() => (cb as (m: unknown) => void)({ type: "error", message: "Directo no disponible en la simulación" }), 300);
+            window.setTimeout(
+              () =>
+                (cb as (m: unknown) => void)({
+                  type: "error",
+                  message: "Directo no disponible en la simulación",
+                }),
+              300,
+            );
           return async () => {};
         },
       },
@@ -381,40 +415,6 @@ function mockPicture(name: string, i: number): string {
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
 
-function mockWS(msg: Record<string, unknown>, states: Record<string, HassEntity>): unknown {
-  const ids = (msg.statistic_ids ?? msg.entity_ids ?? []) as string[];
-  const start = Date.parse(msg.start_time as string);
-  const end = Date.now();
-  const out: Record<string, unknown[]> = {};
-  if (msg.type === "recorder/statistics_during_period") {
-    const day = msg.period === "day";
-    const step = day ? 86_400_000 : 3600_000;
-    for (const id of ids) {
-      const rows = [];
-      for (let t = start, i = 0; t < end; t += step, i++) {
-        const hour = new Date(t).getHours();
-        const sun = Math.max(0, Math.sin(((hour - 7) / 12) * Math.PI));
-        let v: number;
-        if (day) v = id.includes("pv") ? 18 + Math.random() * 10 : 9 + Math.random() * 6;
-        else if (id.includes("state_of_charge")) v = 40 + 45 * sun + i * 0.3;
-        else if (id.includes("pv")) v = 5.2 * sun;
-        else if (id.includes("load_power")) v = 0.45 + 0.6 * Math.abs(Math.sin(i / 3));
-        else if (id.includes("humedad")) v = 50 + 6 * Math.cos(i / 4);
-        else if (id.includes("congelador")) v = -19 + Math.sin(i) * 0.8;
-        else if (id.includes("refrigerador")) v = 4 + Math.sin(i / 2) * 0.6;
-        else if (id.includes("power")) v = hour >= 10 && hour < 16 ? 740 : 0;
-        else v = 21 + 3.5 * sun + Math.random() * 0.3;
-        if (id.includes("_energy")) v = 1.2 + Math.random() * 0.8;
-        rows.push(day ? { start: t, state: v, change: v } : { start: t, mean: v });
-      }
-      out[id] = rows;
-    }
-    return out;
-  }
-  if (msg.type === "history/history_during_period") {
-    for (const id of ids) {
-      const rows: { s: string; lu: number }[] = [];
-      const cover = id.startsWith("cover.");
 /** Menú de ejemplo (respuestas de `mealie.get_mealplan` y `mealie.get_recipe`), con fechas relativas a hoy. */
 const MOCK_RECIPES: Record<string, Record<string, unknown>> = {
   "macarrones-con-queso": {
@@ -511,11 +511,45 @@ function mockMealie(service: string, data: Record<string, unknown>): unknown {
   return { mealplan: all.filter((x) => x.mealplan_date >= from && x.mealplan_date <= to) };
 }
 
-      let t = start;
+function mockWS(msg: Record<string, unknown>, states: Record<string, HassEntity>): unknown {
   if (msg.type === "call_service" && msg.domain === "mealie")
     return {
       response: mockMealie(msg.service as string, (msg.service_data ?? {}) as Record<string, unknown>),
     };
+  const ids = (msg.statistic_ids ?? msg.entity_ids ?? []) as string[];
+  const start = Date.parse(msg.start_time as string);
+  const end = Date.now();
+  const out: Record<string, unknown[]> = {};
+  if (msg.type === "recorder/statistics_during_period") {
+    const day = msg.period === "day";
+    const step = day ? 86_400_000 : 3600_000;
+    for (const id of ids) {
+      const rows = [];
+      for (let t = start, i = 0; t < end; t += step, i++) {
+        const hour = new Date(t).getHours();
+        const sun = Math.max(0, Math.sin(((hour - 7) / 12) * Math.PI));
+        let v: number;
+        if (day) v = id.includes("pv") ? 18 + Math.random() * 10 : 9 + Math.random() * 6;
+        else if (id.includes("state_of_charge")) v = 40 + 45 * sun + i * 0.3;
+        else if (id.includes("pv")) v = 5.2 * sun;
+        else if (id.includes("load_power")) v = 0.45 + 0.6 * Math.abs(Math.sin(i / 3));
+        else if (id.includes("humedad")) v = 50 + 6 * Math.cos(i / 4);
+        else if (id.includes("congelador")) v = -19 + Math.sin(i) * 0.8;
+        else if (id.includes("refrigerador")) v = 4 + Math.sin(i / 2) * 0.6;
+        else if (id.includes("power")) v = hour >= 10 && hour < 16 ? 740 : 0;
+        else v = 21 + 3.5 * sun + Math.random() * 0.3;
+        if (id.includes("_energy")) v = 1.2 + Math.random() * 0.8;
+        rows.push(day ? { start: t, state: v, change: v } : { start: t, mean: v });
+      }
+      out[id] = rows;
+    }
+    return out;
+  }
+  if (msg.type === "history/history_during_period") {
+    for (const id of ids) {
+      const rows: { s: string; lu: number }[] = [];
+      const cover = id.startsWith("cover.");
+      let t = start;
       let on = false;
       rows.push({ s: cover ? "closed" : "off", lu: t / 1000 });
       while (t < end) {

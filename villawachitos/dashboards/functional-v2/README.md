@@ -103,15 +103,15 @@ cerrar y los de posición rápida 0, 25, 50, 75 y 100 %.
 | Lavadora, depuradora, ventilación                                   | El icono gira                                 |
 | Lavavajillas                                                        | Se balancea                                   |
 | Robot aspirador limpiando, toallero encendido                       | Sube y baja                                   |
-| TV, enchufes, presencia, cámaras con movimiento, freidora…          | Late suavemente                               |
+| TV, enchufes, presencia, cámaras con persona o gato, freidora…      | Late suavemente                               |
 | Instalación fotovoltaica mientras se consume de la red              | Late suavemente (también en la vista general) |
 | Persona en cámara, sensor con agua, puerta abierta, portero sonando | Tiembla, en ámbar                             |
 
 ## Cámaras
 
 - **Instantáneas**: en el detalle de las cámaras (vista Exterior y capa Seguridad) cada cámara muestra su imagen, que se
-  renueva cada 20 s; en el panel de Seguridad de la vista general, cada 30 s. El borde se pone en ámbar con movimiento y en
-  rojo con una persona. Solo se actualizan con el panel visible.
+  renueva cada 20 s; en el panel de Seguridad de la vista general, cada 30 s. El borde se pone en rojo con una persona y
+  en ámbar con un gato (el movimiento genérico no resalta). Solo se actualizan con el panel visible.
 - **Visor a pantalla completa**: tocar una imagen abre esa cámara en grande. Abajo hay un selector para cambiar de
   cámara y arriba el botón **Todas**, que muestra una cuadrícula con todas las cámaras; tocar una de ellas la abre en
   grande. **Ver todas** en el panel de Seguridad abre directamente la cuadrícula.

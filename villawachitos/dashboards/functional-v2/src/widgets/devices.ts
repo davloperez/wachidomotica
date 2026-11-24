@@ -40,6 +40,7 @@ import type { HomeAssistant } from "../types";
 import { shared } from "../styles/tokens";
 import type { Slider } from "./slider";
 import "./slider";
+import { camAlert } from "../lib/cameras";
 import { HVAC_ES, call, fmt, icon, isOn, isUnavailable, moreInfo, num, relTime, st } from "../lib/ha";
 import { hourlyMeans, type Point } from "../lib/data";
 import { ENERGY, FRIDGE, type DeviceDef } from "../house/rooms";
@@ -144,8 +145,8 @@ export function deviceBrief(h: HomeAssistant | undefined, d: DeviceDef): string 
     }
     case "cameras": {
       const person = d.cameras.some((c) => isOn(h, c.person));
-      const motion = d.cameras.some((c) => isOn(h, c.motion));
-      return `${d.name} · ${person ? "persona" : motion ? "movimiento" : "tranquila"}`;
+      const cat = d.cameras.some((c) => isOn(h, c.cat));
+      return `${d.name} · ${person ? "persona" : cat ? "gato" : "tranquila"}`;
     }
     case "presence":
       return d.occupancy ? `${d.name} · ${isOn(h, d.occupancy) ? "hay alguien" : "vacío"}` : d.name;
@@ -602,10 +603,10 @@ export class DeviceCard extends LitElement {
         };
       }
       case "cameras": {
-        const busy = d.cameras.filter((c) => isOn(h, c.motion) || isOn(h, c.person));
+        const busy = d.cameras.filter((c) => isOn(h, c.person) || isOn(h, c.cat));
         return {
           active: busy.length > 0,
-          status: busy.length ? `Movimiento en ${busy.length}` : "Sin movimiento",
+          status: busy.length ? `Persona o gato en ${busy.length}` : "Sin personas ni gatos",
           body: html`<div class="cam-grid">
               ${d.cameras
                 .filter((c) => c.camera)
@@ -620,20 +621,29 @@ export class DeviceCard extends LitElement {
                         .hass=${h}
                         .entity=${c.camera!}
                         .name=${c.name}
-                        .alert=${isOn(h, c.person) ? "person" : isOn(h, c.motion) ? "motion" : ""}
+                        .alert=${camAlert(h, c)}
                       ></fv2-cam-thumb>
                     </button>`,
                 )}
             </div>
             <div class="list">
               ${d.cameras.map((c) => {
-                const person = isOn(h, c.person);
-                const motion = isOn(h, c.motion);
-                return html`<div class="li tap" @click=${() => moreInfo(this, c.motion)}>
-                  <span class="dot ${person ? "bad" : motion ? "warn" : "ok"}"></span><b>${c.name}</b>
+                const alert = camAlert(h, c);
+                // Última vez que cambió el sensor que importa (el de persona o el de gato, el que esté activo o el más reciente)
+                const last = [c.person, c.cat]
+                  .map((e) => st(h, e)?.last_changed)
+                  .filter((t): t is string => !!t)
+                  .sort()
+                  .pop();
+                return html`<div
+                  class="li tap"
+                  @click=${() => moreInfo(this, (alert === "animal" ? c.cat : c.person) ?? c.motion)}
+                >
+                  <span class="dot ${alert === "person" ? "bad" : alert ? "warn" : "ok"}"></span
+                  ><b>${c.name}</b>
                   <span class="muted"
-                    >${person ? "Persona" : motion ? "Movimiento" : "Tranquilo"} ·
-                    ${relTime(st(h, c.motion)?.last_changed)}</span
+                    >${alert === "person" ? "Persona" : alert === "animal" ? "Gato" : "Tranquilo"} ·
+                    ${relTime(last)}</span
                   >
                 </div>`;
               })}

@@ -366,7 +366,7 @@ export function itemActive(h: HomeAssistant | undefined, it: LayerItem): boolean
         case "presence":
           return isOn(h, d.occupancy);
         case "cameras":
-          return d.cameras.some((c) => isOn(h, c.motion) || isOn(h, c.person));
+          return d.cameras.some((c) => isOn(h, c.person) || isOn(h, c.cat));
         case "gates":
           return d.gates.some((g) => isOn(h, g.entity));
         case "lock":

@@ -3,8 +3,8 @@ import { customElement, property } from "lit/decorators.js";
 import { mdiClose, mdiViewGridOutline, mdiVideoOutline } from "@mdi/js";
 import type { HomeAssistant } from "../types";
 import { shared } from "../styles/tokens";
-import { icon, isOn } from "../lib/ha";
-import { allCameras } from "../lib/cameras";
+import { icon } from "../lib/ha";
+import { allCameras, camAlert } from "../lib/cameras";
 import "./cam-live";
 
 type Mode = "single" | "grid";
@@ -48,7 +48,7 @@ export class CameraViewer extends LitElement {
               .name=${c.name}
               .live=${this.live}
               .snapEvery=${3}
-              .alert=${isOn(this.hass, c.person) ? "person" : isOn(this.hass, c.motion) ? "motion" : ""}
+              .alert=${camAlert(this.hass, c)}
             ></fv2-cam-live>
           </button>`,
       )}
