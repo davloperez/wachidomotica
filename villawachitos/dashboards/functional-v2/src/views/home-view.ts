@@ -14,6 +14,7 @@ import {
   mdiShieldHomeOutline,
   mdiShieldLockOutline,
   mdiShieldOffOutline,
+  mdiSilverwareForkKnife,
   mdiSolarPowerVariant,
   mdiThermometer,
   mdiVideoOutline,
@@ -52,6 +53,7 @@ import { dailyTotals, hourlyMeans, type Point } from "../lib/data";
 import { computeAlerts, roomName } from "../lib/alerts";
 import { ALL_OFF_SCRIPT, ENERGY, ROOMS_DEF } from "../house/rooms";
 import { subscribeForecast, type Forecast } from "../lib/weather";
+import { MEAL_ES, addDays, fetchMealplan, mealName, ymd, type MealEntry } from "../lib/meals";
 import "../charts/charts";
 import "../widgets/alarm-keypad";
 
@@ -96,6 +98,7 @@ export class HomeView extends LitElement {
   @state() private keypad = false;
   @state() private daily: Forecast[] = [];
   @state() private hourly: Forecast[] = [];
+  @state() private meals: MealEntry[] = [];
   private timers: number[] = [];
   private forecastOff: (() => void)[] = [];
 
@@ -145,6 +148,15 @@ export class HomeView extends LitElement {
     } catch (err) {
       console.warn("[functional-v2] energía diaria", err);
     }
+    const mealie = this.config?.mealie;
+    if (mealie) {
+      try {
+        const today = new Date();
+        this.meals = await fetchMealplan(this.hass, mealie, today, addDays(today, 1));
+      } catch (err) {
+        console.warn("[functional-v2] menú de comidas", err);
+      }
+    }
     try {
       this.hours = await hourlyMeans(this.hass, [ENERGY.sensors.soc, ENERGY.sensors.pv], 24);
     } catch (err) {
@@ -169,7 +181,7 @@ export class HomeView extends LitElement {
   render() {
     return html`
       <div class="col">${this.greeting()} ${this.alerts()} ${this.security()} ${this.quick()}</div>
-      <div class="col">${this.climate()} ${this.energy()} ${this.battery()}</div>
+      <div class="col">${this.menu()} ${this.climate()} ${this.energy()} ${this.battery()}</div>
     `;
   }
 
@@ -572,6 +584,44 @@ export class HomeView extends LitElement {
           @click=${() => this.dispatchEvent(new CustomEvent("open-alerts", { bubbles: true, composed: true }))}
         >
           ${icon(mdiFormatListChecks)} Ver todos los avisos
+        </button>
+      </section>
+    `;
+  }
+
+  /** Comida y cena de hoy y de mañana (lo planificado en Mealie). Tocar una receta la abre en la hoja del menú. */
+  private menu() {
+    if (!this.config?.mealie) return nothing;
+    const open = (slug?: string) =>
+      this.dispatchEvent(new CustomEvent("open-meals", { detail: { slug }, bubbles: true, composed: true }));
+    const days = [
+      { label: "Hoy", key: ymd(this.now) },
+      { label: "Mañana", key: ymd(addDays(this.now, 1)) },
+    ];
+    return html`
+      <section class="glass card menu" style="--d:1">
+        <header class="card-head">
+          <span class="ico amber">${icon(mdiSilverwareForkKnife)}</span>
+          <span class="grow">Menú</span>
+        </header>
+        ${days.map((d) => {
+          const list = this.meals.filter(
+            (e) => e.date === d.key && (e.type === "lunch" || e.type === "dinner"),
+          );
+          return html`<div class="menu-day">
+            <span class="menu-lbl">${d.label}</span>
+            ${["lunch", "dinner"].map((type) => {
+              const e = list.find((x) => x.type === type);
+              return html`<button class="menu-row ${e ? "" : "empty"}" @click=${() => open(e?.recipe?.slug)}>
+                <span class="menu-type">${MEAL_ES[type]}</span>
+                <span class="menu-name">${e ? mealName(e) : "Sin planificar"}</span>
+                ${e?.recipe ? icon(mdiChevronRight) : nothing}
+              </button>`;
+            })}
+          </div>`;
+        })}
+        <button class="btn all-alerts" @click=${() => open()}>
+          ${icon(mdiViewGridOutline)} Ver todo el menú
         </button>
       </section>
     `;
@@ -1010,6 +1060,50 @@ export class HomeView extends LitElement {
       .all-alerts {
         margin-top: 6px;
         width: 100%;
+      }
+      .card.menu {
+        grid-template-columns: minmax(0, 1fr);
+      }
+      .menu-day {
+        display: grid;
+        gap: 4px;
+      }
+      .menu-lbl {
+        font-size: var(--fs-label);
+        font-weight: 600;
+        color: var(--text-muted);
+      }
+      .menu-row {
+        width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-height: 44px;
+        padding: 8px 10px;
+        border-radius: 12px;
+        background: var(--chip);
+        color: var(--text);
+        text-align: left;
+        font-size: var(--fs-small);
+      }
+      .menu-row.empty {
+        color: var(--text-faint);
+      }
+      .menu-type {
+        flex: none;
+        width: 4.6em;
+        font-size: var(--fs-label);
+        font-weight: 600;
+        color: var(--text-muted);
+      }
+      .menu-name {
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
       .chips {
         display: flex;

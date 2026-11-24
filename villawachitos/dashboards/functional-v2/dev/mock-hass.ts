@@ -415,7 +415,104 @@ function mockWS(msg: Record<string, unknown>, states: Record<string, HassEntity>
     for (const id of ids) {
       const rows: { s: string; lu: number }[] = [];
       const cover = id.startsWith("cover.");
+/** Menú de ejemplo (respuestas de `mealie.get_mealplan` y `mealie.get_recipe`), con fechas relativas a hoy. */
+const MOCK_RECIPES: Record<string, Record<string, unknown>> = {
+  "macarrones-con-queso": {
+    recipe_id: "r1",
+    name: "Macarrones con queso al estilo americano",
+    slug: "macarrones-con-queso",
+    description: "La mac and cheese clásica: pasta con salsa cremosa de cheddar, gratinada con parmesano.",
+    total_time_seconds: 1800,
+    prep_time_seconds: 900,
+    perform_time_seconds: 900,
+    recipe_servings: 4,
+    original_url:
+      "https://www.directoalpaladar.com/recetas-de-pasta/receta-de-macarrones-con-queso-al-estilo-americano",
+    ingredients: [
+      { display: "200 g Macarrones" },
+      { display: "75 g Queso Parmesano" },
+      { display: "100 g Queso Cheddar" },
+      { display: "300 ml Leche entera" },
+      { display: "1 sobre Maizena" },
+      { display: "30 g Mantequilla" },
+      { display: "Sal y pimienta al gusto" },
+    ],
+    instructions: [
+      { text: "Cocer la pasta en agua con sal, un punto más dura que **al dente**." },
+      {
+        text: "Mientras, preparar la salsa con leche, maizena, mostaza, sal y pimienta; añadir la mantequilla y el cheddar.",
+      },
+      {
+        text: "Mezclar con la pasta, cubrir con parmesano y hornear 15 minutos a 200 ºC; gratinar 3 minutos más.",
+      },
+    ],
+    notes: [],
+    extras: { video: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" },
+  },
+  "sandwich-mixto": {
+    recipe_id: "r2",
+    name: "Sándwich mixto perfecto",
+    slug: "sandwich-mixto",
+    description: "Las siete reglas para un bikini crujiente por fuera y fundente por dentro.",
+    total_time_seconds: 900,
+    recipe_servings: 1,
+    ingredients: [
+      { display: "2 rebanadas de pan de molde" },
+      { display: "2 lonchas de jamón cocido" },
+      { display: "2 lonchas de queso" },
+    ],
+    instructions: [{ text: "Montar el sándwich y dorarlo en la sartén por los dos lados." }],
+    notes: [],
+    extras: {},
+  },
+  "alitas-barbacoa": {
+    recipe_id: "r3",
+    name: "Alitas de pollo barbacoa al horno",
+    slug: "alitas-barbacoa",
+    description: "",
+    total_time_seconds: 3900,
+    recipe_servings: 4,
+    ingredients: [{ display: "1 kg de alitas de pollo" }, { display: "4 cucharadas de salsa barbacoa" }],
+    instructions: [{ text: "Marinar las alitas y hornear 35 minutos a 200 ºC." }],
+    notes: [],
+    extras: {},
+  },
+};
+
+function mockMealie(service: string, data: Record<string, unknown>): unknown {
+  if (service === "get_recipe") return { recipe: MOCK_RECIPES[data.recipe_id as string] };
+  const day = (n: number) => {
+    const d = new Date();
+    d.setDate(d.getDate() + n);
+    const p = (x: number) => String(x).padStart(2, "0");
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+  };
+  const e = (id: number, off: number, type: string, slug?: string, title?: string) => ({
+    mealplan_id: id,
+    mealplan_date: day(off),
+    entry_type: type,
+    title: title ?? null,
+    description: null,
+    recipe: slug ? MOCK_RECIPES[slug] : null,
+  });
+  const all = [
+    e(1, 0, "lunch", "alitas-barbacoa"),
+    e(2, 1, "lunch", "macarrones-con-queso"),
+    e(3, 1, "dinner", "sandwich-mixto"),
+    e(4, 2, "lunch", undefined, "Comemos fuera"),
+    e(5, 3, "dinner", "sandwich-mixto"),
+    e(6, -1, "lunch", "macarrones-con-queso"),
+  ];
+  const from = data.start_date as string;
+  const to = data.end_date as string;
+  return { mealplan: all.filter((x) => x.mealplan_date >= from && x.mealplan_date <= to) };
+}
+
       let t = start;
+  if (msg.type === "call_service" && msg.domain === "mealie")
+    return {
+      response: mockMealie(msg.service as string, (msg.service_data ?? {}) as Record<string, unknown>),
+    };
       let on = false;
       rows.push({ s: cover ? "closed" : "off", lu: t / 1000 });
       while (t < end) {

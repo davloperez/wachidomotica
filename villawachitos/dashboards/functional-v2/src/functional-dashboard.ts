@@ -50,6 +50,7 @@ import "./views/layer-view";
 import "./widgets/lights";
 import "./widgets/solar-sheet";
 import "./widgets/alerts-sheet";
+import "./widgets/meals-sheet";
 import "./widgets/pump-sheet";
 import "./widgets/vacuum-sheet";
 import "./widgets/priority-alert";
@@ -124,6 +125,8 @@ export class FunctionalDashboard extends LitElement {
   @state() private sheet?: { entity: string; name: string };
   @state() private solarOpen = false;
   @state() private alertsOpen = false;
+  /** Hoja del menú de comidas (con `slug`, abierta directamente en esa receta). */
+  @state() private meals?: { slug?: string };
   @state() private cameras?: { entity: string; mode: "single" | "grid" };
   @state() private pumpOpen = false;
   @state() private vacuumOpen = false;
@@ -363,6 +366,7 @@ export class FunctionalDashboard extends LitElement {
     this.pumpOpen = false;
     this.vacuumOpen = false;
     this.alertsOpen = false;
+    this.meals = undefined;
     this.layer = undefined;
     if (view !== this.view) {
       this.view = view;
@@ -378,6 +382,7 @@ export class FunctionalDashboard extends LitElement {
     this.pumpOpen = false;
     this.vacuumOpen = false;
     this.alertsOpen = false;
+    this.meals = undefined;
     this.view = HOME;
     this.layer = id === this.layer ? undefined : id;
     this.toTop();
@@ -529,6 +534,7 @@ export class FunctionalDashboard extends LitElement {
                       .config=${this.config}
                       @go=${(e: CustomEvent<string>) => this.go(e.detail)}
                       @open-alerts=${() => (this.alertsOpen = true)}
+                      @open-meals=${(e: CustomEvent<{ slug?: string }>) => (this.meals = { slug: e.detail.slug })}
                     ></fv2-home>`
             }
           </div>
@@ -565,6 +571,16 @@ export class FunctionalDashboard extends LitElement {
               @go=${(e: CustomEvent<string>) => this.go(e.detail)}
               @close=${() => (this.alertsOpen = false)}
             ></fv2-alerts-sheet>`
+          : nothing
+      }
+      ${
+        this.meals
+          ? html`<fv2-meals-sheet
+              .hass=${this.hass}
+              .config=${this.config}
+              .slug=${this.meals.slug}
+              @close=${() => (this.meals = undefined)}
+            ></fv2-meals-sheet>`
           : nothing
       }
       ${this.pumpOpen ? html`<fv2-pump-sheet .hass=${this.hass} @close=${() => (this.pumpOpen = false)}></fv2-pump-sheet>` : nothing}

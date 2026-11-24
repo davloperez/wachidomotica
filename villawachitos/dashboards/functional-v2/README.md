@@ -188,6 +188,16 @@ estancia); debajo, agrupados (Seguridad, Agua, Puertas, Cocina, Electrodoméstic
 A pantalla completa), los que podrían saltar, cada uno con su condición y su gravedad. Tocar una fila despliega las
 entidades de Home Assistant que vigila. Se abre aunque no haya ningún aviso.
 
+**Menú de comidas**: la tarjeta _Menú_ de la vista general muestra la comida y la cena de hoy y de mañana. Las recetas
+y su planificación se hacen en **Mealie** (add-on de Home Assistant); aquí solo se leen. Tocar una comida abre su receta
+(tiempos, raciones, ingredientes, pasos, notas, enlace a la receta original y vídeo); _Ver todo el menú_ abre un
+calendario por semanas (flechas y _Hoy_) con todas las comidas planificadas, también desayunos, meriendas, postres, etc.
+Las comidas sin receta (solo nota, p. ej. «Comemos fuera») se ven pero no se abren. El vídeo sale del extra `video` de
+la receta en Mealie o, si no está, del primer enlace de YouTube/Vimeo que haya en su descripción, notas o pasos.
+Se lee con los servicios `mealie.get_mealplan` y `mealie.get_recipe` de la integración oficial; hace falta indicar su
+`entry_id` en `mealie` (Ajustes → Dispositivos y servicios → Mealie, o en la URL de la integración). Sin `mealie` la
+tarjeta no sale. Todavía no se muestran las imágenes de las recetas.
+
 **Avisos meteorológicos (AEMET)**: aparecen en _Avisos_ (amarillo = info, naranja = aviso, rojo = importante) cuando
 un sensor de alertas está activo. Home Assistant no trae las alertas de la AEMET por sí solo: hace falta la
 integración **Meteoalarm** (publica los avisos de la AEMET para España). Se detectan solos los `binary_sensor` con
@@ -236,6 +246,7 @@ encima, a un gesto de scroll hacia arriba. En «Casa General» y en pantallas an
   "weather": "weather.forecast_casa",
   "weather_alerts": ["binary_sensor.meteoalarm"],
   "alarm": "alarm_control_panel.alarma_vivienda",
+  "mealie": "<entry_id de la integración Mealie>",
   "idle_return_seconds": 180,
   "priority_alerts": true,
   "kiosk_toggle": true,

@@ -4,6 +4,7 @@
   "theme": "auto",
   "weather": "weather.forecast_casa",
   "alarm": "alarm_control_panel.alarma_vivienda",
+  "mealie": "01M87T4DB0BTXB5ACMFJ5KA3TF",
   "idle_return_seconds": 180,
   "priority_alerts": true,
   "marker_positions": {

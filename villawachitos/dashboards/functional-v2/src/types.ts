@@ -42,6 +42,8 @@ export interface DashboardConfig {
   /** Botón del dock para mostrar u ocultar la barra lateral de HA (modo kiosko). `false` lo quita. */
   kiosk_toggle?: boolean;
   alarm?: string;
+  /** `entry_id` de la integración Mealie de HA (Ajustes → Dispositivos y servicios). Sin él no sale el menú. */
+  mealie?: string;
   /** Segundos sin tocar la pantalla tras los que se vuelve a la vista general (0 = nunca). */
   idle_return_seconds?: number;
   /** Alertas prioritarias a pantalla completa (timbre, fuga del robot). `false` las desactiva. */
