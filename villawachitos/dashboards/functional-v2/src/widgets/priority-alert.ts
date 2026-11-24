@@ -7,12 +7,14 @@ import {
   mdiDoorOpen,
   mdiMapMarkerOutline,
   mdiPause,
+  mdiSmokeDetectorVariantAlert,
+  mdiVolumeOff,
   mdiWaterAlert,
 } from "@mdi/js";
 import type { HomeAssistant } from "../types";
 import { shared } from "../styles/tokens";
 import { call, icon, st } from "../lib/ha";
-import { DOORBELL, VACUUM_LEAK, type PriorityAlert } from "../lib/priority";
+import { DOORBELL, SMOKE, VACUUM_LEAK, type PriorityAlert } from "../lib/priority";
 
 const hhmm = (t: number) => new Date(t).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
 
@@ -70,7 +72,9 @@ export class PriorityAlerts extends LitElement {
   render() {
     if (!this.alerts.length) return nothing;
     return html`<div class="screen" role="alertdialog" aria-live="assertive">
-      ${this.alerts.map((a) => (a.kind === "doorbell" ? this.doorbell(a) : this.leak(a)))}
+      ${this.alerts.map((a) =>
+        a.kind === "doorbell" ? this.doorbell(a) : a.kind === "smoke" ? this.smoke(a) : this.leak(a),
+      )}
     </div>`;
   }
 
@@ -101,6 +105,35 @@ export class PriorityAlerts extends LitElement {
         >
           ${icon(this.opening === "open" ? mdiCheck : mdiDoorOpen)}
           ${unavailable ? "Portero sin conexión" : label}
+        </button>
+        <button class="btn big" @click=${() => this.dismiss(a)}>${icon(mdiClose)} Descartar</button>
+      </div>
+    </section>`;
+  }
+
+  private smoke(a: PriorityAlert) {
+    const muted = st(this.hass, SMOKE.silence)?.state === "on";
+    const canMute = !!st(this.hass, SMOKE.silence) && st(this.hass, SMOKE.silence)!.state !== "unavailable";
+    return html`<section class="card leak">
+      <span class="halo"><span class="big anim-shake">${icon(mdiSmokeDetectorVariantAlert)}</span></span>
+      <div class="txt">
+        <h2>Humo en la cocina</h2>
+        <p>Detector de humo · desde las ${hhmm(a.since)}</p>
+      </div>
+      <div class="actions">
+        ${
+          canMute
+            ? html`<button
+                class="btn big danger"
+                ?disabled=${muted}
+                @click=${() => call(this.hass, "switch", "turn_on", { entity_id: SMOKE.silence })}
+              >
+                ${icon(mdiVolumeOff)} ${muted ? "Alarma silenciada" : "Silenciar la alarma"}
+              </button>`
+            : nothing
+        }
+        <button class="btn big primary" @click=${() => this.go(a, SMOKE.room)}>
+          ${icon(mdiMapMarkerOutline)} Ver en el plano
         </button>
         <button class="btn big" @click=${() => this.dismiss(a)}>${icon(mdiClose)} Descartar</button>
       </div>

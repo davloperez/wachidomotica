@@ -40,6 +40,9 @@ document
   .getElementById("ring")!
   .addEventListener("click", () => window.dispatchEvent(new Event("fv2-dev-ring")));
 document
+  .getElementById("smoke")!
+  .addEventListener("click", () => window.dispatchEvent(new Event("fv2-dev-smoke")));
+document
   .getElementById("leak")!
   .addEventListener("click", () => window.dispatchEvent(new Event("fv2-dev-leak")));
 document

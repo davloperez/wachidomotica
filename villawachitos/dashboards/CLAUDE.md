@@ -65,7 +65,9 @@ and the panel's own **lux sensor** (drives the "auto" theme):
   to HA dark mode if there never was one. The manual "Tema" button (light/dark, saved per browser) overrides it.
   The Shelly sensors mostly read daylight (≈0–5 lx at night even with lights on). Dev: `?mock` dev-bar **Luz**.
 - All wall panels are Shelly Wall Display X2i: occupancy + lux only, **no temperature/humidity** sensor (the home
-  "Clima" card shows the A/C and outdoor weather instead). The panels themselves are **not shown in the UI** (no
+  "Clima" card shows the A/C and outdoor weather instead). Rooms with their own T&H Zigbee sensor (Oficina 1/2, Baño 2)
+  set `temperature`/`humidity` in `rooms.ts` plus `climateFirst: true`: the room view then puts the big "Ambiente"
+  card first. The panels themselves are **not shown in the UI** (no
   device in `house/rooms.ts`, no plan marker): their lux sensor is only used, via `PANELS`, for that panel's theme.
 - **Adding/removing a wall panel** = add/remove it in **both** `deploy.json` `dashboards` and `PANELS` (with its
   lux sensor, if the device has one), and
@@ -94,11 +96,11 @@ no `backdrop-filter`/`filter`), animate only `transform`/`opacity` (never `box-s
 | `src/plan/floor-plan.ts` | `fv2-plan`: pan/pinch/wheel/double-tap zoom on a single transformed layer; markers are slotted and keep size via `--inv` |
 | `src/lib/alerts.ts` | **Catálogo de avisos** (`ALERT_RULES`): cada aviso posible es una regla (grupo, niveles, «cuándo salta», entidades que vigila, `check`). `computeAlerts` (panel _Avisos_) y `alertCatalog` (hoja «Todos los avisos») salen de ahí |
 | `src/widgets/alerts-sheet.ts` | `fv2-alerts-sheet`: hoja con todo el catálogo, activos arriba y el resto agrupado. Se abre con `open-alerts` desde el botón del panel _Avisos_ (`home-view.ts`) |
-| `src/lib/priority.ts`, `src/widgets/priority-alert.ts` | Full-screen priority alerts (Fermax doorbell, Dreame leak) |
+| `src/lib/priority.ts`, `src/widgets/priority-alert.ts` | Full-screen priority alerts (Fermax doorbell, kitchen smoke detector, Dreame leak) |
 | `src/styles/tokens.ts` | Opaque tokens, plan colors (`--p-*`) and the `.anim-*` keyframes for active devices |
 | `marker_positions` (card config) | Per-marker `[x, z]` metre overrides (key = `LayerItem.key`, `gates`, `room:<id>`). Authored with the desktop-only "Editar" mode in `functional-dashboard.ts` (drag, then "Exportar JSON" → paste into `dashboard.config.json`); wall panels only read the config |
 
-Mock preview (`?mock`) has dev-bar buttons to fire the doorbell and the leak.
+Mock preview (`?mock`) has dev-bar buttons to fire the doorbell, the smoke detector and the leak.
 
 ## Avisos: mantener el catálogo al día
 
@@ -111,8 +113,7 @@ catálogo (`ALERT_RULES` en `src/lib/alerts.ts`) debe reflejar siempre lo que ha
 - **Aviso eliminado**: borrar la regla; si era una alerta a pantalla completa, también `priority.ts` y
   `priority-alert.ts`.
 - **Dispositivo nuevo o quitado en `house/rooms.ts`**: las reglas por tipo (`leaks`, `doors`, `gates`, `dishwasher`,
-  `washer`, `litter`) lo recogen solas. Si es un tipo de dispositivo **nuevo** que debe avisar (p. ej. un sensor de
-  humo, una batería baja de otro aparato), hace falta una regla nueva. Si cambia un `entity_id`, comprobar que la
+  `washer`, `litter`) lo recogen solas. Si es un tipo de dispositivo **nuevo** que debe avisar (p. ej. una batería baja de otro aparato; el detector de humo ya tiene la suya, `smoke` en `RoomDef` + `SMOKE` en `priority.ts`), hace falta una regla nueva. Si cambia un `entity_id`, comprobar que la
   regla que lo usa (`FRIDGE`, `ENERGY`, `DOORBELL`, `VACUUM_LEAK`…) sigue apuntando a él.
 - Las reglas `fullscreen: true` reflejan las alertas de `priority.ts` (timbre y fuga del limpiasuelos): mantenerlas
   sincronizadas con ese archivo.

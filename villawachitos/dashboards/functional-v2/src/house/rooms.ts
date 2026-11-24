@@ -145,10 +145,23 @@ export interface RoomDef {
   temperature?: string;
   humidity?: string;
   devices: DeviceDef[];
+  /** Mostrar «Ambiente» (temperatura y humedad) en primer lugar y en grande: estancias con panel de pared */
+  climateFirst?: boolean;
   /** Sensores que, si se activan, generan un aviso en la vista general */
   leaks?: string[];
+  /** Detectores de humo: alerta prioritaria a pantalla completa (ver `priority.ts`) */
+  smoke?: string[];
   doors?: { entity: string; name: string }[];
 }
+
+/**
+ * Escenas de los baños (mismas en los dos): «Relax» enciende solo la hornacina y «Rutinas» la hornacina y el
+ * espejo; las dos apagan el resto. «Todo» y «Apagar» son las genéricas.
+ */
+const BATHROOM_SCENES = (niche: string, mirror: string): NonNullable<RoomDef["scenes"]> => ({
+  relax: { label: "Relax", lights: [{ entity: niche }], offOthers: true },
+  night: { label: "Rutinas", lights: [{ entity: niche }, { entity: mirror }], offOthers: true },
+});
 
 const rectOf = (name: string): Rect[] => ROOMS.filter((r) => r.name === name).map((r) => r.rect);
 
@@ -226,6 +239,7 @@ export const ROOMS_DEF: RoomDef[] = [
         remaining: "sensor.cocina_air_fryer_time_remaining",
       },
     ],
+    smoke: ["binary_sensor.sensor_humo_smoke"],
   },
   {
     id: "entrada",
@@ -287,6 +301,9 @@ export const ROOMS_DEF: RoomDef[] = [
       { entity: "light.oficina_1_wled_cortinero_oficina_1", name: "Cortinero" },
     ],
     covers: [{ entity: "cover.persiana_oficina_1_persiana", name: "Persiana" }],
+    temperature: "sensor.sensor_t_h_oficina_1_temperature",
+    humidity: "sensor.sensor_t_h_oficina_1_humidity",
+    climateFirst: true,
     devices: [
       {
         type: "switch",
@@ -316,6 +333,9 @@ export const ROOMS_DEF: RoomDef[] = [
       { entity: "light.oficina_2_wled_cortinero_oficina_2", name: "Cortinero" },
     ],
     covers: [{ entity: "cover.persiana_oficina_2_persiana", name: "Persiana" }],
+    temperature: "sensor.sensor_t_h_oficina_2_temperature",
+    humidity: "sensor.sensor_t_h_oficina_2_humidity",
+    climateFirst: true,
     devices: [],
   },
   {
@@ -328,8 +348,21 @@ export const ROOMS_DEF: RoomDef[] = [
       { entity: "light.bano_2_esp_bano_2_luz_espejo_bano_2", name: "Espejo" },
       { entity: "light.bano_2_esp_bano_2_luz_hornacina_bano_2", name: "Hornacina" },
     ],
+    scenes: BATHROOM_SCENES(
+      "light.bano_2_esp_bano_2_luz_hornacina_bano_2",
+      "light.bano_2_esp_bano_2_luz_espejo_bano_2",
+    ),
     covers: [],
+    temperature: "sensor.sensor_t_h_m_i_bano_2_temperature",
+    humidity: "sensor.sensor_t_h_m_i_bano_2_humidity",
+    climateFirst: true,
     devices: [
+      {
+        type: "presence",
+        name: "Movimiento y luz",
+        occupancy: "binary_sensor.sensor_t_h_m_i_bano_2_presence",
+        illuminance: "sensor.sensor_t_h_m_i_bano_2_illuminance",
+      },
       {
         type: "towel",
         name: "Toallero",
@@ -414,6 +447,10 @@ export const ROOMS_DEF: RoomDef[] = [
       { entity: "light.bano_1_bano_1_luz_espejo_bano_1", name: "Espejo" },
       { entity: "light.bano_1_bano_1_luz_hornacina_bano_1", name: "Hornacina" },
     ],
+    scenes: BATHROOM_SCENES(
+      "light.bano_1_bano_1_luz_hornacina_bano_1",
+      "light.bano_1_bano_1_luz_espejo_bano_1",
+    ),
     covers: [],
     devices: [
       {

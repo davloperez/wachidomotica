@@ -151,6 +151,11 @@ Ocupan toda la pantalla (fondo opaco) por encima de cualquier vista hasta que se
   (o `binary_sensor.…_duox_doorbell_zero` se pone a `on`). Botones **Abrir puerta** (pide un segundo toque; llama a
   `lock.unlock` sobre `lock.jardin_norte_portero_automatico_exterior_duox_zero` y se cierra sola al abrir) y
   **Descartar**. Si nadie la toca, desaparece a los 2 minutos. De momento sin imagen de la cámara.
+- **Humo en la cocina** (`binary_sensor.sensor_humo_smoke`): mientras el detector detecte humo; va la primera si hay
+  varias alertas. Botones **Silenciar la alarma** (interruptor `switch.sensor_humo_silence` del propio detector),
+  **Ver en el plano** (lleva a la cocina) y **Descartar**. Descartada, no vuelve hasta que se despeje y detecte
+  humo otra vez. Además, la automatización de Home Assistant «Alerta de humo en la cocina» avisa por Telegram en
+  el grupo de **Alertas** (no en el de Notificaciones).
 - **Fuga de agua en el limpiasuelos** (`binary_sensor.sensor_agua_dreame_water_leak`): mientras el sensor esté mojado.
   Botones **Ver en el plano** (lleva al salón), **Pausar el robot** (si está limpiando) y **Descartar**. Descartada,
   no vuelve hasta que el sensor se seque y se moje otra vez.
@@ -162,12 +167,17 @@ Las alertas descartadas se recuerdan en el navegador de cada pantalla. Para desa
 
 Saludo y tiempo, avisos, alarma, acciones de toda
 la casa, clima (aire acondicionado, temperatura y humedad de fuera y previsión de las próximas 24 h; las Shelly X2i no
-miden temperatura ni humedad, así que no hay dato de ambiente interior), energía y batería; en cada estancia iluminación con escenas (Todo, Relax, Noche y Apagar; en Cocina «Relax» es **Cocinar** y «Noche» solo enciende la barra al 5 %, ver `scenes` en `rooms.ts`), persianas y cortinas (estas se abren en horizontal, con su propio icono y tarjeta), ambiente, seguridad,
+miden temperatura ni humedad: la de cada estancia sale de sus sensores propios, ver más abajo), energía y batería; en cada estancia iluminación con escenas (Todo, Relax, Noche y Apagar; en **Baño 1 y Baño 2** son Todo, Relax (solo la hornacina), Rutinas (hornacina y espejo) y Apagar; en Cocina «Relax» es **Cocinar** y «Noche» solo enciende la barra al 5 %, ver `scenes` en `rooms.ts`), persianas y cortinas (estas se abren en horizontal, con su propio icono y tarjeta), ambiente, seguridad,
 dispositivos; y las capas Luces, Persianas, Clima, Energía, Electrodomésticos, Seguridad y
 Multimedia. Las hojas de detalle (luz, instalación solar, depuradora) ocupan toda la pantalla con fondo opaco.
 
 Estancias y dispositivos: [`src/house/rooms.ts`](src/house/rooms.ts); capas: [`src/house/layers.ts`](src/house/layers.ts)
 (un dispositivo nuevo se añade ahí).
+
+**Ambiente en primer lugar**: en **Oficina 1, Oficina 2 y Baño 2** la tarjeta de temperatura y humedad (sensores
+`sensor.sensor_t_h_oficina_1_*`, `sensor.sensor_t_h_oficina_2_*` y `sensor.sensor_t_h_m_i_bano_2_*`) sale la primera
+de la estancia y con cifras grandes, para leerla de lejos en la Shelly de cada una (`climateFirst` en `rooms.ts`). El
+Baño 2 además muestra su movimiento y su luz ambiente (tarjeta _Movimiento y luz_).
 
 **Previsión**: bajo el saludo, las próximas horas de hoy y los siguientes 5 días (mínima, máxima y probabilidad de
 lluvia) de la entidad `weather` configurada, que usa las coordenadas de la casa. Se lee con `weather/subscribe_forecast`, así que la entidad debe soportar previsión diaria y por horas.

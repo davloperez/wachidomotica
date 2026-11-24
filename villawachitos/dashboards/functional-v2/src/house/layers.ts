@@ -13,13 +13,23 @@ import {
   mdiTelevisionClassic,
   mdiThermometer,
   mdiWashingMachine,
+  mdiSmokeDetectorVariant,
   mdiWaterAlertOutline,
   mdiMapMarkerQuestionOutline,
 } from "@mdi/js";
 import type { HomeAssistant } from "../types";
 import { ALARM_ES, fmt, isOn, num, st } from "../lib/ha";
 import { POOL, WALLS, type Rect } from "../plan/house-plan";
-import { ENERGY, EXTRA_LEAKS, ROOMS_DEF, TV, deviceSpot, lampPos, type DeviceDef, type RoomDef } from "./rooms";
+import {
+  ENERGY,
+  EXTRA_LEAKS,
+  ROOMS_DEF,
+  TV,
+  deviceSpot,
+  lampPos,
+  type DeviceDef,
+  type RoomDef,
+} from "./rooms";
 
 export type LayerId = "luces" | "persianas" | "clima" | "energia" | "electro" | "seguridad" | "multimedia";
 
@@ -42,7 +52,7 @@ export const LAYERS: LayerDef[] = [
 export const LAYER_BY_ID = new Map(LAYERS.map((l) => [l.id, l]));
 
 /** Sensores sencillos que se muestran como una fila (sin tarjeta propia). */
-export type RowKind = "climate" | "door" | "leak" | "alarm";
+export type RowKind = "climate" | "door" | "leak" | "smoke" | "alarm";
 
 export type LayerItem = {
   key: string;
@@ -94,6 +104,7 @@ const SPOTS: Record<string, [number, number, number]> = {
   "cover.cortina_pequena_salon": [-0.07, 1.2, 3.4],
   // Fugas, puerta principal y alarma
   "binary_sensor.sensor_agua_dreame_water_leak": [0.6, 0.3, -1.25],
+  "binary_sensor.sensor_humo_smoke": [-5.2, 2.4, 2.2],
   "binary_sensor.sensor_puerta_principal_contact": [-4.8, 1.3, -4.04],
   "alarm_control_panel.alarma_vivienda": [-4.1, 1.5, -2.6],
   // Cámaras exteriores
@@ -228,6 +239,17 @@ export function layerItems(layer: LayerId): LayerItem[] {
           icon: mdiDoorClosed,
           pos: spot(d.entity),
         });
+      for (const id of room.smoke ?? [])
+        out.push({
+          key: id,
+          room,
+          name: "Detector de humo",
+          kind: "row",
+          row: "smoke",
+          entity: id,
+          icon: mdiSmokeDetectorVariant,
+          pos: spot(id),
+        });
       for (const id of room.leaks ?? [])
         out.push({
           key: id,
@@ -361,7 +383,8 @@ export function itemActive(h: HomeAssistant | undefined, it: LayerItem): boolean
 
 /** ¿Es un aviso (fuga, puerta abierta, persona en cámara)? El marcador se pinta en ámbar. */
 export function itemAlert(h: HomeAssistant | undefined, it: LayerItem): boolean {
-  if (it.kind === "row") return (it.row === "leak" || it.row === "door") && isOn(h, it.entity);
+  if (it.kind === "row")
+    return (it.row === "leak" || it.row === "smoke" || it.row === "door") && isOn(h, it.entity);
   if (it.kind === "device") {
     const d = it.device;
     if (d.type === "cameras") return d.cameras.some((c) => isOn(h, c.person));
@@ -383,6 +406,8 @@ export function rowState(h: HomeAssistant | undefined, it: LayerItem & { kind: "
       return e.state === "on" ? "Abierta" : "Cerrada";
     case "leak":
       return e.state === "on" ? "¡Agua!" : "Seco";
+    case "smoke":
+      return e.state === "on" ? "¡Humo!" : "Sin humo";
     case "alarm":
       return ALARM_ES[e.state] ?? e.state;
   }

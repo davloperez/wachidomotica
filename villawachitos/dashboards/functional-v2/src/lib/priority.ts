@@ -4,6 +4,8 @@
  * - **Timbre** del portero Fermax DuoX: la entidad `event.*_doorbell` cambia su estado (la hora del
  *   último timbrazo) cada vez que llaman; además `binary_sensor.*_doorbell_zero` está a `on` unos
  *   segundos. La alerta dura `RING_MS` o hasta que se descarta o se abre la puerta.
+ * - **Humo** en la cocina: mientras el detector lo detecte (la primera alerta de la lista). Al descartarla no
+ *   vuelve a salir hasta que el detector se despeje y vuelva a detectar humo.
  * - **Fuga de agua** en la base del limpiasuelos Dreame: mientras el sensor esté mojado. Al descartarla
  *   no vuelve a salir hasta que el sensor se seque y se moje otra vez.
  */
@@ -24,10 +26,17 @@ export const VACUUM_LEAK = {
   room: "salon",
 };
 
+/** Detector de humo de la cocina: mientras detecte humo (silenciar = interruptor de la sirena del propio detector). */
+export const SMOKE = {
+  sensor: "binary_sensor.sensor_humo_smoke",
+  silence: "switch.sensor_humo_silence",
+  room: "cocina",
+};
+
 /** Cuánto dura en pantalla la alerta del timbre si nadie la toca */
 export const RING_MS = 2 * 60_000;
 
-export type PriorityKind = "doorbell" | "leak";
+export type PriorityKind = "doorbell" | "leak" | "smoke";
 
 export interface PriorityAlert {
   kind: PriorityKind;
@@ -66,6 +75,14 @@ export class PriorityWatcher {
   update(hass: HomeAssistant | undefined, now = Date.now()): PriorityAlert[] {
     if (!hass) return [];
     const out: PriorityAlert[] = [];
+
+    // Humo: va primero, es lo más grave
+    const smoke = st(hass, SMOKE.sensor);
+    if (smoke?.state === "on") {
+      const key = `smoke:${smoke.last_changed}`;
+      if (!this.dismissed.has(key))
+        out.push({ kind: "smoke", key, since: Date.parse(smoke.last_changed) || now });
+    }
 
     // Timbre: un cambio del evento (o el sensor a "on") arranca la alerta
     const ev = st(hass, DOORBELL.event)?.state;

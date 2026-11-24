@@ -252,6 +252,18 @@ export function createMockHass(getDarkMode: () => boolean, onUpdate: (hass: Home
   // Portero Fermax DuoX: el evento guarda la hora del último timbrazo
   set("event.jardin_norte_portero_automatico_exterior_duox_doorbell", ago(300), { event_type: "ring" });
   set("binary_sensor.jardin_norte_portero_automatico_exterior_duox_doorbell_zero", "off");
+  // Detector de humo de la cocina (y su silenciador) y sensores de clima de oficinas y baño 2
+  set("binary_sensor.sensor_humo_smoke", "off", { device_class: "smoke" }, ago(600));
+  set("switch.sensor_humo_silence", "off");
+  const climate = (id: string, t: string, h: string) => {
+    set(`sensor.${id}_temperature`, t, { unit_of_measurement: "°C", device_class: "temperature" });
+    set(`sensor.${id}_humidity`, h, { unit_of_measurement: "%", device_class: "humidity" });
+  };
+  climate("sensor_t_h_oficina_1", "23.1", "47");
+  climate("sensor_t_h_oficina_2", "21.6", "51");
+  climate("sensor_t_h_m_i_bano_2", "22.8", "49");
+  set("sensor.sensor_t_h_m_i_bano_2_illuminance", "168", { unit_of_measurement: "lx", device_class: "illuminance" });
+  set("binary_sensor.sensor_t_h_m_i_bano_2_presence", "off", { device_class: "occupancy" }, ago(300));
   for (const id of [
     "binary_sensor.sensor_agua_dreame_water_leak",
     "binary_sensor.0xa4c1380e560ce904_water_leak",
@@ -312,6 +324,11 @@ export function createMockHass(getDarkMode: () => boolean, onUpdate: (hass: Home
   window.addEventListener("fv2-dev-leak", () => {
     const id = "binary_sensor.sensor_agua_dreame_water_leak";
     set(id, states[id]?.state === "on" ? "off" : "on", { device_class: "moisture" });
+    emit();
+  });
+  window.addEventListener("fv2-dev-smoke", () => {
+    const id = "binary_sensor.sensor_humo_smoke";
+    set(id, states[id]?.state === "on" ? "off" : "on", { device_class: "smoke" });
     emit();
   });
   // Sensores de luz de las Shelly: alterna entre de día y de noche (tema «auto» de los paneles)

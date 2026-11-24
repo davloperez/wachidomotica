@@ -185,9 +185,11 @@ export class RoomView extends LitElement {
       </header>
 
       <div class="col">
-        ${this.washerDone()} ${r.lights.length ? this.lightsCard(lightsOn) : nothing}
+        ${this.washerDone()} ${r.climateFirst ? this.climateCard() : nothing}
+        ${r.lights.length ? this.lightsCard(lightsOn) : nothing}
         ${r.covers.some((c) => !c.curtain) ? this.coversCard(avg) : nothing}
-        ${r.covers.some((c) => c.curtain) ? this.curtainsCard() : nothing} ${this.climateCard()}
+        ${r.covers.some((c) => c.curtain) ? this.curtainsCard() : nothing}
+        ${r.climateFirst ? nothing : this.climateCard()}
       </div>
       <div class="col">
         ${this.sensorsCard(extras)}
@@ -396,7 +398,7 @@ export class RoomView extends LitElement {
     const comfort =
       t === undefined ? "" : t < 19 ? "Fresco" : t <= 25 ? "Confortable" : t <= 28 ? "Cálido" : "Caluroso";
     return html`
-      <section class="glass card" data-key=${r.temperature} style="--d:0">
+      <section class="glass card ${r.climateFirst ? "big" : ""}" data-key=${r.temperature} style="--d:0">
         <header class="card-head tap" @click=${() => moreInfo(this, r.temperature!)}>
           <span class="ico">${icon(mdiThermometer)}</span>
           <div class="grow ttl"><b>Ambiente</b><span>${comfort}</span></div>
@@ -663,6 +665,21 @@ export class RoomView extends LitElement {
       }
       .kpi.soft {
         color: var(--text-muted);
+      }
+      /* Ambiente en primer lugar (paneles de pared): cifras grandes, legibles de lejos */
+      .big .kpis {
+        justify-content: space-around;
+        padding: var(--space-2) 0;
+      }
+      .big .kpis > div {
+        justify-items: center;
+        gap: 8px;
+      }
+      .big .kpi {
+        font-size: calc(var(--fs-kpi) * 1.9);
+      }
+      .big .lbl {
+        font-size: var(--fs-body);
       }
       .lbl {
         font-size: var(--fs-label);

@@ -12,7 +12,7 @@ import type { HomeAssistant } from "../types";
 import { EXTRA_LEAKS, FRIDGE, ROOMS_DEF, ENERGY, ROOM_BY_ID, type DeviceDef } from "../house/rooms";
 import { isOn, isUnavailable, num, st } from "./ha";
 import { weatherAlerts, weatherSensorIds } from "./weather";
-import { DOORBELL, VACUUM_LEAK } from "./priority";
+import { DOORBELL, SMOKE, VACUUM_LEAK } from "./priority";
 
 export type Level = "bad" | "warn" | "info";
 
@@ -382,6 +382,26 @@ export const ALERT_RULES: AlertRule[] = [
               title: "Llaman a la puerta",
               room: DOORBELL.room,
               since: since(c, DOORBELL.ringing),
+            },
+          ]
+        : [],
+  },
+  {
+    id: "smoke",
+    group: "A pantalla completa",
+    levels: ["bad"],
+    title: "Humo en la cocina",
+    when: "El detector de humo de la cocina detecta humo: tarjeta a pantalla completa hasta descartarla (y aviso por Telegram en Alertas)",
+    fullscreen: true,
+    entities: () => [SMOKE.sensor],
+    check: (c) =>
+      isOn(c.hass, SMOKE.sensor)
+        ? [
+            {
+              level: "bad",
+              title: "Humo en la cocina",
+              room: SMOKE.room,
+              since: since(c, SMOKE.sensor),
             },
           ]
         : [],
