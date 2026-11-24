@@ -53,7 +53,7 @@ import { dailyTotals, hourlyMeans, type Point } from "../lib/data";
 import { computeAlerts, roomName } from "../lib/alerts";
 import { ALL_OFF_SCRIPT, ENERGY, ROOMS_DEF } from "../house/rooms";
 import { subscribeForecast, type Forecast } from "../lib/weather";
-import { MEAL_ES, addDays, fetchMealplan, mealName, ymd, type MealEntry } from "../lib/meals";
+import { MEAL_ES, addDays, fetchMealplan, mealImage, mealName, ymd, type MealEntry } from "../lib/meals";
 import "../charts/charts";
 import "../widgets/alarm-keypad";
 
@@ -86,6 +86,9 @@ const DAYS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 
 /** Tarjetas de la vista general, debajo (o al lado) del plano de la casa. */
 const CAMERAS = allCameras();
+
+/** Si la imagen no carga se oculta en vez de dejar un icono roto. */
+const hideImg = (ev: Event) => ((ev.target as HTMLElement).style.display = "none");
 
 @customElement("fv2-home")
 export class HomeView extends LitElement {
@@ -613,6 +616,12 @@ export class HomeView extends LitElement {
             ${["lunch", "dinner"].map((type) => {
               const e = list.find((x) => x.type === type);
               return html`<button class="menu-row ${e ? "" : "empty"}" @click=${() => open(e?.recipe?.slug)}>
+                ${(() => {
+                  const img = mealImage(this.config, e?.recipe, "tiny");
+                  return img
+                    ? html`<img class="menu-thumb" src=${img} alt="" loading="lazy" @error=${hideImg} />`
+                    : nothing;
+                })()}
                 <span class="menu-type">${MEAL_ES[type]}</span>
                 <span class="menu-name">${e ? mealName(e) : "Sin planificar"}</span>
                 ${e?.recipe ? icon(mdiChevronRight) : nothing}
@@ -1090,6 +1099,15 @@ export class HomeView extends LitElement {
       }
       .menu-row.empty {
         color: var(--text-faint);
+      }
+      .menu-thumb {
+        flex: none;
+        width: 40px;
+        height: 40px;
+        margin: -4px 0 -4px -4px;
+        border-radius: 8px;
+        object-fit: cover;
+        background: var(--bg);
       }
       .menu-type {
         flex: none;

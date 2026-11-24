@@ -21,6 +21,7 @@ import {
   duration,
   fetchMealplan,
   fetchRecipe,
+  mealImage,
   mealName,
   weekStart,
   ymd,
@@ -29,6 +30,8 @@ import {
 } from "../lib/meals";
 import { sheetStyles } from "./solar-sheet";
 
+/** Si la imagen no carga (Mealie apagado o inalcanzable) se oculta en vez de dejar un icono roto. */
+const hide = (ev: Event) => ((ev.target as HTMLElement).style.display = "none");
 const servings = (n: number) => `${n} ${n === 1 ? "ración" : "raciones"}`;
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
@@ -136,7 +139,9 @@ export class MealsSheet extends LitElement {
           .filter(Boolean)
           .join(" · ")
       : e.note;
+    const img = mealImage(this.config, e.recipe, "tiny");
     const body = html`
+      ${img ? html`<img class="thumb" src=${img} alt="" loading="lazy" @error=${hide} />` : nothing}
       <span class="type">${MEAL_ES[e.type] ?? e.type}</span>
       <span class="r-txt">
         <b>${mealName(e)}</b>
@@ -188,7 +193,9 @@ export class MealsSheet extends LitElement {
     if (this.detailLoading) return html`<p class="calm">Cargando receta…</p>`;
     const r = this.detail;
     if (this.detailFailed || !r) return html`<p class="calm">No se pudo leer la receta de Mealie.</p>`;
+    const hero = mealImage(this.config, r, "min");
     return html`
+      ${hero ? html`<img class="hero" src=${hero} alt=${r.name} @error=${hide} />` : nothing}
       <div class="chips">
         ${
           r.totalSeconds
@@ -350,6 +357,21 @@ export class MealsSheet extends LitElement {
         color: var(--text);
         text-align: left;
         font-size: var(--fs-small);
+      }
+      .thumb {
+        flex: none;
+        width: 48px;
+        height: 48px;
+        border-radius: 8px;
+        object-fit: cover;
+        background: var(--chip);
+      }
+      .hero {
+        width: 100%;
+        max-height: 240px;
+        border-radius: var(--radius-sm);
+        object-fit: cover;
+        background: var(--chip);
       }
       .type {
         flex: none;

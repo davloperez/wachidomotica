@@ -196,7 +196,14 @@ Las comidas sin receta (solo nota, p. ej. «Comemos fuera») se ven pero no se a
 la receta en Mealie o, si no está, del primer enlace de YouTube/Vimeo que haya en su descripción, notas o pasos.
 Se lee con los servicios `mealie.get_mealplan` y `mealie.get_recipe` de la integración oficial; hace falta indicar su
 `entry_id` en `mealie` (Ajustes → Dispositivos y servicios → Mealie, o en la URL de la integración). Sin `mealie` la
-tarjeta no sale. Todavía no se muestran las imágenes de las recetas.
+tarjeta no sale.
+
+**Imágenes de las recetas**: miniatura junto a cada comida (tarjeta y calendario) y foto grande en la receta. Se cargan
+directamente de Mealie, que por eso tiene publicado el puerto **9000** (add-on → Red). Por defecto se usa el mismo host
+con el que se abrió el panel en ese puerto (`http://<host de HA>:9000`), lo que vale con Home Assistant por **http**
+en la red local; con https o desde fuera el navegador bloquea imágenes http, así que sin `mealie_url` no se ven (no
+molesta: simplemente no salen). Se puede fijar la dirección con `mealie_url`. Las imágenes de Mealie se sirven sin
+sesión y la versión de la foto va en la URL, así que al cambiarla en Mealie se actualiza sola.
 
 **Avisos meteorológicos (AEMET)**: aparecen en _Avisos_ (amarillo = info, naranja = aviso, rojo = importante) cuando
 un sensor de alertas está activo. Home Assistant no trae las alertas de la AEMET por sí solo: hace falta la
@@ -247,6 +254,7 @@ encima, a un gesto de scroll hacia arriba. En «Casa General» y en pantallas an
   "weather_alerts": ["binary_sensor.meteoalarm"],
   "alarm": "alarm_control_panel.alarma_vivienda",
   "mealie": "<entry_id de la integración Mealie>",
+  "mealie_url": "http://homeassistant.local:9000",
   "idle_return_seconds": 180,
   "priority_alerts": true,
   "kiosk_toggle": true,

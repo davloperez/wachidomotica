@@ -44,6 +44,8 @@ export interface DashboardConfig {
   alarm?: string;
   /** `entry_id` de la integración Mealie de HA (Ajustes → Dispositivos y servicios). Sin él no sale el menú. */
   mealie?: string;
+  /** Dirección de Mealie para las imágenes de las recetas (p. ej. `http://homeassistant.local:9000`). Por defecto, el host de HA en el puerto 9000 si el panel va por http. */
+  mealie_url?: string;
   /** Segundos sin tocar la pantalla tras los que se vuelve a la vista general (0 = nunca). */
   idle_return_seconds?: number;
   /** Alertas prioritarias a pantalla completa (timbre, fuga del robot). `false` las desactiva. */

@@ -3,7 +3,7 @@
  * (servicios `mealie.get_mealplan` y `mealie.get_recipe`, que devuelven datos). Mealie es donde se
  * crean las recetas y se planifican las comidas; aquí solo se muestran.
  */
-import type { HomeAssistant } from "../types";
+import type { DashboardConfig, HomeAssistant } from "../types";
 
 /** Tipos de comida de Mealie, en el orden del día. */
 export const MEAL_TYPES = ["breakfast", "lunch", "snack", "dinner", "side", "dessert", "drink"] as const;
@@ -30,7 +30,7 @@ export interface MealRecipe {
   performSeconds?: number;
   servings?: number;
   url?: string;
-  /** Id de la imagen en Mealie (aún no se muestra). */
+  /** Versión de la imagen en Mealie (no hay imagen si falta). */
   image?: string;
 }
 
@@ -214,3 +214,28 @@ export function duration(seconds: number | undefined): string {
 
 /** Título que se muestra de una entrada: la receta o, si es una nota, su título. */
 export const mealName = (e: MealEntry): string => e.recipe?.name ?? e.title ?? e.note ?? "Sin nombre";
+
+/** Dirección base de Mealie para las imágenes: `mealie_url` de la config o, en una página http, el mismo host que HA en el puerto 9000. */
+function mealieBase(config: DashboardConfig | undefined): string | undefined {
+  if (config?.mealie_url) return config.mealie_url.replace(/\/+$/, "");
+  // Una página https no puede cargar imágenes http (contenido mixto): sin `mealie_url` no hay imágenes.
+  return location.protocol === "http:" ? `http://${location.hostname}:9000` : undefined;
+}
+
+/**
+ * URL de la imagen de una receta (tamaño `tiny` para miniaturas, `min` para la foto grande), o undefined si no
+ * tiene o no se sabe dónde está Mealie. Las imágenes de Mealie se sirven sin sesión; `version` evita la caché
+ * cuando se cambia la foto. Una imagen que ya es una ruta (`/…`) se usa tal cual (solo la simulación).
+ */
+export function mealImage(
+  config: DashboardConfig | undefined,
+  recipe: MealRecipe | undefined,
+  size: "tiny" | "min" = "min",
+): string | undefined {
+  if (!recipe?.image) return undefined;
+  if (recipe.image.startsWith("/")) return recipe.image;
+  const base = mealieBase(config);
+  return base
+    ? `${base}/api/media/recipes/${recipe.id}/images/${size}-original.webp?version=${encodeURIComponent(recipe.image)}`
+    : undefined;
+}
