@@ -1,5 +1,5 @@
 import { LitElement, css, html } from "lit";
-import { customElement, property } from "lit/decorators.js";
+import { customElement, property, state } from "lit/decorators.js";
 import { mdiClose, mdiViewGridOutline, mdiVideoOutline } from "@mdi/js";
 import type { HomeAssistant } from "../types";
 import { shared } from "../styles/tokens";
@@ -23,6 +23,45 @@ export class CameraViewer extends LitElement {
   @property({ type: Boolean }) live = false;
 
   private cams = allCameras();
+  /** Columnas de la cuadrícula, calculadas para aprovechar todo el espacio (celdas lo más cercanas a 16:9) */
+  @state() private cols = 0;
+  private observer?: ResizeObserver;
+
+  disconnectedCallback(): void {
+    super.disconnectedCallback();
+    this.observer?.disconnect();
+  }
+
+  protected updated(): void {
+    const grid = this.renderRoot.querySelector<HTMLElement>(".grid");
+    if (!grid) {
+      this.observer?.disconnect();
+      this.observer = undefined;
+      return;
+    }
+    if (this.observer) return;
+    this.observer = new ResizeObserver(() => this.fitGrid(grid));
+    this.observer.observe(grid);
+    this.fitGrid(grid);
+  }
+
+  private fitGrid(grid: HTMLElement): void {
+    const { width, height } = grid.getBoundingClientRect();
+    const n = this.cams.length;
+    if (!width || !height || !n) return;
+    let best = 1;
+    let bestArea = 0;
+    for (let cols = 1; cols <= n; cols++) {
+      const rows = Math.ceil(n / cols);
+      // Mayor imagen 16:9 que cabe en cada celda
+      const w = Math.min(width / cols, ((height / rows) * 16) / 9);
+      if (w > bestArea + 0.5) {
+        bestArea = w;
+        best = cols;
+      }
+    }
+    if (best !== this.cols) this.cols = best;
+  }
 
   private close(): void {
     this.dispatchEvent(new CustomEvent("close", { bubbles: true, composed: true }));
@@ -38,7 +77,9 @@ export class CameraViewer extends LitElement {
   }
 
   private grid() {
-    return html`<div class="grid">
+    const cols = this.cols || Math.ceil(Math.sqrt(this.cams.length));
+    const rows = Math.ceil(this.cams.length / cols);
+    return html`<div class="grid" style="--cols:${cols};--rows:${rows}">
       ${this.cams.map(
         (c) =>
           html`<button class="cell" @click=${() => this.pick(c.entity)} aria-label=${c.name}>
@@ -49,6 +90,7 @@ export class CameraViewer extends LitElement {
               .live=${this.live}
               .snapEvery=${3}
               .alert=${camAlert(this.hass, c)}
+              fill
             ></fv2-cam-live>
           </button>`,
       )}
@@ -162,13 +204,16 @@ export class CameraViewer extends LitElement {
       .grid {
         flex: 1;
         min-height: 0;
-        overflow-y: auto;
+        overflow: hidden;
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
-        align-content: start;
+        grid-template-columns: repeat(var(--cols, 1), minmax(0, 1fr));
+        grid-template-rows: repeat(var(--rows, 1), minmax(0, 1fr));
         gap: 8px;
       }
       .cell {
+        min-height: 0;
+        overflow: hidden;
+        border-radius: var(--radius-sm);
         padding: 0;
         border: 0;
         background: none;

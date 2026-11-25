@@ -519,6 +519,7 @@ export class HomeView extends LitElement {
                   .hass=${this.hass}
                   .entity=${c.entity}
                   .name=${c.name}
+                  hide-label
                   .interval=${30}
                   .alert=${camAlert(this.hass, c)}
                 ></fv2-cam-thumb>

@@ -454,13 +454,7 @@ export class DeviceCard extends LitElement {
                   ? html`<div class="chips"><span class="pill ok">Terminó a las ${at}</span></div>`
                   : nothing
             }
-            <div class="line-ctl">
-              <span class="muted">Enchufe</span>
-              <button
-                class="toggle ${on ? "on" : ""}"
-                @click=${() => call(h, "switch", "toggle", { entity_id: d.entity })}
-              ></button>
-            </div>`,
+            ${running ? html`<div class="wash-anim" aria-hidden="true"><i></i></div>` : nothing}`,
         };
       }
       case "litter": {
@@ -985,6 +979,37 @@ export class DeviceCard extends LitElement {
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+      }
+      .wash-anim {
+        position: relative;
+        height: 6px;
+        margin-top: 10px;
+        border-radius: 3px;
+        overflow: hidden;
+        background: var(--track);
+      }
+      .wash-anim i {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 40%;
+        border-radius: 3px;
+        background: var(--sky);
+        animation: wash-slide 1.8s ease-in-out infinite;
+      }
+      @keyframes wash-slide {
+        0% {
+          left: -40%;
+        }
+        100% {
+          left: 100%;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .wash-anim i {
+          animation: none;
+          width: 100%;
+        }
       }
       .active .ico {
         background: var(--sage);

@@ -21,6 +21,8 @@ export class CamThumb extends LitElement {
   @property() alert: "" | "animal" | "person" = "";
   /** Cómo encaja la imagen en su caja */
   @property() fit: "cover" | "contain" = "cover";
+  /** Oculta el nombre superpuesto (para miniaturas pequeñas) */
+  @property({ type: Boolean, attribute: "hide-label" }) hideLabel = false;
   /** Rellena todo el alto disponible en vez de mantener 16:9 */
   @property({ type: Boolean, reflect: true }) fill = false;
   @state() private src?: string;
@@ -78,7 +80,7 @@ export class CamThumb extends LitElement {
               ${icon(mdiVideoOffOutline)}<span>${off ? "Sin conexión" : "Cargando…"}</span>
             </div>`
       }
-      ${this.name ? html`<span class="lbl">${this.name}</span>` : nothing}
+      ${this.name && !this.hideLabel ? html`<span class="lbl">${this.name}</span>` : nothing}
     </div>`;
   }
 

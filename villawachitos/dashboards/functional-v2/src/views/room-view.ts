@@ -39,16 +39,21 @@ export class RoomView extends LitElement {
   @state() private climate: Record<string, Point[]> = {};
   @state() private spans: Record<string, Span[]> = {};
   @state() private scene?: Scene;
+  @state() private now = new Date();
   private timer = 0;
+  private clockTimer = 0;
 
   connectedCallback(): void {
     super.connectedCallback();
+    this.now = new Date();
+    this.clockTimer = window.setInterval(() => (this.now = new Date()), 20_000);
     this.timer = window.setInterval(() => this.load(), 5 * 60_000);
   }
 
   disconnectedCallback(): void {
     super.disconnectedCallback();
     window.clearInterval(this.timer);
+    window.clearInterval(this.clockTimer);
   }
 
   /** Lleva a la vista la tarjeta del dispositivo (al tocar su marcador en el plano) y la resalta. */
@@ -182,6 +187,9 @@ export class RoomView extends LitElement {
           <span class="eyebrow">Villawachitos · estancia</span>
           <h1>${r.name}</h1>
         </div>
+        <b class="clock num"
+          >${this.now.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}</b
+        >
       </header>
 
       <div class="col">
@@ -553,6 +561,12 @@ export class RoomView extends LitElement {
         display: grid;
         min-width: 0;
         flex: 1;
+      }
+      .clock {
+        flex: none;
+        font-size: var(--fs-kpi);
+        font-weight: 300;
+        letter-spacing: -0.03em;
       }
       .eyebrow {
         font-size: var(--fs-label);

@@ -107,13 +107,20 @@ cerrar y los de posición rápida 0, 25, 50, 75 y 100 %.
 | Instalación fotovoltaica mientras se consume de la red              | Late suavemente (también en la vista general) |
 | Persona en cámara, sensor con agua, puerta abierta, portero sonando | Tiembla, en ámbar                             |
 
+## Lavadora
+
+La tarjeta de la lavadora es solo informativa (no se puede apagar su enchufe desde el dashboard): muestra el estado,
+la potencia, desde cuándo está en marcha y una barra animada mientras funciona.
+
 ## Cámaras
 
 - **Instantáneas**: en el detalle de las cámaras (vista Exterior y capa Seguridad) cada cámara muestra su imagen, que se
   renueva cada 20 s; en el panel de Seguridad de la vista general, cada 30 s. El borde se pone en rojo con una persona y
-  en ámbar con un gato (el movimiento genérico no resalta). Solo se actualizan con el panel visible.
+  en ámbar con un gato (el movimiento genérico no resalta). Solo se actualizan con el panel visible. Las miniaturas de la vista Casa no llevan el nombre superpuesto
+  (por el tamaño de la tablet).
 - **Visor a pantalla completa**: tocar una imagen abre esa cámara en grande. Abajo hay un selector para cambiar de
-  cámara y arriba el botón **Todas**, que muestra una cuadrícula con todas las cámaras; tocar una de ellas la abre en
+  cámara y arriba el botón **Todas**, que muestra una cuadrícula con todas las cámaras; la cuadrícula se reparte sola para ocupar toda la pantalla (sin scroll, con el número de columnas que dé las
+  imágenes más grandes); tocar una de ellas la abre en
   grande. **Ver todas** en el panel de Seguridad abre directamente la cuadrícula.
   - **Escritorio** (≥ 900 px con ratón): todas las cámaras **en directo y fluidas** (WebRTC a través de Home Assistant, sin
     librerías ni transcodificación), también en la cuadrícula.
@@ -169,7 +176,7 @@ Saludo y tiempo, avisos, alarma, acciones de toda
 la casa, clima (aire acondicionado, temperatura y humedad de fuera y previsión de las próximas 24 h; las Shelly X2i no
 miden temperatura ni humedad: la de cada estancia sale de sus sensores propios, ver más abajo), energía y batería; en cada estancia iluminación con escenas (Todo, Relax, Noche y Apagar; en **Baño 1 y Baño 2** son Todo, Relax (solo la hornacina), Rutinas (hornacina y espejo) y Apagar; en Cocina «Relax» es **Cocinar** y «Noche» solo enciende la barra al 5 %, ver `scenes` en `rooms.ts`), persianas y cortinas (estas se abren en horizontal, con su propio icono y tarjeta), ambiente, seguridad,
 dispositivos; y las capas Luces, Persianas, Clima, Energía, Electrodomésticos, Seguridad y
-Multimedia. Las hojas de detalle (luz, instalación solar, depuradora) ocupan toda la pantalla con fondo opaco.
+Multimedia. Todas las vistas de estancia llevan la hora arriba a la derecha, junto al nombre. Las hojas de detalle (luz, instalación solar, depuradora) ocupan toda la pantalla con fondo opaco.
 
 Estancias y dispositivos: [`src/house/rooms.ts`](src/house/rooms.ts); capas: [`src/house/layers.ts`](src/house/layers.ts)
 (un dispositivo nuevo se añade ahí).
