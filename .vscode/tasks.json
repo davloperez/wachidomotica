@@ -3,6 +3,41 @@
   "inputs": [],
   "tasks": [
     /* =====================================================================
+     * Mealie MCP  (villawachitos/mealie)
+     * ===================================================================== */
+    {
+      "label": "Mealie MCP: instalar dependencias",
+      "type": "shell",
+      "command": "npm ci",
+      "options": { "cwd": "${workspaceFolder}/villawachitos/mealie" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Mealie MCP: iniciar servidor",
+      "detail": "Solo desarrollo local: la app de producción corre en Home Assistant (local_mealie_mcp)",
+      "type": "shell",
+      "command": "npm start",
+      "options": { "cwd": "${workspaceFolder}/villawachitos/mealie" },
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Mealie MCP: desplegar app en Home Assistant",
+      "detail": "Sube addon/ + src/ a /local_apps por SSH, reconstruye la app y guarda sus opciones (sobrescribe la app en HA)",
+      "type": "shell",
+      "command": "npm run deploy:app",
+      "options": { "cwd": "${workspaceFolder}/villawachitos/mealie" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Mealie MCP: prueba de humo",
+      "detail": "Crea y borra datos de prueba (zz-prueba-mcp) contra el servidor en marcha",
+      "type": "shell",
+      "command": "npm run smoke",
+      "options": { "cwd": "${workspaceFolder}/villawachitos/mealie" },
+      "problemMatcher": []
+    },
+    /* =====================================================================
      * Functional v2  (villawachitos/dashboards/functional-v2)
      * ===================================================================== */
     {

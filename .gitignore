@@ -15,3 +15,6 @@ secrets.yaml
 
 # Archivos temporales
 *.tmp
+# Mealie MCP: token y dependencias
+.env
+node_modules/

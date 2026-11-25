@@ -1,0 +1,23 @@
+name: Mealie MCP
+version: "0.1.0"
+slug: mealie_mcp
+description: Servidor MCP para que Claude gestione Mealie (recetas, ingredientes, lista de la compra y menú semanal)
+url: https://github.com/modelcontextprotocol
+arch:
+  - aarch64
+  - amd64
+startup: application
+boot: auto
+init: false
+ports:
+  8765/tcp: 8765
+ports_description:
+  8765/tcp: Documentación en / y endpoint MCP en /mcp
+options:
+  mealie_url: http://192.168.0.10:9000
+  api_token: ""
+  access_key: ""
+schema:
+  mealie_url: url
+  api_token: password
+  access_key: password?

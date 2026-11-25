@@ -9,6 +9,7 @@ Single owner, no CI, no tests. Branch `main`.
 | --- | --- | --- |
 | `villawachitos/dashboards/functional-v2` | **Active work.** Wall-panel dashboard for small portrait panels (Shelly Wall Display X2i): 2D plan, no 3D/blur/transparency, priority alerts. Its `src/plan/house-plan.ts` is the floor plan. One deploy publishes it to the HA dashboards "Casa General" (`functional-v2`, HA's default) and the Shelly panels (Oficina 1/2, Cocina, Salón Este, Baño 1/2, Dormitorio 1/2/3), each with its own default room and lux sensor for the auto theme (`src/lib/panels.ts`) | `villawachitos/dashboards/CLAUDE.md`, its `README.md` |
 | `villawachitos/dashboards/shared/scripts` | `deploy.mjs` and `check-bundle.mjs` used by every dashboard | same |
+| `villawachitos/mealie` | Servidor MCP (HTTP, red local) para gestionar Mealie: recetas, ingredientes, lista de la compra y menú. Corre como app local de HA (`local_mealie_mcp`, puerto 8765); `.env` con `MEALIE_API_TOKEN` (no se commitea) | su `README.md` |
 | `villawachitos/esphome` | ESP32 firmware YAML | `villawachitos/esphome/CLAUDE.md` |
 | `.vscode/tasks.json` | The user's way of running everything (labels in Spanish) | |
 | `.claude/launch.json` | Dev server for `preview_start`: `functional-v2` :5176 | |
@@ -39,5 +40,6 @@ Never read or search inside `node_modules/`, `dist/`, `venv/`, `.esphome/`, `pac
 
 - `npm run deploy` / `deploy:only` (uploads to HA over SSH and overwrites the live config of **every** dashboard in
   `deploy.json`, including the Shelly wall panels).
+- `npm run deploy:app` en `villawachitos/mealie` (sobrescribe la app Mealie MCP en el HA real).
 - ESPHome `upload` / `run` / `run_all.sh upload` (flashes real devices over OTA).
 - Never print or commit `.env` / `secrets.yaml` contents.
